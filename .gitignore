@@ -1,0 +1,16 @@
+build/
+out/
+.cache/
+.vscode/
+.idea/
+compile_commands.json
+vcpkg_installed/
+*.o
+*.a
+*.so
+*.exe
+/r-type_server
+/r-type_client
+site/
+vcpkg-cache/
+vcpkg-downloads/

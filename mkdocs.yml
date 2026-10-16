@@ -1,0 +1,28 @@
+site_name: R-Type AVV
+site_description: Developer documentation of the R-Type game engine and network game
+docs_dir: docs
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - search.suggest
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+nav:
+  - Home: index.md
+  - Guides:
+      - Getting started: guides/getting-started.md
+      - Adding a component and a system: guides/adding-a-system.md
+  - Architecture: architecture/overview.md
+  - Protocol: protocol/rtype-protocol.md
+  - Comparative study: comparative-study.md
+  - Accessibility: accessibility.md
+  - Contributing: contributing.md

@@ -1,0 +1,21 @@
+name: Repository Size
+run-name: ${{ github.actor }} ask for repository size ?
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  repository_size:
+    name: Check repository size
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Print current branch
+        run: echo "Branch → ${GITHUB_REF##*/}"
+
+      - name: Print repository size
+        run: du -skh --exclude=".git" .

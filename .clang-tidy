@@ -1,0 +1,65 @@
+# Epitech C++ Coding Style (v2.1)
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cppcoreguidelines-avoid-goto,
+  cppcoreguidelines-avoid-non-const-global-variables,
+  cppcoreguidelines-macro-usage,
+  cppcoreguidelines-owning-memory,
+  cppcoreguidelines-pro-type-cstyle-cast,
+  cppcoreguidelines-pro-type-reinterpret-cast,
+  cppcoreguidelines-special-member-functions,
+  misc-const-correctness,
+  misc-non-private-member-variables-in-classes,
+  misc-use-anonymous-namespace,
+  modernize-avoid-c-arrays,
+  modernize-loop-convert,
+  modernize-redundant-void-arg,
+  modernize-use-auto,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-using,
+  performance-*,
+  readability-avoid-nested-conditional-operator,
+  readability-convert-member-functions-to-static,
+  readability-function-size,
+  readability-identifier-naming,
+  readability-make-member-function-const,
+  readability-simplify-boolean-expr
+WarningsAsErrors: ''
+HeaderFilterRegex: '(engine|protocol|game|server|client)/.*'
+
+CheckOptions:
+  # F1: 20 lines per function, F3: 5 arguments, C1: nesting depth below 3
+  - { key: readability-function-size.LineThreshold,      value: 20 }
+  - { key: readability-function-size.ParameterThreshold, value: 5 }
+  - { key: readability-function-size.NestingThreshold,   value: 3 }
+
+  # N3: functions in camelCase
+  - { key: readability-identifier-naming.FunctionCase,   value: camelBack }
+  - { key: readability-identifier-naming.MethodCase,     value: camelBack }
+
+  # N4: variables in camelCase, constants and enum values in UPPER_CASE
+  - { key: readability-identifier-naming.VariableCase,          value: camelBack }
+  - { key: readability-identifier-naming.ParameterCase,         value: camelBack }
+  - { key: readability-identifier-naming.LocalVariableCase,     value: camelBack }
+  - { key: readability-identifier-naming.MemberCase,            value: camelBack }
+  - { key: readability-identifier-naming.GlobalConstantCase,    value: UPPER_CASE }
+  - { key: readability-identifier-naming.ConstexprVariableCase, value: UPPER_CASE }
+  - { key: readability-identifier-naming.EnumConstantCase,      value: UPPER_CASE }
+  - { key: readability-identifier-naming.MacroDefinitionCase,   value: UPPER_CASE }
+  - { key: readability-identifier-naming.MacroDefinitionIgnoredRegexp, value: '^[A-Z0-9]+_HPP_$' }
+
+  # K1: private attributes prefixed with an underscore
+  - { key: readability-identifier-naming.PrivateMemberPrefix,   value: _ }
+  - { key: readability-identifier-naming.ProtectedMemberPrefix, value: _ }
+
+  # N5: types in PascalCase
+  - { key: readability-identifier-naming.ClassCase,         value: CamelCase }
+  - { key: readability-identifier-naming.StructCase,        value: CamelCase }
+  - { key: readability-identifier-naming.EnumCase,          value: CamelCase }
+  - { key: readability-identifier-naming.UnionCase,         value: CamelCase }
+  - { key: readability-identifier-naming.TypeAliasCase,     value: CamelCase }
+  - { key: readability-identifier-naming.TypedefCase,       value: CamelCase }
+  - { key: readability-identifier-naming.TypeTemplateParameterCase, value: CamelCase }

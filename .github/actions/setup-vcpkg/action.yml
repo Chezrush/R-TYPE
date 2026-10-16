@@ -1,0 +1,47 @@
+name: Setup vcpkg
+description: Install system libraries (cached), bootstrap vcpkg and cache downloads + compiled dependencies.
+
+inputs:
+  with-graphics-libs:
+    description: Install the Linux libraries needed to build SFML
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Linux packages (cached)
+      if: runner.os == 'Linux'
+      uses: awalsh128/cache-apt-pkgs-action@v1
+      with:
+        packages: >-
+          ninja-build pkg-config
+          ${{ inputs.with-graphics-libs == 'true' && 'libx11-dev libxrandr-dev libxcursor-dev libxi-dev libudev-dev libgl1-mesa-dev libfreetype-dev' || '' }}
+        version: 1.0
+
+    - name: Setup the MSVC environment (needed by Ninja)
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    # Compiled ports (binary cache) + source tarballs (downloads) are restored between runs.
+    - name: Cache vcpkg binaries and downloads
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ github.workspace }}/vcpkg-cache
+          ${{ github.workspace }}/vcpkg-downloads
+        key: vcpkg-${{ runner.os }}-${{ inputs.with-graphics-libs }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          vcpkg-${{ runner.os }}-${{ inputs.with-graphics-libs }}-
+          vcpkg-${{ runner.os }}-
+
+    - name: Bootstrap vcpkg
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/vcpkg-cache" "${{ github.workspace }}/vcpkg-downloads"
+        git clone --depth 1 https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+        "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+        {
+          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg"
+          echo "VCPKG_DOWNLOADS=${{ github.workspace }}/vcpkg-downloads"
+          echo "VCPKG_BINARY_SOURCES=clear;files,${{ github.workspace }}/vcpkg-cache,readwrite"
+        } >> "$GITHUB_ENV"
