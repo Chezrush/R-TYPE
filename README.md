@@ -73,8 +73,10 @@ Start with [docs/index.md](docs/index.md). Browse it as a website with
 
 ## Authors
 
-_To fill in: team members and contacts._
+**[Antonin MEYNADIER](https://github.com/pastirami)** <br>
+**[Victor RIPERT](https://github.com/Victor-ripert)** <br>
+**[Valentin MINÉ](https://github.com/chezrush)**
 
 ## License
 
-_To fill in._
+Released under the [MIT License](LICENSE).
