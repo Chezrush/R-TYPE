@@ -1,0 +1,11 @@
+Checks: >
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  readability-braces-around-statements,
+  readability-container-size-empty,
+  cppcoreguidelines-pro-type-cstyle-cast,
+  -modernize-use-trailing-return-type,
+  -bugprone-easily-swappable-parameters
+WarningsAsErrors: ''
+HeaderFilterRegex: '(engine|protocol|game|server|client)/.*'

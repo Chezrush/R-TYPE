@@ -1,0 +1,86 @@
+name: Lint
+run-name: ${{ github.actor }} - lint check
+
+on:
+  pull_request:
+    branches-ignore:
+      - "ga-ignore-*"
+  workflow_dispatch:
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clang-format:
+    name: clang-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format (cached)
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: clang-format
+          version: 1.0
+
+      - name: Check formatting
+        run: |
+          FILES=$(git ls-files 'engine/*' 'protocol/*' 'game/*' 'server/*' 'client/*' 'tests/*' \
+            | grep -E '\.(cpp|hpp|h)$' || true)
+          if [ -z "$FILES" ]; then echo "No C++ files."; exit 0; fi
+          # Unified diff of what clang-format would change, kept as an artifact.
+          : > clang-format.diff
+          for f in $FILES; do
+            clang-format --style=file "$f" | diff -u --label "a/$f" --label "b/$f" "$f" - >> clang-format.diff || true
+          done
+          if [ -s clang-format.diff ]; then
+            cat clang-format.diff
+            echo "::error::Formatting issues found. Fix with: clang-format --style=file -i <file>"
+            exit 1
+          fi
+
+      - name: Upload formatting diff
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-format-diff
+          path: clang-format.diff
+          retention-days: 7
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: lukka/get-cmake@latest
+
+      - uses: ./.github/actions/setup-vcpkg
+        with:
+          with-graphics-libs: "false"
+
+      - name: Install clang-tidy (cached)
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: clang-tidy
+          version: 1.0
+
+      - name: Configure (server-only, exports compile_commands.json)
+        run: cmake --preset server-only
+
+      - name: Run clang-tidy
+        run: |
+          FILES=$(git ls-files 'engine/src/*.cpp' 'engine/src/**/*.cpp' 'protocol/src/*.cpp' \
+            'game/src/*.cpp' 'server/src/*.cpp')
+          set -o pipefail
+          clang-tidy -p build/server-only --warnings-as-errors='*' $FILES 2>&1 | tee clang-tidy.log
+
+      - name: Upload clang-tidy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-tidy-report
+          path: clang-tidy.log
+          if-no-files-found: ignore
+          retention-days: 7
