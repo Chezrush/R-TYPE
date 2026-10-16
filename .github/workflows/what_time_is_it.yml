@@ -1,0 +1,12 @@
+name: what_time_is_it
+run-name: ${{ github.actor }} ask for time ?
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  what_time_is_it:
+    runs-on: ubuntu-latest
+    steps:
+      - run: date
