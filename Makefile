@@ -2,7 +2,7 @@
 ## EPITECH PROJECT, 2026
 ## G-ING-500-PAR-5-1-rtype-13
 ## File description:
-## Makefile (thin wrapper around the CMake presets, needs VCPKG_ROOT)
+## Makefile
 ##
 
 PRESET ?= release
