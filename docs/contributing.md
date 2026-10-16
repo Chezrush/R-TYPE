@@ -12,13 +12,23 @@
 
 ## Code conventions
 
+The code follows the Epitech C++ Coding Style. `.clang-format` and `.clang-tidy` encode
+most of it, and the CI checks both on every pull request.
+
 - C++20, formatted with `clang-format` (config in `.clang-format`), checked by `clang-tidy`.
-- Headers live in `<module>/include/<module>/`, sources in `<module>/src/`, tests in
-  `<module>/tests/`. Include public headers as `<engine/ecs/registry.hpp>`.
-- Types and functions in `snake_case`, private members prefixed with `_`.
-- Prefer RAII and the standard library. Wrap system APIs (sockets, threads) behind a small
+- Every `.cpp`, `.hpp`, `Makefile` and `CMakeLists.txt` starts with the Epitech header.
+- Files and folders of C++ code in PascalCase (`Registry.hpp`, `Engine/Core/`), named after
+  the class they define. Headers live in `<module>/include/<Module>/`, sources (`.cpp`
+  only) in `<module>/src/`, tests in `<module>/tests/`.
+- Types in PascalCase, functions, methods and variables in camelCase, private attributes
+  prefixed with `_`, macros, global constants and enum values in UPPER_CASE.
+- 4 spaces, 80 columns, one statement per line, opening brace at the end of the line except
+  for functions, no `using namespace`, no `#pragma once` (use `#ifndef` include guards).
+- Functions of 20 lines at most, 5 arguments at most, no comment inside a function body.
+- Prefer RAII and the standard library, smart pointers instead of `new` / `delete`, `const`
+  and `nullptr` wherever they apply. Wrap system APIs (sockets, threads) behind a small
   class of ours.
-- Dependency direction: `engine` ← `protocol` ← `game` ← `server` / `client`. Never the
+- Dependency direction: `engine` <- `protocol` <- `game` <- `server` / `client`. Never the
   other way round, and never R-Type specifics in `engine`.
 - **Never trust network data.** Validate every length, count and range before using it.
 - New dependency? Add it to `vcpkg.json`. Never copy third-party sources into the repo.
@@ -29,6 +39,7 @@
 cmake --build --preset debug
 ctest --preset debug
 clang-format -i $(git ls-files '*.cpp' '*.hpp')
+clang-tidy -p build/debug $(git ls-files '*.cpp')
 ```
 
 - Add or update tests for what you changed.
