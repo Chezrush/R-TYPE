@@ -1,10 +1,85 @@
+# Epitech C++ Coding Style (v2.1)
 BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++20
+
+# L2: 4 spaces, never tabs
 IndentWidth: 4
-ColumnLimit: 100
-AccessModifierOffset: -4
-BreakBeforeBraces: Attach
-AllowShortFunctionsOnASingleLine: Inline
-AllowShortIfStatementsOnASingleLine: Never
-PointerAlignment: Left
-SortIncludes: CaseSensitive
+TabWidth: 4
+UseTab: Never
+IndentCaseLabels: true
 NamespaceIndentation: None
+FixNamespaceComments: true
+
+# F2: 80 columns
+ColumnLimit: 80
+
+# L4: opening brace at the end of the line, alone on its line for functions
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# L1: one statement per line
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+
+# L3: spaces
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpacesInParentheses: false
+
+# V1: * and & attached to the variable
+PointerAlignment: Right
+ReferenceAlignment: Right
+DerivePointerAlignment: false
+
+# G3: pre-processor directives indented by nesting level
+IndentPPDirectives: AfterHash
+
+# G7: template parameters on their own line
+AlwaysBreakTemplateDeclarations: Yes
+
+# K2: constructor initializer list
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: Never
+ConstructorInitializerIndentWidth: 4
+
+# K3: access modifiers aligned with the class keyword
+AccessModifierOffset: -4
+EmptyLineBeforeAccessModifier: LogicalBlock
+
+# G2, L6: exactly one empty line between definitions
+SeparateDefinitionBlocks: Always
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+
+# H1: system headers first, then project headers
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<.*>'
+    Priority: 1
+  - Regex: '^".*"'
+    Priority: 2
+
+InsertNewlineAtEOF: true
