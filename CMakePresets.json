@@ -25,7 +25,10 @@
       "name": "server-only",
       "inherits": "debug",
       "displayName": "Debug, server only (no SFML)",
-      "cacheVariables": { "RTYPE_BUILD_CLIENT": "OFF" }
+      "cacheVariables": {
+        "RTYPE_BUILD_CLIENT": "OFF",
+        "VCPKG_MANIFEST_NO_DEFAULT_FEATURES": "ON"
+      }
     }
   ],
   "buildPresets": [

@@ -3,7 +3,17 @@
   "version": "0.1.0",
   "description": "A networked R-Type clone built on a custom game engine",
   "dependencies": [
-    "asio",
-    "sfml"
-  ]
+    "asio"
+  ],
+  "default-features": [
+    "client"
+  ],
+  "features": {
+    "client": {
+      "description": "Graphical client (window, input, audio)",
+      "dependencies": [
+        "sfml"
+      ]
+    }
+  }
 }
