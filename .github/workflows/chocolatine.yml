@@ -21,8 +21,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       # ccache is only used on Linux (poor MSVC support); empty = disabled.
-      CMAKE_C_COMPILER_LAUNCHER: ${{ runner.os == 'Linux' && 'ccache' || '' }}
-      CMAKE_CXX_COMPILER_LAUNCHER: ${{ runner.os == 'Linux' && 'ccache' || '' }}
+      CMAKE_C_COMPILER_LAUNCHER: ${{ startsWith(matrix.os, 'ubuntu') && 'ccache' || '' }}
+      CMAKE_CXX_COMPILER_LAUNCHER: ${{ startsWith(matrix.os, 'ubuntu') && 'ccache' || '' }}
     steps:
       - uses: actions/checkout@v4
 
