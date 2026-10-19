@@ -5,10 +5,10 @@
 ## CMakeLists.txt
 ##
 
-add_executable(rtype_engine src/main.cpp)
-target_include_directories(rtype_engine PRIVATE include)
-target_link_libraries(rtype_engine PRIVATE rtype_warnings)
+add_library(rtype_engine STATIC
+    src/Core/Version.cpp)
+add_library(rtype::engine ALIAS rtype_engine)
 
-if(RTYPE_BUILD_TESTS)
-    add_test(NAME smoke_engine COMMAND rtype_engine)
-endif()
+target_include_directories(rtype_engine PUBLIC include)
+target_compile_features(rtype_engine PUBLIC cxx_std_20)
+target_link_libraries(rtype_engine PRIVATE rtype_warnings)
