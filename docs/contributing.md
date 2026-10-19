@@ -42,7 +42,9 @@ clang-format -i $(git ls-files '*.cpp' '*.hpp')
 clang-tidy -p build/debug $(git ls-files '*.cpp')
 ```
 
-- Add or update tests for what you changed.
+- Add or update tests for what you changed. Unit tests use Catch2: declare an executable
+  with `rtype_add_catch_test(name sources...)` in the module's `CMakeLists.txt` (see
+  `engine/tests/`), each `TEST_CASE` then shows up as its own CTest test.
 - Update the docs if behaviour changed, and the [protocol](protocol/rtype-protocol.md) if
   you touched `protocol/` (bump the protocol version for breaking changes).
 

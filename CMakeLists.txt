@@ -32,9 +32,10 @@ else()
     target_compile_options(rtype_warnings INTERFACE -Wall -Wextra -Wpedantic)
 endif()
 
-# Tests use a tiny header-only helper (tests/include/test_support.hpp), no framework needed yet.
 if(RTYPE_BUILD_TESTS)
     enable_testing()
+    find_package(Catch2 3 CONFIG REQUIRED)
+    include(Catch)
     add_library(rtype_test_support INTERFACE)
     target_include_directories(rtype_test_support INTERFACE ${CMAKE_SOURCE_DIR}/tests/include)
 endif()
@@ -44,6 +45,15 @@ function(rtype_add_test name)
         add_executable(${name} ${ARGN})
         target_link_libraries(${name} PRIVATE rtype_test_support rtype_warnings)
         add_test(NAME ${name} COMMAND ${name})
+    endif()
+endfunction()
+
+# Declares a Catch2 test executable; every TEST_CASE becomes its own CTest test.
+function(rtype_add_catch_test name)
+    if(RTYPE_BUILD_TESTS)
+        add_executable(${name} ${ARGN})
+        target_link_libraries(${name} PRIVATE Catch2::Catch2WithMain rtype_warnings)
+        catch_discover_tests(${name})
     endif()
 endfunction()
 
