@@ -8,4 +8,13 @@
 #ifndef ENGINE_HPP_
 #define ENGINE_HPP_
 
+namespace engine {
+
+/**
+ * @brief Returns the engine version as "major.minor.patch".
+ */
+const char *version() noexcept;
+
+} // namespace engine
+
 #endif /* !ENGINE_HPP_ */
