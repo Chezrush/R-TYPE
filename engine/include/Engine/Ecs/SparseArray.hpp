@@ -31,6 +31,11 @@ namespace engine::ecs {
 template <typename Component>
 class SparseArray : public IStorage {
 public:
+    using Slot = std::optional<Component>;
+    using Container = std::vector<Slot>;
+    using iterator = typename Container::iterator;
+    using const_iterator = typename Container::const_iterator;
+
     /**
      * @brief Builds the component of an entity in place.
      *
@@ -56,8 +61,21 @@ public:
     /** @brief Number of slots, one past the highest index ever stored. */
     [[nodiscard]] std::size_t size() const noexcept;
 
+    /**
+     * @brief Iterators over every slot, empty ones included.
+     *
+     * Skipping the entities without a component is left to the zipper.
+     * Emplacing or inserting may reallocate and invalidate them.
+     */
+    [[nodiscard]] iterator begin() noexcept;
+    [[nodiscard]] iterator end() noexcept;
+    [[nodiscard]] const_iterator begin() const noexcept;
+    [[nodiscard]] const_iterator end() const noexcept;
+    [[nodiscard]] const_iterator cbegin() const noexcept;
+    [[nodiscard]] const_iterator cend() const noexcept;
+
 private:
-    std::vector<std::optional<Component>> _slots;
+    Container _slots;
 };
 
 } // namespace engine::ecs
