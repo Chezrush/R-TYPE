@@ -112,7 +112,8 @@ void Server::runSimulationLoop(const std::stop_token &stopToken,
 
     while (!stopToken.stop_requested()) {
         const auto currentTime = Clock::now();
-        const auto frameTime = std::min(currentTime - previousTime, maxFrameTime);
+        const auto frameTime =
+            std::min(currentTime - previousTime, maxFrameTime);
         previousTime = currentTime;
         accumulator +=
             std::chrono::duration_cast<std::chrono::nanoseconds>(frameTime);

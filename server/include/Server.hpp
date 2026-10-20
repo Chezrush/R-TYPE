@@ -8,11 +8,11 @@
 #ifndef SERVER_HPP_
 #define SERVER_HPP_
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <thread>
-#include <algorithm>
 
 namespace rtype::server {
 struct ServerConfig {
@@ -62,12 +62,11 @@ public:
      */
     [[nodiscard]] std::uint64_t tickCount() const noexcept;
 
-
     /**
      * @brief Called by runSimulation(), it only used to run the loop.
      */
     void runSimulationLoop(const std::stop_token &stopToken,
-                       std::chrono::nanoseconds timestep);
+                           std::chrono::nanoseconds timestep);
 
 private:
     static void runNetwork(const std::stop_token &stopToken);
