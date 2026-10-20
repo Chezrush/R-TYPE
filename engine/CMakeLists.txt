@@ -7,7 +7,8 @@
 
 add_library(rtype_engine STATIC
     src/Core/Version.cpp
-    src/Ecs/Entity.cpp)
+    src/Ecs/Entity.cpp
+    src/Ecs/EntityAllocator.cpp)
 add_library(rtype::engine ALIAS rtype_engine)
 
 target_include_directories(rtype_engine PUBLIC include)
@@ -16,7 +17,8 @@ target_link_libraries(rtype_engine PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_engine_tests
     tests/Version.cpp
-    tests/Ecs/Entity.cpp)
+    tests/Ecs/Entity.cpp
+    tests/Ecs/EntityAllocator.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_engine_tests PRIVATE rtype::engine)
 endif()

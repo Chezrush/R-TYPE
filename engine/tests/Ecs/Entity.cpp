@@ -11,52 +11,55 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace engine::ecs {
-
-class EntityAllocator {
-public:
-    static Entity make(std::uint32_t index, std::uint32_t generation)
-    {
-        return Entity(index, generation);
-    }
-};
-
-} // namespace engine::ecs
+#include "Engine/Ecs/EntityAllocator.hpp"
 
 using engine::ecs::Entity;
 using engine::ecs::EntityAllocator;
 
 TEST_CASE("an entity exposes its index and generation", "[ecs][entity]")
 {
-    const Entity entity = EntityAllocator::make(7, 3);
+    EntityAllocator allocator;
+    const Entity first = allocator.create();
+    const Entity second = allocator.create();
 
-    REQUIRE(entity.index() == 7);
-    REQUIRE(entity.generation() == 3);
+    REQUIRE(first.index() == 0);
+    REQUIRE(first.generation() == 0);
+    REQUIRE(second.index() == 1);
 }
 
 TEST_CASE("an entity converts to its index", "[ecs][entity]")
 {
-    const Entity entity = EntityAllocator::make(7, 3);
-    const std::size_t asIndex = entity;
+    EntityAllocator allocator;
+    const Entity first = allocator.create();
+    const Entity second = allocator.create();
+    const std::size_t asIndex = second;
 
-    REQUIRE(asIndex == 7);
+    REQUIRE(asIndex == 1);
+    REQUIRE(static_cast<std::size_t>(first) == 0);
 }
 
 TEST_CASE("entities with another generation are different", "[ecs][entity]")
 {
-    const Entity first = EntityAllocator::make(7, 0);
-    const Entity reused = EntityAllocator::make(7, 1);
+    EntityAllocator allocator;
+    const Entity first = allocator.create();
+    REQUIRE(allocator.destroy(first));
+    const Entity reused = allocator.create();
 
     REQUIRE(first != reused);
-    REQUIRE(first == EntityAllocator::make(7, 0));
     REQUIRE(static_cast<std::size_t>(first) ==
             static_cast<std::size_t>(reused));
 }
 
 TEST_CASE("entities are ordered by index then generation", "[ecs][entity]")
 {
-    REQUIRE(EntityAllocator::make(1, 5) < EntityAllocator::make(2, 0));
-    REQUIRE(EntityAllocator::make(2, 0) < EntityAllocator::make(2, 1));
+    EntityAllocator allocator;
+    const Entity first = allocator.create();
+    const Entity second = allocator.create();
+    REQUIRE(allocator.destroy(second));
+    const Entity reused = allocator.create();
+
+    REQUIRE(first < second);
+    REQUIRE(second < reused);
 }
 
 TEST_CASE("an entity cannot be built outside the allocator", "[ecs][entity]")
