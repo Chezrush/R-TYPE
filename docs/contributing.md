@@ -54,3 +54,8 @@ clang-tidy -p build/debug $(git ls-files '*.cpp')
 
 The workflow in `.github/workflows/chocolatine.yml` builds and tests on Linux and Windows. It caches
 vcpkg downloads and binaries so dependencies are not rebuilt on every push.
+
+A pull request can only read the caches of its own branch and of `main`, so the workflow also
+runs on every push to `main` to fill the shared cache. vcpkg is pinned to a commit in
+`.github/actions/setup-vcpkg/action.yml`: bump it on purpose (a new vcpkg version invalidates
+the cached binaries and rebuilds the dependencies once).
