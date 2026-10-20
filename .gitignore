@@ -14,3 +14,4 @@ vcpkg_installed/
 site/
 vcpkg-cache/
 vcpkg-downloads/
+note.txt
