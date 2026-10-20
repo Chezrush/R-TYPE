@@ -19,7 +19,8 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Version.cpp
     tests/Ecs/Entity.cpp
     tests/Ecs/EntityAllocator.cpp
-    tests/Ecs/IStorage.cpp)
+    tests/Ecs/IStorage.cpp
+    tests/Ecs/SparseArray.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_engine_tests PRIVATE rtype::engine)
 endif()
