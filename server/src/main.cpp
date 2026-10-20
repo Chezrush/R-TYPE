@@ -9,15 +9,27 @@
 #include <csignal>
 #include <iostream>
 #include <thread>
+
 #include "Server.hpp"
 
 namespace {
 
-std::atomic<bool> g_stopRequested{false};
+std::atomic<bool> &stopRequestedFlag()
+{
+    static std::atomic<bool> flag{false};
+    return flag;
+}
 
 void handleSignal(int)
 {
-    g_stopRequested.store(true);
+    stopRequestedFlag().store(true);
+}
+
+void waitForShutdown()
+{
+    while (!stopRequestedFlag().load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
 }
 
 } /* namespace */
@@ -33,16 +45,10 @@ int main()
         std::cerr << "Failed to start server\n";
         return 1;
     }
-
     std::cout << "r-type_server started. Press Ctrl+C to stop.\n";
-
-    while (!g_stopRequested.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-
+    waitForShutdown();
     std::cout << "Stopping r-type_server...\n";
     server.shutdown();
     std::cout << "r-type_server stopped cleanly.\n";
-
     return 0;
 }

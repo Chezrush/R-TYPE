@@ -12,10 +12,10 @@
 #include <chrono>
 #include <cstdint>
 #include <thread>
+#include <algorithm>
 
-namespace rtype::server
-{
-    struct ServerConfig {
+namespace rtype::server {
+struct ServerConfig {
     /**
      * @brief Simulation frequency, in ticks per second.
      */
@@ -62,21 +62,30 @@ public:
      */
     [[nodiscard]] std::uint64_t tickCount() const noexcept;
 
+
+    /**
+     * @brief Called by runSimulation(), it only used to run the loop.
+     */
+    void runSimulationLoop(const std::stop_token &stopToken,
+                       std::chrono::nanoseconds timestep);
+
 private:
-    void runNetwork(std::stop_token stopToken);
-    void runSimulation(std::stop_token stopToken);
+    static void runNetwork(const std::stop_token &stopToken);
+    void runSimulation(const std::stop_token &stopToken);
+    void updateSimulationTick(std::chrono::nanoseconds timestep,
+                              std::chrono::nanoseconds &accumulator,
+                              const std::stop_token &stopToken);
 
     [[nodiscard]] std::chrono::nanoseconds simulationInterval() const noexcept;
 
-    ServerConfig config_;
-    std::atomic<bool> running_{false};
-    std::atomic<std::uint64_t> tickCount_{0};
+    ServerConfig _config;
+    std::atomic<bool> _running{false};
+    std::atomic<std::uint64_t> _tickCount{0};
 
-    std::jthread networkThread_;
-    std::jthread simulationThread_;
+    std::jthread _networkThread;
+    std::jthread _simulationThread;
 };
 
 } /* namespace rtype::server */
-
 
 #endif /* !SERVER_HPP_ */
