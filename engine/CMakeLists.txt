@@ -17,3 +17,8 @@ rtype_add_catch_test(rtype_engine_tests tests/Version.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_engine_tests PRIVATE rtype::engine)
 endif()
+
+if(RTYPE_BUILD_DEMOS)
+    add_executable(rtype_engine_demo demo/Main.cpp)
+    target_link_libraries(rtype_engine_demo PRIVATE rtype::engine rtype_warnings)
+endif()
