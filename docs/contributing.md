@@ -20,6 +20,8 @@ most of it, and the CI checks both on every pull request.
 - Files and folders of C++ code in PascalCase (`Registry.hpp`, `Engine/Core/`), named after
   the class they define. Headers live in `<module>/include/<Module>/`, sources (`.cpp`
   only) in `<module>/src/`, tests in `<module>/tests/`.
+- A header only declares: function bodies, even one-line accessors, go in one `.cpp` per
+  topic (`= default` stays in the header).
 - Types in PascalCase, functions, methods and variables in camelCase, private attributes
   prefixed with `_`, macros, global constants and enum values in UPPER_CASE.
 - 4 spaces, 80 columns, one statement per line, opening brace at the end of the line except
