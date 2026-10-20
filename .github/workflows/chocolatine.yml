@@ -5,11 +5,13 @@ on:
   pull_request:
     branches-ignore:
       - "ga-ignore-*"
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
