@@ -5,10 +5,34 @@
 ## CMakeLists.txt
 ##
 
-add_executable(r-type_server src/main.cpp)
-target_include_directories(r-type_server PRIVATE include)
-target_link_libraries(r-type_server PRIVATE rtype_warnings)
+add_library(rtype_server_core STATIC
+    src/Server.cpp
+)
+
+target_include_directories(rtype_server_core
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_features(rtype_server_core PUBLIC cxx_std_20)
+
+target_link_libraries(rtype_server_core
+    PRIVATE
+        rtype_warnings
+    PUBLIC
+        Threads::Threads
+)
+
+add_executable(r-type_server
+    src/main.cpp
+)
+
+target_link_libraries(r-type_server
+    PRIVATE
+        rtype_server_core
+        rtype_warnings
+)
 
 if(RTYPE_BUILD_TESTS)
-    add_test(NAME smoke_server COMMAND r-type_server)
+    add_subdirectory(tests)
 endif()
