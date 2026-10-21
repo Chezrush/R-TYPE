@@ -81,26 +81,23 @@ std::chrono::nanoseconds Server::simulationInterval() const noexcept
 void Server::runNetwork(const std::stop_token &stopToken)
 {
     std::cout << "[server] Network thread started\n";
-
     while (!stopToken.stop_requested()) {
-        while (auto message = _outgoingMessages.handleDequeue()) {
-            /*
-             * to do:
-             * serialize and send message->payload to message->clientId.
-             */
-            std::cout << "[server] Outgoing message for client "
-                      << message->clientId << ": " << message->payload << "\n";
-        }
-        /*
-         * to do:
-         * receive UDP packets, validate and parse them, then enqueue
-         * an IncomingMessage. If incomingMessages_.handleEnqueue() returns
-         * false, drop or rate-limit the packet without blocking.
-         */
+        sendOutgoingMessages();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-
     std::cout << "[server] Network thread stopped\n";
+}
+
+void Server::sendOutgoingMessages()
+{
+    while (auto message = _outgoingMessages.handleDequeue()) {
+        /*
+         * to do:
+         * serialize and send message->payload to message->clientId.
+         */
+        std::cout << "[server] Outgoing message for client "
+                  << message->clientId << ": " << message->payload << "\n";
+    }
 }
 
 void Server::updateSimulationTick(std::chrono::nanoseconds timestep,

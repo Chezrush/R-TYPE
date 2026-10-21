@@ -10,8 +10,8 @@
 
 #include <cstdint>
 #include <string>
-#include "MessageQueue.hpp"
 
+#include "MessageQueue.hpp"
 
 namespace rtype::server {
 

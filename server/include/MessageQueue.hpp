@@ -25,7 +25,9 @@ namespace rtype::server {
 template <typename T>
 class MessageQueue {
 public:
-    explicit MessageQueue(std::size_t capacity) : _capacity(capacity){}
+    explicit MessageQueue(std::size_t capacity)
+        : _capacity(capacity)
+    {}
 
     /**
      * @brief Adds a message at the back of the queue.

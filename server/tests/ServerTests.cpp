@@ -15,7 +15,7 @@
 using rtype::server::Server;
 using rtype::server::ServerConfig;
 
-static void testServerStartsAndStops()
+void testServerStartsAndStops()
 {
     Server server;
 
@@ -28,7 +28,7 @@ static void testServerStartsAndStops()
     CHECK(server.isRunning() == false);
 }
 
-static void testSimulationRunsAtConfiguredRate()
+void testSimulationRun()
 {
     ServerConfig config;
     config.simulationHz = 100;
@@ -51,7 +51,7 @@ static void testSimulationRunsAtConfiguredRate()
     server.shutdown();
 }
 
-static void testShutdownIsIdempotent()
+void testShutdown()
 {
     Server server;
 
@@ -66,8 +66,8 @@ static void testShutdownIsIdempotent()
 int main()
 {
     testServerStartsAndStops();
-    testSimulationRunsAtConfiguredRate();
-    testShutdownIsIdempotent();
+    testSimulationRun();
+    testShutdown();
 
     return TEST_RESULT();
 }

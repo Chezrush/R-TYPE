@@ -82,6 +82,7 @@ private:
                               std::chrono::nanoseconds &accumulator,
                               const std::stop_token &stopToken);
     void readIncomingMessage();
+    void sendOutgoingMessages();
 
     [[nodiscard]] std::chrono::nanoseconds simulationInterval() const noexcept;
 

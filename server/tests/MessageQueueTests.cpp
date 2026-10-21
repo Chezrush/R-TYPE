@@ -12,101 +12,104 @@
 #include "ServerMessage.hpp"
 #include "TestSupport.hpp"
 
-namespace {
+constexpr unsigned int PRODUCER_COUNT = 4;
+constexpr unsigned int MESSAGES_PER_PRODUCER = 1000;
+constexpr unsigned int EXPECTED_TOTAL = PRODUCER_COUNT * MESSAGES_PER_PRODUCER;
 
-using rtype::server::IncomingMessage;
-using rtype::server::MessageQueue;
-
-void testEnqueueDequeueOrder()
+void testEnqueueDequeue()
 {
-    MessageQueue<int> queue(4);
+    rtype::server::MessageQueue<int> queue(4);
 
-    CHECK(queue.handleEnqueue(1) == true);
-    CHECK(queue.handleEnqueue(2) == true);
-    CHECK(queue.handleEnqueue(3) == true);
-
+    CHECK(queue.handleEnqueue(1));
+    CHECK(queue.handleEnqueue(2));
+    CHECK(queue.handleEnqueue(3));
     CHECK(queue.size() == 3);
 
     const auto first = queue.handleDequeue();
     const auto second = queue.handleDequeue();
     const auto third = queue.handleDequeue();
 
-    CHECK(first.has_value() == true);
-    CHECK(second.has_value() == true);
-    CHECK(third.has_value() == true);
-    CHECK(*first == 1);
-    CHECK(*second == 2);
-    CHECK(*third == 3);
-    CHECK(queue.empty() == true);
+    CHECK(first.has_value());
+    CHECK(second.has_value());
+    CHECK(third.has_value());
+    CHECK(first.value() == 1);
+    CHECK(second.value() == 2);
+    CHECK(third.value() == 3);
+    CHECK(queue.empty());
 }
 
 void testCapacityLimit()
 {
-    MessageQueue<int> queue(2);
+    rtype::server::MessageQueue<int> queue(2);
 
-    CHECK(queue.handleEnqueue(1) == true);
-    CHECK(queue.handleEnqueue(2) == true);
-    CHECK(queue.full() == true);
-    CHECK(queue.handleEnqueue(3) == false);
+    CHECK(queue.handleEnqueue(1));
+    CHECK(queue.handleEnqueue(2));
+    CHECK(queue.full());
+    CHECK(!queue.handleEnqueue(3));
     CHECK(queue.size() == 2);
 
-    CHECK(queue.handleDequeue().has_value() == true);
-    CHECK(queue.full() == false);
-    CHECK(queue.handleEnqueue(3) == true);
+    CHECK(queue.handleDequeue().has_value());
+    CHECK(!queue.full());
+    CHECK(queue.handleEnqueue(3));
 }
 
-void testEmptyQueueReportsWithoutBlocking()
+void testEmptyQueueReports()
 {
-    MessageQueue<int> queue(2);
+    rtype::server::MessageQueue<int> queue(2);
 
-    CHECK(queue.empty() == true);
-    CHECK(queue.handleDequeue().has_value() == false);
+    CHECK(queue.empty());
+    CHECK(!queue.handleDequeue().has_value());
 }
 
-void testConcurrentAccess()
+void produceMessages(rtype::server::MessageQueue<unsigned int> &queue,
+                     unsigned int producerId)
 {
-    constexpr unsigned int producerCount = 4;
-    constexpr unsigned int messagesPerProducer = 1000;
-    constexpr unsigned int expectedTotal = producerCount * messagesPerProducer;
-
-    MessageQueue<unsigned int> queue(expectedTotal);
-    std::vector<std::jthread> producers;
-
-    for (unsigned int producer = 0; producer < producerCount; ++producer) {
-        producers.emplace_back([&queue, producer]() {
-            for (unsigned int index = 0; index < messagesPerProducer; ++index) {
-                while (!queue.handleEnqueue(producer)) {
-                    std::this_thread::yield();
-                }
-            }
-        });
+    for (unsigned int index = 0; index < MESSAGES_PER_PRODUCER; ++index) {
+        while (!queue.handleEnqueue(producerId)) {
+            std::this_thread::yield();
+        }
     }
+}
 
+unsigned int consumeMessages(rtype::server::MessageQueue<unsigned int> &queue)
+{
     unsigned int received = 0;
 
-    while (received < expectedTotal) {
+    while (received < EXPECTED_TOTAL) {
         if (queue.handleDequeue().has_value()) {
             ++received;
         } else {
             std::this_thread::yield();
         }
     }
+    return received;
+}
+
+void testConcurrentAccess()
+{
+    rtype::server::MessageQueue<unsigned int> queue(EXPECTED_TOTAL);
+    std::vector<std::jthread> producers;
+
+    for (unsigned int producer = 0; producer < PRODUCER_COUNT; ++producer) {
+        producers.emplace_back(
+            [&queue, producer]() { produceMessages(queue, producer); });
+    }
+
+    const auto received = consumeMessages(queue);
 
     for (auto &producer : producers) {
         producer.join();
     }
 
-    CHECK(received == expectedTotal);
-    CHECK(queue.empty() == true);
+    CHECK(received == EXPECTED_TOTAL);
+    CHECK(queue.empty());
 }
-
-} /* namespace */
 
 int main()
 {
-    testEnqueueDequeueOrder();
+    testEnqueueDequeue();
     testCapacityLimit();
-    testEmptyQueueReportsWithoutBlocking();
+    testEmptyQueueReports();
     testConcurrentAccess();
 
     return TEST_RESULT();
