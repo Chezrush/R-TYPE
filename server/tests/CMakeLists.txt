@@ -14,5 +14,15 @@ target_link_libraries(server_tests
         rtype_server_core
 )
 
-# Prevent a shutdown regression from blocking the test runner indefinitely.
 set_tests_properties(server_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(message_queue_tests
+    MessageQueueTests.cpp
+)
+
+target_link_libraries(message_queue_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(message_queue_tests PROPERTIES TIMEOUT 10)
