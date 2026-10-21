@@ -9,6 +9,7 @@
 
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -166,4 +167,47 @@ TEST_CASE("a sparse array is a storage and is not copyable", "[ecs][sparse]")
 {
     STATIC_REQUIRE(std::is_base_of_v<IStorage, SparseArray<int>>);
     STATIC_REQUIRE_FALSE(std::is_copy_constructible_v<SparseArray<int>>);
+}
+
+TEST_CASE("iterators walk every slot, empty ones included", "[ecs][sparse]")
+{
+    EntityAllocator allocator;
+    SparseArray<int> array;
+    const Entity first = allocator.create();
+    const Entity second = allocator.create();
+    const Entity third = allocator.create();
+    array.insert(first, 1);
+    array.insert(third, 3);
+
+    REQUIRE(std::distance(array.begin(), array.end()) == 3);
+    REQUIRE(array.begin()->value() == 1);
+    REQUIRE_FALSE((array.begin() + 1)->has_value());
+    REQUIRE((array.begin() + 2)->value() == 3);
+    REQUIRE_FALSE(array.has(second));
+}
+
+TEST_CASE("an empty array has empty iterator ranges", "[ecs][sparse]")
+{
+    SparseArray<int> array;
+
+    REQUIRE(array.begin() == array.end());
+    REQUIRE(array.cbegin() == array.cend());
+}
+
+TEST_CASE("iterators modify components and have const versions",
+          "[ecs][sparse]")
+{
+    EntityAllocator allocator;
+    SparseArray<int> array;
+    const Entity entity = allocator.create();
+    array.insert(entity, 1);
+
+    for (auto &slot : array)
+        slot = *slot + 1;
+    const SparseArray<int> &view = array;
+
+    REQUIRE(*view.begin() == 2);
+    REQUIRE(*view.get(entity) == 2);
+    STATIC_REQUIRE(
+        std::is_const_v<std::remove_reference_t<decltype(*view.begin())>>);
 }

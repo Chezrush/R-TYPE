@@ -64,6 +64,47 @@ std::size_t SparseArray<Component>::size() const noexcept
     return _slots.size();
 }
 
+template <typename Component>
+typename SparseArray<Component>::iterator
+SparseArray<Component>::begin() noexcept
+{
+    return _slots.begin();
+}
+
+template <typename Component>
+typename SparseArray<Component>::iterator SparseArray<Component>::end() noexcept
+{
+    return _slots.end();
+}
+
+template <typename Component>
+typename SparseArray<Component>::const_iterator
+SparseArray<Component>::begin() const noexcept
+{
+    return _slots.begin();
+}
+
+template <typename Component>
+typename SparseArray<Component>::const_iterator
+SparseArray<Component>::end() const noexcept
+{
+    return _slots.end();
+}
+
+template <typename Component>
+typename SparseArray<Component>::const_iterator
+SparseArray<Component>::cbegin() const noexcept
+{
+    return _slots.cbegin();
+}
+
+template <typename Component>
+typename SparseArray<Component>::const_iterator
+SparseArray<Component>::cend() const noexcept
+{
+    return _slots.cend();
+}
+
 } // namespace engine::ecs
 
 #endif /* !SPARSEARRAY_TPP_ */
