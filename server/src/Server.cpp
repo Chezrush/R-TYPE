@@ -12,7 +12,10 @@
 namespace rtype::server {
 
 Server::Server(ServerConfig config) noexcept
-    : _config(config)
+    : _config(config),
+      _incomingMessages(config.maxQueueCapacity),
+      _outgoingMessages(config.maxQueueCapacity)
+
 {}
 
 Server::~Server()
@@ -80,9 +83,19 @@ void Server::runNetwork(const std::stop_token &stopToken)
     std::cout << "[server] Network thread started\n";
 
     while (!stopToken.stop_requested()) {
+        while (auto message = _outgoingMessages.handleDequeue()) {
+            /*
+             * to do:
+             * serialize and send message->payload to message->clientId.
+             */
+            std::cout << "[server] Outgoing message for client "
+                      << message->clientId << ": " << message->payload << "\n";
+        }
         /*
          * to do:
-         * make the udp socket with asio and fix the protocol.
+         * receive UDP packets, validate and parse them, then enqueue
+         * an IncomingMessage. If incomingMessages_.handleEnqueue() returns
+         * false, drop or rate-limit the packet without blocking.
          */
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -100,11 +113,20 @@ void Server::updateSimulationTick(std::chrono::nanoseconds timestep,
     }
 }
 
+void Server::readIncomingMessage()
+{
+    while (auto message = _incomingMessages.handleDequeue()) {
+        /*
+         * to do:
+         * apply message->payload to the simulation state.
+         */
+    }
+}
+
 void Server::runSimulationLoop(const std::stop_token &stopToken,
                                std::chrono::nanoseconds timestep)
 {
     using Clock = std::chrono::steady_clock;
-
     const auto maxFrameTime =
         std::chrono::duration_cast<Clock::duration>(_config.maxFrameTime);
     auto previousTime = Clock::now();
@@ -117,6 +139,7 @@ void Server::runSimulationLoop(const std::stop_token &stopToken,
         previousTime = currentTime;
         accumulator +=
             std::chrono::duration_cast<std::chrono::nanoseconds>(frameTime);
+        readIncomingMessage();
         updateSimulationTick(timestep, accumulator, stopToken);
         std::this_thread::sleep_until(previousTime + timestep);
     }

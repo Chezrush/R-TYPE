@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <thread>
 
+#include "ServerMessage.hpp"
+
 namespace rtype::server {
 struct ServerConfig {
     /**
@@ -27,6 +29,11 @@ struct ServerConfig {
      * This prevents an excessive catch-up loop after a long pause.
      */
     std::chrono::milliseconds maxFrameTime{250};
+
+    /**
+     * @brief Maximum number of messages retained by each queue.
+     */
+    std::size_t maxQueueCapacity = 1024;
 };
 
 class Server {
@@ -69,11 +76,12 @@ public:
                            std::chrono::nanoseconds timestep);
 
 private:
-    static void runNetwork(const std::stop_token &stopToken);
+    void runNetwork(const std::stop_token &stopToken);
     void runSimulation(const std::stop_token &stopToken);
     void updateSimulationTick(std::chrono::nanoseconds timestep,
                               std::chrono::nanoseconds &accumulator,
                               const std::stop_token &stopToken);
+    void readIncomingMessage();
 
     [[nodiscard]] std::chrono::nanoseconds simulationInterval() const noexcept;
 
@@ -83,6 +91,9 @@ private:
 
     std::jthread _networkThread;
     std::jthread _simulationThread;
+
+    IncomingQueue _incomingMessages;
+    OutgoingQueue _outgoingMessages;
 };
 
 } /* namespace rtype::server */
