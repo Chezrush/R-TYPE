@@ -8,7 +8,8 @@
 add_library(rtype_engine STATIC
     src/Core/Version.cpp
     src/Ecs/Entity.cpp
-    src/Ecs/EntityAllocator.cpp)
+    src/Ecs/EntityAllocator.cpp
+    src/Ecs/Registry.cpp)
 add_library(rtype::engine ALIAS rtype_engine)
 
 target_include_directories(rtype_engine PUBLIC include)
@@ -20,6 +21,7 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/Entity.cpp
     tests/Ecs/EntityAllocator.cpp
     tests/Ecs/IStorage.cpp
+    tests/Ecs/Registry.cpp
     tests/Ecs/SparseArray.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_engine_tests PRIVATE rtype::engine)
