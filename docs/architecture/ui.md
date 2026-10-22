@@ -80,3 +80,43 @@ For accessibility compliance, menus can be fully navigated without a mouse:
 - `Tab` / `Down` / `Right`: Advances focus (`isFocused = true`) to the next enabled button.
 - `Up` / `Left`: Moves focus to the previous enabled button.
 - `Enter` / `Space` / Gamepad A: Activates the focused button, emitting `UIButtonClickedEvent`.
+
+## Rendering
+
+UI drawing lives in a separate library, `rtype::engine_render`, because it needs SFML. It
+is only built with the client (`RTYPE_BUILD_CLIENT`), so the server keeps linking the
+SFML-free `rtype::engine`. The components themselves stay plain data in `rtype::engine`.
+
+| Component | Draws |
+| --- | --- |
+| `UIPanel` | A plain colored rectangle, or a texture (`textureId`, optional `textureRect`) stretched (`STRETCH`) or 9-sliced (`NINE_SLICE`, unscaled `borders`). |
+| `UIProgressBar` | A background, then a fill of `(value - min) / (max - min)`, clamped to [0, 1], left to right (`HORIZONTAL`) or bottom to top (`VERTICAL`). |
+| `UIText` | A UTF-8 string in the font `fontId`, aligned `LEFT`, `CENTER` or `RIGHT`, vertically centered. |
+
+`UIRenderSystem::render()` draws every entity with a `UITransform` and at least one of these
+components, inside its `actualBounds`, sorted by `zIndex` (ties keep the entity order). An
+entity with several of them draws panel, then bar, then text.
+
+### Fixed screen-space view
+
+Before drawing, the system replaces the target view with `screenView()`, one unit per pixel
+of the target, and puts the previous view back afterwards. The world camera can scroll
+freely: the HUD never drifts. Keep `UILayoutSystem` at the window size
+(`setResolution()` on resize) so `actualBounds` match the pixels.
+
+```cpp
+engine::resources::ResourceManager resources("assets");
+engine::render::UIRenderSystem uiRenderer(resources);
+
+window.setView(worldCamera);
+// ... draw the starfield and the entities ...
+uiRenderer.render(window, transforms, panels, bars, texts);
+window.display();
+```
+
+### Resources
+
+`ResourceManager` resolves ids against its asset root (`"fonts/main.ttf"`) and loads each one
+at most once, through the generic `ResourceCache<T>`. A missing file returns `nullptr` and is
+remembered, so it is not read again every frame. The renderer then skips the text, or
+falls back to the panel color for a missing texture: a missing asset never stops a frame.

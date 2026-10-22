@@ -9,8 +9,9 @@
 #define UIBUTTON_HPP_
 
 #include <cstddef>
-#include <cstdint>
 #include <string>
+
+#include "Engine/Ecs/Components/UIColor.hpp"
 
 namespace engine::ecs::components {
 
@@ -22,18 +23,6 @@ enum class UIButtonState {
     HOVERED,
     PRESSED,
     DISABLED
-};
-
-/**
- * @brief RGBA color for button styling.
- */
-struct UIColor {
-    std::uint8_t r = 255;
-    std::uint8_t g = 255;
-    std::uint8_t b = 255;
-    std::uint8_t a = 255;
-
-    [[nodiscard]] bool operator==(const UIColor &) const noexcept = default;
 };
 
 /**
@@ -60,9 +49,8 @@ struct UIButtonClickedEvent {
     std::size_t entityIndex = 0;
     std::string action;
 
-    [[nodiscard]] bool operator==(
-        const UIButtonClickedEvent &
-    ) const noexcept = default;
+    [[nodiscard]] bool
+    operator==(const UIButtonClickedEvent &) const noexcept = default;
 };
 
 } // namespace engine::ecs::components
@@ -72,9 +60,7 @@ namespace engine::ecs {
 using components::UIButton;
 using components::UIButtonClickedEvent;
 using components::UIButtonState;
-using components::UIColor;
 
 } // namespace engine::ecs
 
 #endif /* !UIBUTTON_HPP_ */
-

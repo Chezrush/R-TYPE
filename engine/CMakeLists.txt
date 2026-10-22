@@ -47,9 +47,34 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/Zipper.cpp
     tests/Ecs/ZipperConcepts.cpp
     tests/Ecs/Systems/UIInteractionSystem.cpp
-    tests/Ecs/Systems/UILayoutSystem.cpp)
+    tests/Ecs/Systems/UILayoutSystem.cpp
+    tests/Resources/ResourceCache.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_engine_tests PRIVATE rtype::engine)
+endif()
+
+# Rendering needs SFML, so it lives in its own library: the server only links
+# rtype::engine and never pulls SFML in.
+if(RTYPE_BUILD_CLIENT)
+    find_package(SFML 3 COMPONENTS Graphics CONFIG REQUIRED)
+
+    add_library(rtype_engine_render STATIC
+        src/Render/UIRenderSystem.cpp
+        src/Resources/ResourceManager.cpp)
+    add_library(rtype::engine_render ALIAS rtype_engine_render)
+    target_link_libraries(rtype_engine_render
+        PUBLIC rtype::engine SFML::Graphics
+        PRIVATE rtype_warnings)
+
+    rtype_add_catch_test(rtype_engine_render_tests
+        tests/Render/UIRenderSystem.cpp
+        tests/Resources/ResourceManager.cpp)
+    if(RTYPE_BUILD_TESTS)
+        target_link_libraries(rtype_engine_render_tests
+            PRIVATE rtype::engine_render)
+        target_compile_definitions(rtype_engine_render_tests
+            PRIVATE RTYPE_TEST_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets")
+    endif()
 endif()
 
 if(RTYPE_BUILD_DEMOS)
