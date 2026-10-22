@@ -23,6 +23,7 @@ nav:
       - Adding a component and a system: guides/adding-a-system.md
   - Architecture: architecture/overview.md
   - Protocol: protocol/rtype-protocol.md
+  - Design decisions: decisions.md
   - Comparative study: comparative-study.md
   - Accessibility: accessibility.md
   - Contributing: contributing.md
