@@ -23,10 +23,15 @@ namespace engine::ecs {
 /**
  * @brief Single entry point of the ECS: owns the entities and the components.
  *
- * The registry is the only owner of its data, so it cannot be copied. A
- * component type must be registered before it is used. Using an unregistered
- * type throws std::logic_error, and operations on a stale entity handle do
- * nothing. Both rules are provisional until the stale handle policy is fixed.
+ * The registry is the only owner of its data, so it cannot be copied.
+ *
+ * Error policy. Using a component type that was not registered is a
+ * programming error: it throws std::logic_error, before the handle is looked
+ * at. A stale or unknown entity handle is a normal situation (an entity dies
+ * while a late message still designates it): the operation does nothing and
+ * says so through its return value, it never throws and never touches the
+ * entity that reused the index.
+ *
  * Adding a component may reallocate its array: never keep a reference to a
  * component across an add.
  */
@@ -79,7 +84,7 @@ public:
 
     /**
      * @brief Attaches a component to a live entity, replacing any existing one.
-     * @return The component, or nullptr if the entity is not alive.
+     * @return The component, or nullptr if the handle is stale.
      * @throws std::logic_error if the type was not registered.
      */
     template <typename Component>
@@ -87,7 +92,7 @@ public:
 
     /**
      * @brief Builds a component in place on a live entity.
-     * @return The component, or nullptr if the entity is not alive.
+     * @return The component, or nullptr if the handle is stale.
      * @throws std::logic_error if the type was not registered.
      */
     template <typename Component, typename... Args>
@@ -95,6 +100,8 @@ public:
 
     /**
      * @brief Removes a component from an entity, if it has one.
+     *
+     * Does nothing for a stale handle.
      * @throws std::logic_error if the type was not registered.
      */
     template <typename Component>
