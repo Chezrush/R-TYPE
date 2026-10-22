@@ -10,6 +10,7 @@ add_library(rtype_engine STATIC
     src/Core/FixedTimestep.cpp
     src/Core/GameLoop.cpp
     src/Core/Vec2.cpp
+    src/Core/SceneManager.cpp
     src/Core/Version.cpp
     src/Ecs/Access.cpp
     src/Ecs/CommandBuffer.cpp
@@ -25,6 +26,7 @@ target_compile_features(rtype_engine PUBLIC cxx_std_20)
 target_link_libraries(rtype_engine PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_engine_tests
+    tests/Core/SceneManager.cpp
     tests/Version.cpp
     tests/Core/EventBus.cpp
     tests/Core/FixedTimestep.cpp

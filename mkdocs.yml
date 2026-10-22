@@ -24,6 +24,7 @@ nav:
   - Architecture:
       - Overview: architecture/overview.md
       - ECS: architecture/ecs.md
+      - Scenes and state machine: architecture/scenes.md
   - Protocol: protocol/rtype-protocol.md
   - Design decisions: decisions.md
   - Comparative study: comparative-study.md
