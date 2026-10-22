@@ -16,7 +16,11 @@ Entity Registry::spawnEntity()
 
 bool Registry::killEntity(Entity entity) noexcept
 {
-    return _entities.destroy(entity);
+    if (!_entities.destroy(entity))
+        return false;
+    for (auto &[type, storage] : _storages)
+        storage->erase(entity);
+    return true;
 }
 
 bool Registry::isAlive(Entity entity) const noexcept

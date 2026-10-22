@@ -33,8 +33,8 @@ class SparseArray : public IStorage {
 public:
     using Slot = std::optional<Component>;
     using Container = std::vector<Slot>;
-    using iterator = typename Container::iterator;
-    using const_iterator = typename Container::const_iterator;
+    using Iterator = typename Container::iterator;
+    using ConstIterator = typename Container::const_iterator;
 
     /**
      * @brief Builds the component of an entity in place.
@@ -67,12 +67,12 @@ public:
      * Skipping the entities without a component is left to the zipper.
      * Emplacing or inserting may reallocate and invalidate them.
      */
-    [[nodiscard]] iterator begin() noexcept;
-    [[nodiscard]] iterator end() noexcept;
-    [[nodiscard]] const_iterator begin() const noexcept;
-    [[nodiscard]] const_iterator end() const noexcept;
-    [[nodiscard]] const_iterator cbegin() const noexcept;
-    [[nodiscard]] const_iterator cend() const noexcept;
+    [[nodiscard]] Iterator begin() noexcept;
+    [[nodiscard]] Iterator end() noexcept;
+    [[nodiscard]] ConstIterator begin() const noexcept;
+    [[nodiscard]] ConstIterator end() const noexcept;
+    [[nodiscard]] ConstIterator cbegin() const noexcept;
+    [[nodiscard]] ConstIterator cend() const noexcept;
 
 private:
     Container _slots;
