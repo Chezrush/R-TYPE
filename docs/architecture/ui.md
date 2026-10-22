@@ -6,6 +6,7 @@ world coordinates and scroll horizontally with the starfield, user interface ele
 
 To remain responsive across different window resolutions, aspect ratios, and resizing
 events, the UI framework provides the `UITransform` component and `UILayoutSystem`.
+Interactive widgets are handled via `UIButton` and `UIInteractionSystem`.
 
 ## Anchoring model
 
@@ -51,3 +52,31 @@ layoutSystem.update(transforms);
 // The element remains centered and 20px above the bottom without drift.
 ```
 
+## Interactive buttons & EventBus decoupling
+
+Per subject decoupling requirements, the UI interaction layer never directly invokes
+gameplay rules or network calls. Instead, widget clicks emit typed events on the engine's
+`EventBus`.
+
+```mermaid
+flowchart LR
+    User["Mouse Click / Keyboard (Enter/Space)"] --> Sys["UIInteractionSystem"]
+    Sys -- emits --> Event["UIButtonClickedEvent { entityIndex, action }"]
+    Event --> Bus["EventBus"]
+    Bus --> Sub["Subscribers (e.g. GameScene, MenuScene)"]
+```
+
+### Button states
+
+A `UIButton` cycles through 4 states:
+- **`NORMAL`**: Idle state.
+- **`HOVERED`**: Mouse is currently over the button's `actualBounds`.
+- **`PRESSED`**: Mouse button is currently held down over the button.
+- **`DISABLED`**: Non-interactive; ignores mouse clicks and keyboard focus.
+
+### Accessibility: Keyboard and Gamepad navigation
+
+For accessibility compliance, menus can be fully navigated without a mouse:
+- `Tab` / `Down` / `Right`: Advances focus (`isFocused = true`) to the next enabled button.
+- `Up` / `Left`: Moves focus to the previous enabled button.
+- `Enter` / `Space` / Gamepad A: Activates the focused button, emitting `UIButtonClickedEvent`.
