@@ -6,17 +6,19 @@
 */
 
 #include "Server.hpp"
-
 #include <iostream>
 
 namespace rtype::server {
 
-Server::Server(ServerConfig config) noexcept
+using nanosecond = std::chrono::nanoseconds;
+
+Server::Server(ServerConfig config, asio::io_context context) noexcept
     : _config(config),
       _incomingMessages(config.maxQueueCapacity),
-      _outgoingMessages(config.maxQueueCapacity)
-
-{}
+      _outgoingMessages(config.maxQueueCapacity),
+      _socket(context, udp::endpoint(udp::v4(), config.port))
+{
+}
 
 Server::~Server()
 {
@@ -69,12 +71,12 @@ std::uint64_t Server::tickCount() const noexcept
     return _tickCount.load();
 }
 
-std::chrono::nanoseconds Server::simulationInterval() const noexcept
+nanosecond Server::simulationInterval() const noexcept
 {
     const double hz = _config.simulationHz > 0 ? _config.simulationHz : 60;
     const auto castedHz = static_cast<double>(hz);
 
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+    return std::chrono::duration_cast<nanosecond>(
         std::chrono::duration<double>(1.0 / castedHz));
 }
 
@@ -100,8 +102,8 @@ void Server::sendOutgoingMessages()
     }
 }
 
-void Server::updateSimulationTick(std::chrono::nanoseconds timestep,
-                                  std::chrono::nanoseconds &accumulator,
+void Server::updateSimulationTick(nanosecond timestep,
+                                  nanosecond &accumulator,
                                   const std::stop_token &stopToken)
 {
     while (accumulator >= timestep && !stopToken.stop_requested()) {
@@ -113,6 +115,7 @@ void Server::updateSimulationTick(std::chrono::nanoseconds timestep,
 void Server::readIncomingMessage()
 {
     while (auto message = _incomingMessages.handleDequeue()) {
+        decodeClientPacket(*message);
         /*
          * to do:
          * apply message->payload to the simulation state.
@@ -120,14 +123,19 @@ void Server::readIncomingMessage()
     }
 }
 
+bool Server::decodeClientPacket(IncomingMessage &message) const noexcept
+{
+    
+}
+
 void Server::runSimulationLoop(const std::stop_token &stopToken,
-                               std::chrono::nanoseconds timestep)
+                               nanosecond timestep)
 {
     using Clock = std::chrono::steady_clock;
     const auto maxFrameTime =
         std::chrono::duration_cast<Clock::duration>(_config.maxFrameTime);
     auto previousTime = Clock::now();
-    auto accumulator = std::chrono::nanoseconds::zero();
+    nanosecond accumulator = nanosecond::zero();
 
     while (!stopToken.stop_requested()) {
         const auto currentTime = Clock::now();
@@ -135,7 +143,7 @@ void Server::runSimulationLoop(const std::stop_token &stopToken,
             std::min(currentTime - previousTime, maxFrameTime);
         previousTime = currentTime;
         accumulator +=
-            std::chrono::duration_cast<std::chrono::nanoseconds>(frameTime);
+            std::chrono::duration_cast<nanosecond>(frameTime);
         readIncomingMessage();
         updateSimulationTick(timestep, accumulator, stopToken);
         std::this_thread::sleep_until(previousTime + timestep);

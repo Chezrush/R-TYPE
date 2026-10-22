@@ -26,6 +26,24 @@ struct IncomingMessage {
     std::string payload;
 };
 
+enum class MessageType {
+    HELLO,
+    WELCOME,
+    GOODBYE,
+    INPUT,
+    ENTITYSPAWN,
+    ENTITYSTATE,
+    ENTITYDESTROY,
+    PLAYERLEFT
+};
+
+struct DecryptedMessage {
+    unsigned short magicNumber;
+    unsigned short version;
+    MessageType type;
+    unsigned short size;
+};
+
 /**
  * @brief Message produced by the simulation and sent by the network worker.
  *

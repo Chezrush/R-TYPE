@@ -14,9 +14,13 @@
 #include <cstdint>
 #include <thread>
 
+#include <asio.hpp>
 #include "ServerMessage.hpp"
 
 namespace rtype::server {
+
+    using udp = asio::ip::udp;
+
 struct ServerConfig {
     /**
      * @brief Simulation frequency, in ticks per second.
@@ -34,11 +38,13 @@ struct ServerConfig {
      * @brief Maximum number of messages retained by each queue.
      */
     std::size_t maxQueueCapacity = 1024;
+
+    int port = 4242;
 };
 
 class Server {
 public:
-    explicit Server(ServerConfig config = {}) noexcept;
+    explicit Server(ServerConfig config = {}, asio::io_context context) noexcept;
     ~Server();
 
     Server(const Server &) = delete;
@@ -83,6 +89,7 @@ private:
                               const std::stop_token &stopToken);
     void readIncomingMessage();
     void sendOutgoingMessages();
+    bool decodeClientPacket(IncomingMessage &message) const noexcept;
 
     [[nodiscard]] std::chrono::nanoseconds simulationInterval() const noexcept;
 
@@ -95,6 +102,8 @@ private:
 
     IncomingQueue _incomingMessages;
     OutgoingQueue _outgoingMessages;
+
+    udp::socket _socket;
 };
 
 } /* namespace rtype::server */
