@@ -18,7 +18,8 @@ add_library(rtype_engine STATIC
     src/Ecs/EntityAllocator.cpp
     src/Ecs/Phase.cpp
     src/Ecs/Scheduler.cpp
-    src/Ecs/Registry.cpp)
+    src/Ecs/Registry.cpp
+    src/Ecs/Systems/UILayoutSystem.cpp)
 add_library(rtype::engine ALIAS rtype_engine)
 
 target_include_directories(rtype_engine PUBLIC include)
@@ -43,7 +44,8 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/Registry.cpp
     tests/Ecs/SparseArray.cpp
     tests/Ecs/Zipper.cpp
-    tests/Ecs/ZipperConcepts.cpp)
+    tests/Ecs/ZipperConcepts.cpp
+    tests/Ecs/Systems/UILayoutSystem.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_engine_tests PRIVATE rtype::engine)
 endif()
