@@ -207,3 +207,62 @@ TEST_CASE("a stale handle gets no component", "[ecs][registry]")
     REQUIRE(registry.emplaceComponent<Position>(old, 1, 1) == nullptr);
     REQUIRE_FALSE(registry.getComponents<Position>().has(reused));
 }
+
+TEST_CASE("an unregistered type throws before the handle is checked",
+          "[ecs][registry]")
+{
+    Registry registry;
+    const Registry &view = registry;
+    const Entity stale = registry.spawnEntity();
+    REQUIRE(registry.killEntity(stale));
+
+    REQUIRE_THROWS_AS(registry.addComponent(stale, Position{1, 1}),
+                      std::logic_error);
+    REQUIRE_THROWS_AS(registry.emplaceComponent<Position>(stale, 1, 1),
+                      std::logic_error);
+    REQUIRE_THROWS_AS(registry.removeComponent<Position>(stale),
+                      std::logic_error);
+    REQUIRE_THROWS_AS(view.getComponents<Position>(), std::logic_error);
+}
+
+TEST_CASE("removing through a stale handle spares the new owner",
+          "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    const Entity old = registry.spawnEntity();
+    REQUIRE(registry.killEntity(old));
+    const Entity reused = registry.spawnEntity();
+    registry.addComponent(reused, Position{5, 5});
+
+    registry.removeComponent<Position>(old);
+    REQUIRE(registry.getComponents<Position>().has(reused));
+}
+
+TEST_CASE("killing a stale handle spares the new owner", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    const Entity old = registry.spawnEntity();
+    REQUIRE(registry.killEntity(old));
+    const Entity reused = registry.spawnEntity();
+    registry.addComponent(reused, Position{5, 5});
+
+    REQUIRE_FALSE(registry.killEntity(old));
+    REQUIRE(registry.isAlive(reused));
+    REQUIRE(registry.getComponents<Position>().has(reused));
+}
+
+TEST_CASE("a stale handle never throws", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    const Entity old = registry.spawnEntity();
+    REQUIRE(registry.killEntity(old));
+
+    REQUIRE_NOTHROW(registry.addComponent(old, Position{1, 1}));
+    REQUIRE_NOTHROW(registry.emplaceComponent<Position>(old, 1, 1));
+    REQUIRE_NOTHROW(registry.removeComponent<Position>(old));
+    REQUIRE_NOTHROW(registry.killEntity(old));
+    REQUIRE_NOTHROW(registry.isAlive(old));
+}
