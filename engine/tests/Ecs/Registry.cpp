@@ -7,11 +7,30 @@
 
 #include "Engine/Ecs/Registry.hpp"
 
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <memory>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
 
 using engine::ecs::Entity;
 using engine::ecs::Registry;
+
+namespace {
+
+struct Position {
+    int x;
+    int y;
+};
+
+struct Name {
+    std::string value;
+};
+
+using Owned = std::unique_ptr<int>;
+
+} // namespace
 
 TEST_CASE("a spawned entity is alive", "[ecs][registry]")
 {
@@ -63,4 +82,128 @@ TEST_CASE("the registry cannot be copied", "[ecs][registry]")
     STATIC_REQUIRE_FALSE(std::is_copy_constructible_v<Registry>);
     STATIC_REQUIRE_FALSE(std::is_copy_assignable_v<Registry>);
     STATIC_REQUIRE(std::is_move_constructible_v<Registry>);
+}
+
+TEST_CASE("a registered component type has a storage", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    const Registry &view = registry;
+
+    REQUIRE(registry.getComponents<Position>().size() == 0);
+    REQUIRE(view.getComponents<Position>().size() == 0);
+}
+
+TEST_CASE("an unregistered component type throws", "[ecs][registry]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+
+    REQUIRE_THROWS_AS(registry.getComponents<Position>(), std::logic_error);
+    REQUIRE_THROWS_AS(registry.addComponent(entity, Position{1, 2}),
+                      std::logic_error);
+    REQUIRE_THROWS_AS(registry.removeComponent<Position>(entity),
+                      std::logic_error);
+}
+
+TEST_CASE("registering a type twice keeps its components", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    const Entity entity = registry.spawnEntity();
+    registry.addComponent(entity, Position{1, 2});
+    registry.registerComponent<Position>();
+
+    REQUIRE(registry.getComponents<Position>().has(entity));
+}
+
+TEST_CASE("components are added, read and removed", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    const Entity entity = registry.spawnEntity();
+
+    Position *added = registry.addComponent(entity, Position{3, 4});
+    REQUIRE(added != nullptr);
+    REQUIRE(registry.getComponents<Position>().get(entity)->x == 3);
+    registry.removeComponent<Position>(entity);
+    REQUIRE_FALSE(registry.getComponents<Position>().has(entity));
+}
+
+TEST_CASE("a component is built in place", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Name>();
+    const Entity entity = registry.spawnEntity();
+
+    Name *name = registry.emplaceComponent<Name>(entity, "player");
+    REQUIRE(name->value == "player");
+    REQUIRE(registry.getComponents<Name>().get(entity) == name);
+}
+
+TEST_CASE("a move-only component is supported", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Owned>();
+    const Entity entity = registry.spawnEntity();
+
+    registry.addComponent(entity, std::make_unique<int>(7));
+    registry.emplaceComponent<Owned>(entity, std::make_unique<int>(8));
+    REQUIRE(**registry.getComponents<Owned>().get(entity) == 8);
+}
+
+TEST_CASE("different component types coexist", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    registry.registerComponent<Name>();
+    const Entity entity = registry.spawnEntity();
+
+    registry.addComponent(entity, Position{1, 1});
+    registry.removeComponent<Name>(entity);
+    REQUIRE(registry.getComponents<Position>().has(entity));
+    REQUIRE_FALSE(registry.getComponents<Name>().has(entity));
+}
+
+TEST_CASE("killing an entity removes all of its components", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    registry.registerComponent<Name>();
+    const Entity entity = registry.spawnEntity();
+    const Entity other = registry.spawnEntity();
+    registry.addComponent(entity, Position{1, 1});
+    registry.emplaceComponent<Name>(entity, "gone");
+    registry.addComponent(other, Position{2, 2});
+
+    REQUIRE(registry.killEntity(entity));
+    REQUIRE_FALSE(registry.getComponents<Position>().has(entity));
+    REQUIRE_FALSE(registry.getComponents<Name>().has(entity));
+    REQUIRE(registry.getComponents<Position>().has(other));
+}
+
+TEST_CASE("a reused index starts without components", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    const Entity old = registry.spawnEntity();
+    registry.addComponent(old, Position{1, 1});
+    REQUIRE(registry.killEntity(old));
+    const Entity reused = registry.spawnEntity();
+
+    REQUIRE(reused.index() == old.index());
+    REQUIRE_FALSE(registry.getComponents<Position>().has(reused));
+}
+
+TEST_CASE("a stale handle gets no component", "[ecs][registry]")
+{
+    Registry registry;
+    registry.registerComponent<Position>();
+    const Entity old = registry.spawnEntity();
+    REQUIRE(registry.killEntity(old));
+    const Entity reused = registry.spawnEntity();
+
+    REQUIRE(registry.addComponent(old, Position{1, 1}) == nullptr);
+    REQUIRE(registry.emplaceComponent<Position>(old, 1, 1) == nullptr);
+    REQUIRE_FALSE(registry.getComponents<Position>().has(reused));
 }
