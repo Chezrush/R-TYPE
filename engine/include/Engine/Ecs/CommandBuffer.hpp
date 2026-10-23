@@ -104,6 +104,17 @@ public:
     template <typename Component>
     void remove(Entity entity);
 
+    /**
+     * @brief Applies the recorded commands in recording order, then empties.
+     *
+     * A command on a stale handle is ignored, as the registry does. The
+     * buffer is emptied before the first command runs: commands recorded
+     * meanwhile (from a spawn callback) wait for the next flush. If a command
+     * throws, for instance on an unregistered component type, the commands
+     * after it are dropped and the exception reaches the caller.
+     */
+    void flush(Registry &registry);
+
     /** @return The number of recorded commands. */
     [[nodiscard]] std::size_t size() const noexcept;
 
