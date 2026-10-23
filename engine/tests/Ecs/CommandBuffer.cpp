@@ -9,7 +9,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -393,4 +395,137 @@ TEST_CASE("an unregistered component aborts the flush and empties the buffer",
     REQUIRE_THROWS_AS(buffer.flush(registry), std::logic_error);
     REQUIRE(buffer.empty());
     REQUIRE(registry.isAlive(entity));
+}
+
+namespace {
+
+class OwnedValue {
+public:
+    explicit OwnedValue(int value = 0)
+        : _value(std::make_unique<int>(value))
+    {
+        ++alive;
+    }
+
+    OwnedValue(const OwnedValue &) = delete;
+    OwnedValue &operator=(const OwnedValue &) = delete;
+
+    OwnedValue(OwnedValue &&other) noexcept
+        : _value(std::move(other._value))
+    {
+        ++alive;
+    }
+
+    OwnedValue &operator=(OwnedValue &&) noexcept = default;
+
+    ~OwnedValue()
+    {
+        --alive;
+    }
+
+    [[nodiscard]] int value() const
+    {
+        return *_value;
+    }
+
+    static int alive;
+
+private:
+    std::unique_ptr<int> _value;
+};
+
+int OwnedValue::alive = 0;
+
+static_assert(!std::is_copy_constructible_v<OwnedValue>);
+
+} // namespace
+
+TEST_CASE("a move-only component reaches the registry through add",
+          "[ecs][command][owner]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<OwnedValue>();
+    buffer.add<OwnedValue>(entity, OwnedValue(42));
+    buffer.flush(registry);
+
+    REQUIRE(registry.getComponents<OwnedValue>().get(entity)->value() == 42);
+}
+
+TEST_CASE("a move-only component reaches the registry through emplace",
+          "[ecs][command][owner]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<OwnedValue>();
+    buffer.emplace<OwnedValue>(entity, 7);
+    buffer.flush(registry);
+
+    REQUIRE(registry.getComponents<OwnedValue>().get(entity)->value() == 7);
+}
+
+TEST_CASE("the buffer owns a move-only component until it is applied",
+          "[ecs][command][owner]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<OwnedValue>();
+    buffer.add<OwnedValue>(entity, OwnedValue(1));
+    REQUIRE(OwnedValue::alive == 1);
+    buffer.flush(registry);
+
+    REQUIRE(OwnedValue::alive == 1);
+    registry.killEntity(entity);
+    REQUIRE(OwnedValue::alive == 0);
+}
+
+TEST_CASE("clearing the buffer destroys a move-only component once",
+          "[ecs][command][owner]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    buffer.add<OwnedValue>(entity, OwnedValue(1));
+    buffer.emplace<OwnedValue>(entity, 2);
+    REQUIRE(OwnedValue::alive == 2);
+    buffer.clear();
+
+    REQUIRE(OwnedValue::alive == 0);
+}
+
+TEST_CASE("a component applied to a stale handle is destroyed, not leaked",
+          "[ecs][command][owner]")
+{
+    Registry registry;
+    const Entity stale = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<OwnedValue>();
+    registry.killEntity(stale);
+    buffer.add<OwnedValue>(stale, OwnedValue(1));
+    buffer.flush(registry);
+
+    REQUIRE(OwnedValue::alive == 0);
+}
+
+TEST_CASE("components of an aborted flush are destroyed",
+          "[ecs][command][owner]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<OwnedValue>();
+    buffer.add<Velocity>(entity, Velocity{1});
+    buffer.add<OwnedValue>(entity, OwnedValue(1));
+
+    REQUIRE_THROWS_AS(buffer.flush(registry), std::logic_error);
+    REQUIRE(OwnedValue::alive == 0);
 }

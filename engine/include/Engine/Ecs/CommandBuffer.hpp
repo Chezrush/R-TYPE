@@ -68,9 +68,14 @@ private:
  *
  * Spawning or killing an entity while a system iterates over the component
  * arrays would invalidate the iteration. The buffer keeps the changes aside
- * and never touches a registry while recording. Commands own their
- * components, so move-only components are supported. A buffer is not
+ * and never touches a registry while recording. A buffer is not
  * thread-safe: each system or thread records in its own.
+ *
+ * Ownership: a recorded component belongs to its command and is moved, never
+ * copied, so move-only components are supported. It is moved into the
+ * registry when the command is applied, and destroyed with the command
+ * otherwise: on clear(), when the buffer is destroyed, when the handle is
+ * stale, or when a flush is aborted.
  */
 class CommandBuffer {
 public:
