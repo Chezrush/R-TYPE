@@ -58,6 +58,15 @@ void CommandBuffer::kill(Entity entity)
     push(std::make_unique<KillCommand>(entity));
 }
 
+void CommandBuffer::flush(Registry &registry)
+{
+    std::vector<std::unique_ptr<ICommand>> pending;
+
+    pending.swap(_commands);
+    for (const auto &command : pending)
+        command->apply(registry);
+}
+
 std::size_t CommandBuffer::size() const noexcept
 {
     return _commands.size();

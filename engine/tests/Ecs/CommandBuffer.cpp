@@ -8,8 +8,12 @@
 #include "Engine/Ecs/CommandBuffer.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <cstddef>
+#include <stdexcept>
 #include <utility>
+#include <vector>
 
+#include "Engine/Ecs/IndexedZipper.hpp"
 #include "Engine/Ecs/Registry.hpp"
 
 using engine::ecs::CommandBuffer;
@@ -170,4 +174,223 @@ TEST_CASE("a moved buffer keeps the recorded commands", "[ecs][command]")
     const CommandBuffer moved = std::move(buffer);
 
     REQUIRE(moved.size() == 2);
+}
+
+TEST_CASE(
+    "flush applies the commands in recording order and empties the buffer",
+    "[ecs][command][flush]")
+{
+    Registry registry;
+    std::vector<Entity> spawned;
+    CommandBuffer buffer;
+
+    registry.registerComponent<Position>();
+    buffer.spawn([&](Entity entity) { spawned.push_back(entity); });
+    buffer.spawn([&](Entity entity) { spawned.push_back(entity); });
+    buffer.flush(registry);
+
+    REQUIRE(buffer.empty());
+    REQUIRE(registry.aliveCount() == 2);
+    REQUIRE(spawned.size() == 2);
+    REQUIRE(spawned[0] != spawned[1]);
+}
+
+TEST_CASE("the last recorded value of a component wins",
+          "[ecs][command][flush]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<Position>();
+    buffer.add<Position>(entity, Position{1, 1});
+    buffer.emplace<Position>(entity, 2, 2);
+    buffer.flush(registry);
+
+    REQUIRE(registry.getComponents<Position>().get(entity)->x == 2);
+}
+
+TEST_CASE("a removal recorded after an addition removes the component",
+          "[ecs][command][flush]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<Position>();
+    buffer.add<Position>(entity, Position{1, 1});
+    buffer.remove<Position>(entity);
+    buffer.flush(registry);
+
+    REQUIRE_FALSE(registry.getComponents<Position>().has(entity));
+}
+
+TEST_CASE("the recording order decides between a kill and an addition",
+          "[ecs][command][flush]")
+{
+    Registry registry;
+    const Entity addedFirst = registry.spawnEntity();
+    const Entity killedFirst = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<Position>();
+    buffer.add<Position>(addedFirst, Position{1, 1});
+    buffer.kill(addedFirst);
+    buffer.kill(killedFirst);
+    buffer.add<Position>(killedFirst, Position{2, 2});
+    buffer.flush(registry);
+
+    REQUIRE_FALSE(registry.isAlive(addedFirst));
+    REQUIRE_FALSE(registry.isAlive(killedFirst));
+    REQUIRE_FALSE(registry.getComponents<Position>().has(addedFirst));
+    REQUIRE_FALSE(registry.getComponents<Position>().has(killedFirst));
+}
+
+TEST_CASE("commands on a stale handle are ignored without error",
+          "[ecs][command][flush]")
+{
+    Registry registry;
+    const Entity stale = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.registerComponent<Position>();
+    registry.killEntity(stale);
+    buffer.kill(stale);
+    buffer.kill(stale);
+    buffer.add<Position>(stale, Position{1, 1});
+    buffer.emplace<Position>(stale, 2, 2);
+    buffer.remove<Position>(stale);
+
+    REQUIRE_NOTHROW(buffer.flush(registry));
+    REQUIRE(registry.aliveCount() == 0);
+    REQUIRE(buffer.empty());
+}
+
+TEST_CASE("a stale handle does not hit the entity reusing its index",
+          "[ecs][command][flush]")
+{
+    Registry registry;
+    const Entity stale = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    registry.killEntity(stale);
+    const Entity reused = registry.spawnEntity();
+    buffer.kill(stale);
+    buffer.flush(registry);
+
+    REQUIRE(reused.index() == stale.index());
+    REQUIRE(registry.isAlive(reused));
+}
+
+TEST_CASE("the spawn callback receives a live handle", "[ecs][command][flush]")
+{
+    Registry registry;
+    CommandBuffer buffer;
+    bool alive = false;
+
+    buffer.spawn([&](Entity entity) { alive = registry.isAlive(entity); });
+    buffer.flush(registry);
+
+    REQUIRE(alive);
+}
+
+TEST_CASE("a spawn without callback still creates the entity",
+          "[ecs][command][flush]")
+{
+    Registry registry;
+    CommandBuffer buffer;
+
+    buffer.spawn();
+    buffer.flush(registry);
+
+    REQUIRE(registry.aliveCount() == 1);
+}
+
+TEST_CASE("flushing an empty buffer changes nothing", "[ecs][command][flush]")
+{
+    Registry registry;
+    CommandBuffer buffer;
+
+    buffer.flush(registry);
+
+    REQUIRE(registry.aliveCount() == 0);
+    REQUIRE(buffer.empty());
+}
+
+TEST_CASE("commands are never applied twice", "[ecs][command][flush]")
+{
+    Registry registry;
+    CommandBuffer buffer;
+
+    buffer.spawn();
+    buffer.flush(registry);
+    buffer.flush(registry);
+
+    REQUIRE(registry.aliveCount() == 1);
+}
+
+TEST_CASE("killing entities while iterating is safe", "[ecs][command][flush]")
+{
+    Registry registry;
+    std::vector<Entity> entities;
+    CommandBuffer buffer;
+    std::size_t visited = 0;
+
+    registry.registerComponent<Position>();
+    registry.registerComponent<Velocity>();
+    for (int i = 0; i < 5; ++i) {
+        entities.push_back(registry.spawnEntity());
+        registry.addComponent(entities.back(), Position{i, 0});
+        registry.addComponent(entities.back(), Velocity{1});
+    }
+    for (auto [index, position, velocity] :
+         engine::ecs::makeIndexedZipper(registry.getComponents<Position>(),
+                                        registry.getComponents<Velocity>())) {
+        static_cast<void>(velocity);
+        buffer.kill(entities[index]);
+        buffer.spawn();
+        position.y = 1;
+        ++visited;
+    }
+    buffer.flush(registry);
+
+    REQUIRE(visited == 5);
+    REQUIRE(registry.aliveCount() == 5);
+    REQUIRE_FALSE(registry.isAlive(entities[0]));
+}
+
+TEST_CASE("commands recorded during a flush wait for the next one",
+          "[ecs][command][flush]")
+{
+    Registry registry;
+    CommandBuffer buffer;
+    Entity created = registry.spawnEntity();
+
+    registry.killEntity(created);
+    buffer.spawn([&](Entity entity) {
+        created = entity;
+        buffer.kill(entity);
+    });
+    buffer.flush(registry);
+    REQUIRE(registry.isAlive(created));
+    REQUIRE(buffer.size() == 1);
+    buffer.flush(registry);
+
+    REQUIRE_FALSE(registry.isAlive(created));
+    REQUIRE(buffer.empty());
+}
+
+TEST_CASE("an unregistered component aborts the flush and empties the buffer",
+          "[ecs][command][flush]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+    CommandBuffer buffer;
+
+    buffer.add<Velocity>(entity, Velocity{1});
+    buffer.kill(entity);
+
+    REQUIRE_THROWS_AS(buffer.flush(registry), std::logic_error);
+    REQUIRE(buffer.empty());
+    REQUIRE(registry.isAlive(entity));
 }
