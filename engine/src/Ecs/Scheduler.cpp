@@ -32,6 +32,8 @@ public:
 
     RunningGuard(const RunningGuard &) = delete;
     RunningGuard &operator=(const RunningGuard &) = delete;
+    RunningGuard(RunningGuard &&) = delete;
+    RunningGuard &operator=(RunningGuard &&) = delete;
 
 private:
     bool &_flag;
