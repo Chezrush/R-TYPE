@@ -96,8 +96,24 @@ void Scheduler::run(Registry &registry, double deltaTime)
 {
     const RunningGuard guard(_running);
 
-    for (const Group &group : _phases)
-        runGroup(group, registry, deltaTime);
+    try {
+        for (const Group &group : _phases) {
+            runGroup(group, registry, deltaTime);
+            _commands.flush(registry);
+        }
+    } catch (...) {
+        _commands.clear();
+        throw;
+    }
+}
+
+std::vector<Scheduler::Conflict> Scheduler::findConflicts() const
+{
+    std::vector<Conflict> conflicts;
+
+    for (std::size_t phase = 0; phase < PHASE_COUNT; ++phase)
+        collectConflicts(static_cast<Phase>(phase), _phases[phase], conflicts);
+    return conflicts;
 }
 
 Scheduler::System *Scheduler::find(SystemId id) noexcept
@@ -123,12 +139,28 @@ void Scheduler::ensureIdle() const
         throw std::logic_error("the scheduler is running");
 }
 
+void Scheduler::collectConflicts(Phase phase, const Group &group,
+                                 std::vector<Conflict> &conflicts)
+{
+    for (std::size_t i = 0; i < group.size(); ++i) {
+        for (std::size_t j = i + 1; j < group.size(); ++j) {
+            const System &first = group[i];
+            const System &second = group[j];
+
+            if (first.enabled && second.enabled &&
+                first.access.conflictsWith(second.access))
+                conflicts.push_back(Conflict{phase, first.id, second.id,
+                                             first.name, second.name});
+        }
+    }
+}
+
 void Scheduler::runGroup(const Group &group, Registry &registry,
                          double deltaTime)
 {
     for (const System &system : group) {
         if (system.enabled)
-            system.function(registry, deltaTime);
+            system.function(registry, _commands, deltaTime);
     }
 }
 
