@@ -8,6 +8,7 @@
 add_library(rtype_engine STATIC
     src/Core/Version.cpp
     src/Ecs/Access.cpp
+    src/Ecs/CommandBuffer.cpp
     src/Ecs/Entity.cpp
     src/Ecs/EntityAllocator.cpp
     src/Ecs/Phase.cpp
@@ -21,6 +22,7 @@ target_link_libraries(rtype_engine PRIVATE rtype_warnings)
 rtype_add_catch_test(rtype_engine_tests
     tests/Version.cpp
     tests/Ecs/Access.cpp
+    tests/Ecs/CommandBuffer.cpp
     tests/Ecs/Entity.cpp
     tests/Ecs/EntityAllocator.cpp
     tests/Ecs/IndexedZipper.cpp
