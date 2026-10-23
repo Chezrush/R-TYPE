@@ -33,4 +33,9 @@ std::size_t Registry::aliveCount() const noexcept
     return _entities.aliveCount();
 }
 
+Entity Registry::entityAt(std::size_t index) const
+{
+    return _entities.handleAt(index);
+}
+
 } // namespace engine::ecs

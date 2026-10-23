@@ -65,6 +65,12 @@ public:
     [[nodiscard]] std::size_t aliveCount() const noexcept;
 
     /**
+     * @brief Handle of the entity using an index, see EntityAllocator.
+     * @throws std::out_of_range if the index was never allocated.
+     */
+    [[nodiscard]] Entity entityAt(std::size_t index) const;
+
+    /**
      * @brief Creates the storage of a component type.
      *
      * Registering a type twice keeps the existing storage and its content.

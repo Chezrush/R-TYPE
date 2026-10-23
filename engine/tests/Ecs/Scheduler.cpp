@@ -533,3 +533,171 @@ TEST_CASE("conflicts are listed by phase then registration order",
     REQUIRE(conflicts[0].phase == Phase::PRE_UPDATE);
     REQUIRE(conflicts[1].phase == Phase::UPDATE);
 }
+
+TEST_CASE("a typed system runs once per entity owning every component",
+          "[ecs][scheduler][typed]")
+{
+    Registry registry;
+    Scheduler scheduler;
+    std::vector<int> seen;
+    double seenStep = 0.0;
+
+    registry.registerComponent<Position>();
+    registry.registerComponent<Velocity>();
+    for (int i = 0; i < 4; ++i) {
+        const Entity entity = registry.spawnEntity();
+        registry.addComponent(entity, Position{i});
+        if (i != 2)
+            registry.addComponent(entity, Velocity{10});
+    }
+    scheduler.addSystem<Position, const Velocity>(
+        "move", Phase::UPDATE,
+        [&](Entity, Position &position, const Velocity &velocity,
+            CommandBuffer &, double step) {
+            position.x += velocity.dx;
+            seen.push_back(position.x);
+            seenStep = step;
+        });
+    scheduler.run(registry, 0.5);
+
+    REQUIRE(seen == std::vector<int>{10, 11, 13});
+    REQUIRE(seenStep == 0.5);
+}
+
+TEST_CASE("a typed system receives the handle of the entity it visits",
+          "[ecs][scheduler][typed]")
+{
+    Registry registry;
+    Scheduler scheduler;
+    const Entity first = registry.spawnEntity();
+    const Entity second = registry.spawnEntity();
+    std::vector<Entity> visited;
+
+    registry.registerComponent<Position>();
+    registry.addComponent(second, Position{1});
+    scheduler.addSystem<const Position>(
+        "probe", Phase::UPDATE,
+        [&](Entity entity, const Position &, CommandBuffer &, double) {
+            visited.push_back(entity);
+        });
+    scheduler.run(registry, 0.0);
+
+    REQUIRE(visited == std::vector<Entity>{second});
+    REQUIRE(registry.isAlive(first));
+}
+
+TEST_CASE("a typed system can kill the entities it iterates over",
+          "[ecs][scheduler][typed]")
+{
+    Registry registry;
+    Scheduler scheduler;
+
+    registry.registerComponent<Position>();
+    for (int i = 0; i < 6; ++i)
+        registry.addComponent(registry.spawnEntity(), Position{i});
+    scheduler.addSystem<const Position>("reaper", Phase::UPDATE,
+                                        [](Entity entity,
+                                           const Position &position,
+                                           CommandBuffer &commands, double) {
+                                            if (position.x % 2 == 0)
+                                                commands.kill(entity);
+                                        });
+    scheduler.run(registry, 0.0);
+
+    REQUIRE(registry.aliveCount() == 3);
+}
+
+TEST_CASE("a typed system over no matching entity is never called",
+          "[ecs][scheduler][typed]")
+{
+    Registry registry;
+    Scheduler scheduler;
+    int calls = 0;
+
+    registry.registerComponent<Position>();
+    registry.registerComponent<Velocity>();
+    registry.addComponent(registry.spawnEntity(), Position{1});
+    scheduler.addSystem<Position, Velocity>("none", Phase::UPDATE,
+                                            [&](Entity, Position &, Velocity &,
+                                                CommandBuffer &,
+                                                double) { ++calls; });
+    scheduler.run(registry, 0.0);
+
+    REQUIRE(calls == 0);
+}
+
+TEST_CASE("the access of a typed system follows the constness of its types",
+          "[ecs][scheduler][typed]")
+{
+    Scheduler scheduler;
+
+    scheduler.addSystem<Position, const Velocity>(
+        "mover", Phase::UPDATE,
+        [](Entity, Position &, const Velocity &, CommandBuffer &, double) {});
+    scheduler.addSystem<const Velocity>(
+        "reader", Phase::UPDATE,
+        [](Entity, const Velocity &, CommandBuffer &, double) {});
+    REQUIRE(scheduler.findConflicts().empty());
+    scheduler.addSystem<Velocity>(
+        "writer", Phase::UPDATE,
+        [](Entity, Velocity &, CommandBuffer &, double) {});
+
+    REQUIRE(scheduler.findConflicts().size() == 2);
+}
+
+TEST_CASE("two typed systems writing one component conflict",
+          "[ecs][scheduler][typed]")
+{
+    Scheduler scheduler;
+
+    scheduler.addSystem<Position>(
+        "a", Phase::UPDATE, [](Entity, Position &, CommandBuffer &, double) {});
+    scheduler.addSystem<Position>(
+        "b", Phase::UPDATE, [](Entity, Position &, CommandBuffer &, double) {});
+
+    REQUIRE(scheduler.findConflicts().size() == 1);
+}
+
+TEST_CASE("a typed system conflicts with an untyped one on the same type",
+          "[ecs][scheduler][typed]")
+{
+    Scheduler scheduler;
+
+    scheduler.addSystem<const Position>(
+        "typed", Phase::UPDATE,
+        [](Entity, const Position &, CommandBuffer &, double) {});
+    scheduler.addSystem("untyped", Phase::UPDATE, Access().write<Position>(),
+                        [](Registry &, CommandBuffer &, double) {});
+
+    REQUIRE(scheduler.findConflicts().size() == 1);
+}
+
+TEST_CASE("a typed system over an unregistered component fails the frame",
+          "[ecs][scheduler][typed]")
+{
+    Registry registry;
+    Scheduler scheduler;
+
+    scheduler.addSystem<Position>(
+        "typed", Phase::UPDATE,
+        [](Entity, Position &, CommandBuffer &, double) {});
+
+    REQUIRE_THROWS_AS(scheduler.run(registry, 0.0), std::logic_error);
+}
+
+TEST_CASE("a disabled typed system is not executed", "[ecs][scheduler][typed]")
+{
+    Registry registry;
+    Scheduler scheduler;
+    int calls = 0;
+
+    registry.registerComponent<Position>();
+    registry.addComponent(registry.spawnEntity(), Position{1});
+    const auto id = scheduler.addSystem<Position>(
+        "typed", Phase::UPDATE,
+        [&](Entity, Position &, CommandBuffer &, double) { ++calls; });
+    scheduler.setEnabled(id, false);
+    scheduler.run(registry, 0.0);
+
+    REQUIRE(calls == 0);
+}

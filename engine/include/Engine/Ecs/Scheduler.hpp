@@ -57,6 +57,22 @@ public:
                        SystemFunction function);
 
     /**
+     * @brief Registers a system over the entities owning given components.
+     *
+     * The function is called once per entity owning every listed component,
+     * as function(entity, components..., commands, deltaTime). A const
+     * component type is declared as read, any other as written, which builds
+     * the Access of the system. The components must be registered in the
+     * registry, otherwise run() throws std::logic_error.
+     *
+     * @tparam Components Component types, const-qualified for read-only.
+     * @return An identifier, never reused by this scheduler.
+     * @throws std::logic_error if called while the scheduler is running.
+     */
+    template <typename... Components, typename Function>
+    SystemId addSystem(std::string name, Phase phase, Function &&function);
+
+    /**
      * @brief Removes a system, the order of the others is unchanged.
      *
      * @return false if no such system is registered.
@@ -134,5 +150,7 @@ private:
 };
 
 } // namespace engine::ecs
+
+#include "Engine/Ecs/Scheduler.tpp"
 
 #endif /* !SCHEDULER_HPP_ */

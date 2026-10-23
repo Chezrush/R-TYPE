@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <set>
+#include <stdexcept>
 
 using engine::ecs::Entity;
 using engine::ecs::EntityAllocator;
@@ -96,4 +97,36 @@ TEST_CASE("a handle that was never allocated is not alive", "[ecs][allocator]")
     REQUIRE_FALSE(allocator.isAlive(unknown));
     REQUIRE_FALSE(allocator.destroy(unknown));
     REQUIRE(allocator.aliveCount() == 0);
+}
+
+TEST_CASE("handleAt returns the handle using an index", "[ecs][allocator]")
+{
+    EntityAllocator allocator;
+    const Entity first = allocator.create();
+    const Entity second = allocator.create();
+
+    REQUIRE(allocator.handleAt(0) == first);
+    REQUIRE(allocator.handleAt(1) == second);
+}
+
+TEST_CASE("handleAt follows the generation of a reused index",
+          "[ecs][allocator]")
+{
+    EntityAllocator allocator;
+    const Entity old = allocator.create();
+
+    allocator.destroy(old);
+    const Entity reused = allocator.create();
+
+    REQUIRE(allocator.handleAt(old.index()) == reused);
+    REQUIRE(allocator.handleAt(old.index()) != old);
+}
+
+TEST_CASE("handleAt rejects an index never allocated", "[ecs][allocator]")
+{
+    EntityAllocator allocator;
+
+    static_cast<void>(allocator.create());
+
+    REQUIRE_THROWS_AS(allocator.handleAt(1), std::out_of_range);
 }
