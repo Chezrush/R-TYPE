@@ -53,6 +53,9 @@ public:
     ZipperIterator operator++(int);
     [[nodiscard]] bool operator==(const ZipperIterator &other) const;
 
+    /** @brief Entity index of the current match. */
+    [[nodiscard]] std::size_t index() const noexcept;
+
 private:
     [[nodiscard]] bool isComplete() const;
     void seek();
@@ -89,6 +92,10 @@ private:
 
 template <typename... Arrays>
 Zipper(Arrays &...) -> Zipper<Arrays...>;
+
+/** @brief Builds a Zipper, deducing the array types from the arguments. */
+template <typename... Arrays>
+[[nodiscard]] Zipper<Arrays...> makeZipper(Arrays &...arrays);
 
 } // namespace engine::ecs
 

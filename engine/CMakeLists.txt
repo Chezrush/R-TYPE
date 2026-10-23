@@ -20,6 +20,7 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Version.cpp
     tests/Ecs/Entity.cpp
     tests/Ecs/EntityAllocator.cpp
+    tests/Ecs/IndexedZipper.cpp
     tests/Ecs/IStorage.cpp
     tests/Ecs/Registry.cpp
     tests/Ecs/SparseArray.cpp

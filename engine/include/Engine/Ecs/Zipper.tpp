@@ -60,6 +60,12 @@ bool ZipperIterator<Arrays...>::operator==(const ZipperIterator &other) const
 }
 
 template <typename... Arrays>
+std::size_t ZipperIterator<Arrays...>::index() const noexcept
+{
+    return _index;
+}
+
+template <typename... Arrays>
 bool ZipperIterator<Arrays...>::isComplete() const
 {
     return std::apply(
@@ -92,6 +98,12 @@ template <typename... Arrays>
 typename Zipper<Arrays...>::Iterator Zipper<Arrays...>::end() const
 {
     return Iterator(_arrays, _size, _size);
+}
+
+template <typename... Arrays>
+Zipper<Arrays...> makeZipper(Arrays &...arrays)
+{
+    return Zipper<Arrays...>(arrays...);
 }
 
 } // namespace engine::ecs
