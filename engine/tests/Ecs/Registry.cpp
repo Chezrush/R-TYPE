@@ -266,3 +266,13 @@ TEST_CASE("a stale handle never throws", "[ecs][registry]")
     REQUIRE_NOTHROW(registry.killEntity(old));
     REQUIRE_NOTHROW(registry.isAlive(old));
 }
+
+TEST_CASE("entityAt gives back the handle of a spawned entity",
+          "[ecs][registry]")
+{
+    Registry registry;
+    const Entity entity = registry.spawnEntity();
+
+    REQUIRE(registry.entityAt(entity.index()) == entity);
+    REQUIRE_THROWS_AS(registry.entityAt(5), std::out_of_range);
+}

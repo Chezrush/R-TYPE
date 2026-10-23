@@ -46,4 +46,11 @@ std::size_t EntityAllocator::aliveCount() const noexcept
     return _generations.size() - _freeIndices.size();
 }
 
+Entity EntityAllocator::handleAt(std::size_t index) const
+{
+    if (index >= _generations.size())
+        throw std::out_of_range("EntityAllocator: index never allocated");
+    return Entity(static_cast<std::uint32_t>(index), _generations[index]);
+}
+
 } // namespace engine::ecs
