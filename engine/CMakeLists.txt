@@ -11,6 +11,7 @@ add_library(rtype_engine STATIC
     src/Ecs/Entity.cpp
     src/Ecs/EntityAllocator.cpp
     src/Ecs/Phase.cpp
+    src/Ecs/Scheduler.cpp
     src/Ecs/Registry.cpp)
 add_library(rtype::engine ALIAS rtype_engine)
 
@@ -26,6 +27,7 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/IndexedZipper.cpp
     tests/Ecs/IStorage.cpp
     tests/Ecs/Phase.cpp
+    tests/Ecs/Scheduler.cpp
     tests/Ecs/Registry.cpp
     tests/Ecs/SparseArray.cpp
     tests/Ecs/Zipper.cpp
