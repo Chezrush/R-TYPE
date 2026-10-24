@@ -6,6 +6,7 @@
 ##
 
 add_library(rtype_engine STATIC
+    src/Core/EventBus.cpp
     src/Core/FixedTimestep.cpp
     src/Core/GameLoop.cpp
     src/Core/Vec2.cpp
@@ -25,6 +26,7 @@ target_link_libraries(rtype_engine PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_engine_tests
     tests/Version.cpp
+    tests/Core/EventBus.cpp
     tests/Core/FixedTimestep.cpp
     tests/Core/GameLoop.cpp
     tests/Core/Vec2.cpp
