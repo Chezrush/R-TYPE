@@ -10,6 +10,8 @@
 
 #include <cstddef>
 #include <functional>
+#include <memory>
+#include <queue>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
@@ -24,8 +26,17 @@ namespace engine::core {
  * simulation deterministic. Publishing an event nobody listens to does
  * nothing. Not thread-safe: use it from the thread that owns the simulation.
  *
- * The bus is not reentrant yet: subscribing, unsubscribing or publishing
- * from inside a listener throws std::logic_error.
+ * Rules when the bus is used from inside a listener:
+ * - An event published during a dispatch is copied and queued. It is
+ *   delivered after the current event is done, in publication order, and
+ *   publish() returns without waiting for it.
+ * - A listener unsubscribed during a dispatch is not called again, not even
+ *   for the event being dispatched.
+ * - A listener subscribed during a dispatch does not receive the event being
+ *   dispatched, only the ones delivered after it.
+ * - If a listener throws, the exception reaches the caller of the outermost
+ *   publish(), the events still queued are discarded and the bus stays
+ *   usable.
  */
 class EventBus {
 public:
@@ -36,7 +47,6 @@ public:
      *
      * @return An identifier, never reused by this bus.
      * @throws std::invalid_argument if the listener is empty.
-     * @throws std::logic_error if called during a dispatch.
      */
     template <typename Event>
     ListenerId subscribe(std::function<void(const Event &)> listener);
@@ -45,17 +55,14 @@ public:
      * @brief Removes a listener, the order of the others is unchanged.
      *
      * @return false if no such listener is registered.
-     * @throws std::logic_error if called during a dispatch.
      */
     bool unsubscribe(ListenerId id);
 
     /**
      * @brief Delivers an event to every listener of its type.
      *
-     * An exception thrown by a listener stops the delivery and reaches the
-     * caller; the listeners after it do not see the event.
-     *
-     * @throws std::logic_error if called during a dispatch.
+     * Called from a listener, the event is queued instead (see the class
+     * description), which requires Event to be copy-constructible.
      */
     template <typename Event>
     void publish(const Event &event);
@@ -69,13 +76,25 @@ private:
     struct Listener {
         ListenerId id;
         Callback callback;
+        bool active;
+    };
+
+    struct Pending {
+        std::type_index type;
+        std::shared_ptr<const void> event;
     };
 
     ListenerId add(std::type_index type, Callback callback);
-    void dispatch(std::type_index type, const void *event);
-    void ensureIdle() const;
+    void enqueue(std::type_index type, std::shared_ptr<const void> event);
+    void run(std::type_index type, const void *event);
+    void deliver(std::type_index type, const void *event);
+    void drain();
+    void finish();
+    void compact();
 
-    std::unordered_map<std::type_index, std::vector<Listener>> _listeners;
+    std::unordered_map<std::type_index, std::vector<std::shared_ptr<Listener>>>
+        _listeners;
+    std::queue<Pending> _pending;
     ListenerId _nextId = 0;
     bool _dispatching = false;
 };

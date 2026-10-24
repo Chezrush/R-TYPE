@@ -116,36 +116,136 @@ TEST_CASE("events can carry non-trivial values", "[core][bus]")
     REQUIRE(received == "hit");
 }
 
-TEST_CASE("using the bus during a dispatch is rejected", "[core][bus]")
+TEST_CASE("an event published during a dispatch is queued", "[core][bus]")
 {
     EventBus bus;
-    int rejected = 0;
+    std::vector<std::string> log;
 
-    bus.subscribe<Damage>([&](const Damage &) {
-        try {
-            bus.publish(Death{1});
-        } catch (const std::logic_error &) {
-            ++rejected;
+    bus.subscribe<Damage>([&](const Damage &e) {
+        log.push_back("damage" + std::to_string(e.amount));
+        if (e.amount == 1) {
+            bus.publish(Death{7});
+            bus.publish(Damage{2});
         }
-        try {
-            bus.subscribe<Death>([](const Death &) {});
-        } catch (const std::logic_error &) {
-            ++rejected;
-        }
+        log.push_back("end" + std::to_string(e.amount));
     });
+    bus.subscribe<Death>([&](const Death &) { log.push_back("death"); });
     bus.publish(Damage{1});
-    REQUIRE(rejected == 2);
+    REQUIRE(log == std::vector<std::string>{"damage1", "end1", "death",
+                                            "damage2", "end2"});
 }
 
-TEST_CASE("a throwing listener leaves the bus usable", "[core][bus]")
+TEST_CASE("queued events keep the publication order", "[core][bus]")
+{
+    EventBus bus;
+    std::vector<int> seen;
+
+    bus.subscribe<Damage>([&](const Damage &e) {
+        seen.push_back(e.amount);
+        if (e.amount == 0) {
+            bus.publish(Damage{1});
+            bus.publish(Damage{2});
+        }
+        if (e.amount == 1)
+            bus.publish(Damage{3});
+    });
+    bus.publish(Damage{0});
+    REQUIRE(seen == std::vector<int>{0, 1, 2, 3});
+}
+
+TEST_CASE("a listener unsubscribed during a dispatch is not called again",
+          "[core][bus]")
+{
+    EventBus bus;
+    int second = 0;
+    EventBus::ListenerId secondId = 0;
+
+    bus.subscribe<Damage>([&](const Damage &) { bus.unsubscribe(secondId); });
+    secondId = bus.subscribe<Damage>([&second](const Damage &) { ++second; });
+    bus.publish(Damage{1});
+    bus.publish(Damage{1});
+    REQUIRE(second == 0);
+    REQUIRE(bus.size() == 1);
+}
+
+TEST_CASE("a listener can unsubscribe itself", "[core][bus]")
 {
     EventBus bus;
     int calls = 0;
+    EventBus::ListenerId id = 0;
 
-    bus.subscribe<Damage>(
-        [](const Damage &) { throw std::runtime_error("x"); });
-    bus.subscribe<Damage>([&calls](const Damage &) { ++calls; });
+    id = bus.subscribe<Damage>([&](const Damage &) {
+        ++calls;
+        REQUIRE(bus.unsubscribe(id));
+    });
+    bus.publish(Damage{1});
+    bus.publish(Damage{1});
+    REQUIRE(calls == 1);
+    REQUIRE(bus.size() == 0);
+}
+
+TEST_CASE("a listener subscribed during a dispatch misses the current event",
+          "[core][bus]")
+{
+    EventBus bus;
+    int late = 0;
+    bool added = false;
+
+    bus.subscribe<Damage>([&](const Damage &) {
+        if (added)
+            return;
+        added = true;
+        bus.subscribe<Damage>([&late](const Damage &) { ++late; });
+    });
+    bus.publish(Damage{1});
+    REQUIRE(late == 0);
+    bus.publish(Damage{1});
+    REQUIRE(late == 1);
+}
+
+TEST_CASE("a listener subscribed during a dispatch gets queued events",
+          "[core][bus]")
+{
+    EventBus bus;
+    int late = 0;
+
+    bus.subscribe<Damage>([&](const Damage &e) {
+        if (e.amount != 1)
+            return;
+        bus.subscribe<Damage>([&late](const Damage &) { ++late; });
+        bus.publish(Damage{2});
+    });
+    bus.publish(Damage{1});
+    REQUIRE(late == 1);
+}
+
+TEST_CASE("a listener of a new type can subscribe during a dispatch",
+          "[core][bus]")
+{
+    EventBus bus;
+    int deaths = 0;
+
+    bus.subscribe<Damage>([&](const Damage &) {
+        bus.subscribe<Death>([&deaths](const Death &) { ++deaths; });
+        bus.publish(Death{1});
+    });
+    bus.publish(Damage{1});
+    REQUIRE(deaths == 1);
+}
+
+TEST_CASE("a throwing listener discards the queue and leaves the bus usable",
+          "[core][bus]")
+{
+    EventBus bus;
+    int deaths = 0;
+
+    bus.subscribe<Damage>([&bus](const Damage &) {
+        bus.publish(Death{1});
+        throw std::runtime_error("x");
+    });
+    bus.subscribe<Death>([&deaths](const Death &) { ++deaths; });
     REQUIRE_THROWS_AS(bus.publish(Damage{1}), std::runtime_error);
-    REQUIRE(calls == 0);
-    REQUIRE_NOTHROW(bus.subscribe<Death>([](const Death &) {}));
+    REQUIRE(deaths == 0);
+    bus.publish(Death{1});
+    REQUIRE(deaths == 1);
 }
