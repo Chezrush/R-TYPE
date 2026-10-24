@@ -6,6 +6,7 @@
 ##
 
 add_library(rtype_engine STATIC
+    src/Core/FixedTimestep.cpp
     src/Core/Version.cpp
     src/Ecs/Access.cpp
     src/Ecs/CommandBuffer.cpp
@@ -22,6 +23,7 @@ target_link_libraries(rtype_engine PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_engine_tests
     tests/Version.cpp
+    tests/Core/FixedTimestep.cpp
     tests/Ecs/Access.cpp
     tests/Ecs/CommandBuffer.cpp
     tests/Ecs/Entity.cpp
