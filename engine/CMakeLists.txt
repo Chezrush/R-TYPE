@@ -8,6 +8,7 @@
 add_library(rtype_engine STATIC
     src/Core/FixedTimestep.cpp
     src/Core/GameLoop.cpp
+    src/Core/Vec2.cpp
     src/Core/Version.cpp
     src/Ecs/Access.cpp
     src/Ecs/CommandBuffer.cpp
@@ -26,6 +27,7 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Version.cpp
     tests/Core/FixedTimestep.cpp
     tests/Core/GameLoop.cpp
+    tests/Core/Vec2.cpp
     tests/Ecs/Access.cpp
     tests/Ecs/CommandBuffer.cpp
     tests/Ecs/Entity.cpp
