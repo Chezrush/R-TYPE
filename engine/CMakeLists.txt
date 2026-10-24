@@ -50,3 +50,11 @@ if(RTYPE_BUILD_DEMOS)
     add_executable(rtype_engine_demo demo/Main.cpp)
     target_link_libraries(rtype_engine_demo PRIVATE rtype::engine rtype_warnings)
 endif()
+
+if(RTYPE_BUILD_BENCHMARKS)
+    add_executable(rtype_engine_bench
+        bench/Cases.cpp
+        bench/Main.cpp
+        bench/Series.cpp)
+    target_link_libraries(rtype_engine_bench PRIVATE rtype::engine rtype_warnings)
+endif()
