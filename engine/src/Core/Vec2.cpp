@@ -11,32 +11,32 @@
 
 namespace engine::core {
 
-Vec2 &Vec2::operator+=(const Vec2 &other) noexcept
+Vec2 &operator+=(Vec2 &lhs, const Vec2 &rhs) noexcept
 {
-    x += other.x;
-    y += other.y;
-    return *this;
+    lhs.x += rhs.x;
+    lhs.y += rhs.y;
+    return lhs;
 }
 
-Vec2 &Vec2::operator-=(const Vec2 &other) noexcept
+Vec2 &operator-=(Vec2 &lhs, const Vec2 &rhs) noexcept
 {
-    x -= other.x;
-    y -= other.y;
-    return *this;
+    lhs.x -= rhs.x;
+    lhs.y -= rhs.y;
+    return lhs;
 }
 
-Vec2 &Vec2::operator*=(float scalar) noexcept
+Vec2 &operator*=(Vec2 &vector, float scalar) noexcept
 {
-    x *= scalar;
-    y *= scalar;
-    return *this;
+    vector.x *= scalar;
+    vector.y *= scalar;
+    return vector;
 }
 
-Vec2 &Vec2::operator/=(float scalar) noexcept
+Vec2 &operator/=(Vec2 &vector, float scalar) noexcept
 {
-    x /= scalar;
-    y /= scalar;
-    return *this;
+    vector.x /= scalar;
+    vector.y /= scalar;
+    return vector;
 }
 
 Vec2 operator+(Vec2 lhs, const Vec2 &rhs) noexcept

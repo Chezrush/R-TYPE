@@ -26,12 +26,12 @@ struct Vec2 {
     float y = 0.0F;
 
     friend bool operator==(const Vec2 &, const Vec2 &) = default;
-
-    Vec2 &operator+=(const Vec2 &other) noexcept;
-    Vec2 &operator-=(const Vec2 &other) noexcept;
-    Vec2 &operator*=(float scalar) noexcept;
-    Vec2 &operator/=(float scalar) noexcept;
 };
+
+Vec2 &operator+=(Vec2 &lhs, const Vec2 &rhs) noexcept;
+Vec2 &operator-=(Vec2 &lhs, const Vec2 &rhs) noexcept;
+Vec2 &operator*=(Vec2 &vector, float scalar) noexcept;
+Vec2 &operator/=(Vec2 &vector, float scalar) noexcept;
 
 [[nodiscard]] Vec2 operator+(Vec2 lhs, const Vec2 &rhs) noexcept;
 [[nodiscard]] Vec2 operator-(Vec2 lhs, const Vec2 &rhs) noexcept;
