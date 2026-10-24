@@ -8,6 +8,7 @@
 #ifndef EVENTBUS_TPP_
 #define EVENTBUS_TPP_
 
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
@@ -30,7 +31,11 @@ EventBus::subscribe(std::function<void(const Event &)> listener)
 template <typename Event>
 void EventBus::publish(const Event &event)
 {
-    dispatch(typeid(Event), &event);
+    if (_dispatching) {
+        enqueue(typeid(Event), std::make_shared<const Event>(event));
+        return;
+    }
+    run(typeid(Event), &event);
 }
 
 } // namespace engine::core
