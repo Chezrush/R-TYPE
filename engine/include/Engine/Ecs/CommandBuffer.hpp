@@ -123,6 +123,7 @@ public:
     /** @return The number of recorded commands. */
     [[nodiscard]] std::size_t size() const noexcept;
 
+    /** @return true if no command is recorded. */
     [[nodiscard]] bool empty() const noexcept;
 
     /** @brief Drops every recorded command; owned components are destroyed. */

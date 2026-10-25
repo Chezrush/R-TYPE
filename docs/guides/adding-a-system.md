@@ -1,67 +1,105 @@
 # How-to: add a component and a system
 
-Example: a `lifetime` component that removes entities after a delay (useful for explosions).
+Example: a `Lifetime` component that kills an entity after a delay (useful for explosions
+and missiles). The engine has no component of its own, so the component and the system belong
+to the module of the game. The code below was compiled against the engine as written.
 
 ## 1. Define the component (plain data)
 
-`game/include/rtype/components.hpp`:
-
 ```cpp
-struct lifetime {
-    float remaining; // seconds
+struct Lifetime {
+    double remaining; // seconds
 };
 ```
+
+A component is a struct with data only. The logic goes in a system.
 
 ## 2. Register it
 
-`game/src/factory.cpp`, in `register_components`:
-
 ```cpp
-reg.register_component<lifetime>();
+registry.registerComponent<Lifetime>();
 ```
+
+Do it once, before the first use. Using an unregistered type throws `std::logic_error`.
 
 ## 3. Write the system
 
-`game/include/rtype/systems.hpp` / `game/src/systems.cpp`. A system receives the registry and
-the arrays it asked for:
+A system is registered in a phase of the `Scheduler`. List the components it needs: the
+function is called once per entity that owns all of them.
 
 ```cpp
-struct lifetime_system {
-    float const& dt;
-    std::vector<std::size_t>& dead;
-    void operator()(registry&, sparse_array<components::lifetime>& lifetimes) const {
-        for (auto&& [i, life] : engine::ecs::indexed_zipper(lifetimes)) {
-            life.remaining -= dt;
-            if (life.remaining <= 0.f) {
-                dead.push_back(i); // never kill while iterating
-            }
-        }
-    }
-};
+scheduler.addSystem<Lifetime>(
+    "lifetime", Phase::UPDATE,
+    [](Entity entity, Lifetime &lifetime, CommandBuffer &commands,
+       double step) {
+        lifetime.remaining -= step;
+        if (lifetime.remaining <= 0.0)
+            commands.kill(entity);
+    });
 ```
 
-## 4. Plug it in
+- Write the component type as `const Position` for read access, plain `Position` for write
+  access. The scheduler uses it to detect conflicts between systems of one phase
+  (`scheduler.findConflicts()`).
+- Never kill or spawn directly from a system. Record it in the `CommandBuffer`: the scheduler
+  applies it after the phase, so the iteration stays valid.
+- `step` is the fixed step in seconds, never the frame time.
 
-On the server, `server::server()` registers systems in the order they must run:
+Other commands: `commands.spawn(callback)`, `commands.add(entity, component)`,
+`commands.emplace<C>(entity, args...)` and `commands.remove<C>(entity)`.
+
+## 4. Create entities
 
 ```cpp
-_reg.add_system<lifetime>(systems::lifetime_system{_dt, _dead});
+const Entity spark = registry.spawnEntity();
+registry.addComponent(spark, Lifetime{0.5});
 ```
 
-Anything that must also reach the clients (a new kind of entity, for example) needs a new
-value of `protocol::entity_kind`, a documented change in
-[the protocol](../protocol/rtype-protocol.md), and handling in the client's renderer.
+## 5. Run it
 
-## 5. Test it
+The scheduler is driven by the step callback of the game loop:
 
-Add a case to `game/tests/test_game.cpp`: build a `registry`, call
-`register_components`, spawn entities, run the system, check the result. Systems depend only
-on components, so no window or socket is needed.
+```cpp
+GameLoop loop(
+    FixedTimestep(1.0 / 60.0, 5), clock,
+    [&](double step) { scheduler.run(registry, step); });
+loop.run();
+```
+
+`clock` returns the time in seconds. In a test, pass a function returning a variable you
+control and call `loop.tick()` yourself.
+
+## 6. Test it
+
+No window or socket is needed:
+
+```cpp
+double now = 0.0;
+GameLoop loop(
+    FixedTimestep(0.25, 5), [&now] { return now; },
+    [&](double step) { scheduler.run(registry, step); });
+
+now = 0.5;
+loop.tick();
+loop.tick();
+REQUIRE_FALSE(registry.isAlive(spark));
+```
+
+Put the test in `engine/tests/` for engine code, or in the tests of the module that owns the
+system, and register the file in the matching `CMakeLists.txt`.
+
+## Several components, several phases
+
+- Systems of the same phase run in registration order. Put input and network reads in
+  `PRE_UPDATE`, gameplay in `UPDATE`, cleanup in `POST_UPDATE`.
+- To iterate by hand inside a raw system, use `makeZipper` or `makeIndexedZipper` on
+  `registry.getComponents<C>()`.
 
 ## Rules of thumb
 
 - Components hold data only. Logic lives in systems.
-- Do not create or kill entities while iterating a component array: collect first, act after
-  (arrays can be reallocated).
-- A reference to a component (`auto& c = array[i]`) is invalidated as soon as an entity is
-  spawned. Copy the values you need.
+- Do not create or kill entities while iterating a component array.
+- A reference to a component is invalidated as soon as an entity is spawned. Copy the values
+  you need.
+- If the new entity must reach the clients, it also needs a change in
+  [the protocol](../protocol/rtype-protocol.md) and in the client.

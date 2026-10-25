@@ -80,9 +80,13 @@ class Zipper {
 public:
     using Iterator = ZipperIterator<Arrays...>;
 
+    /** @param arrays The arrays to walk in lockstep, at least one. */
     explicit Zipper(Arrays &...arrays);
 
+    /** @return An iterator on the first entity owning every component. */
     [[nodiscard]] Iterator begin() const;
+
+    /** @return The past-the-end iterator. */
     [[nodiscard]] Iterator end() const;
 
 private:

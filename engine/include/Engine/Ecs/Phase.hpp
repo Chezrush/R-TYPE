@@ -26,6 +26,7 @@ enum class Phase : std::uint8_t {
     POST_UPDATE,
 };
 
+/** @brief Number of phases, the size of an array indexed by Phase. */
 inline constexpr std::size_t PHASE_COUNT = 3;
 
 /** @return A static, human-readable name of the phase. */

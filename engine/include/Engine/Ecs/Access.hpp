@@ -32,7 +32,10 @@ public:
     template <typename Component>
     Access &write();
 
+    /** @return The component types declared as read. */
     [[nodiscard]] const TypeSet &reads() const noexcept;
+
+    /** @return The component types declared as written. */
     [[nodiscard]] const TypeSet &writes() const noexcept;
 
     /**
