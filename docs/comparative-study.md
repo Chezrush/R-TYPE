@@ -48,7 +48,7 @@ repo. *To complete:* pin a `builtin-baseline` once the team agrees on a vcpkg co
 | Need | Chosen | Why / alternatives |
 | --- | --- | --- |
 | Entity storage | **ECS with sparse arrays** | composition over inheritance, decoupled systems. Alternatives: OOP hierarchy (rigid), archetypes (faster but more complex) |
-| Multi-component iteration | custom `zipper` | no boilerplate in systems, skips missing components |
+| Multi-component iteration | custom `zipper` | no boilerplate in systems, skips missing components. Cost measured in [section 8](#8-ecs-measurements) |
 | Subsystem communication | typed `event_bus` (mediator) | no direct dependencies between subsystems |
 | Game pacing | fixed timestep (60 Hz) with clock-based sleeping | deterministic, independent from CPU speed |
 | Collisions | AABB, O(missiles × enemies) | fine for ≤ ~150 entities. Spatial hashing if the counts grow |
@@ -76,3 +76,100 @@ server database (overkill for this scale). *To complete if Part 2 needs persiste
 Known gaps: no encryption or authentication, a spoofed source address can hijack a session,
 no rate limiting per client. *To complete:* long-term monitoring plan (log malformed-packet
 counters, run the fuzz tests in CI, dependency updates through vcpkg baseline bumps).
+
+## 8. ECS measurements
+
+Measured on 2026-10-25 with the `rtype_engine_bench` program (`engine/bench/`), built from the
+`main` branch at commit `687e236`.
+
+### Conditions
+
+| Item | Value |
+| --- | --- |
+| CPU | Intel Core i7-9700K, 3.6 GHz, 8 cores, 1 thread per core |
+| System | Linux 6.18 (WSL2 on a Windows host), nothing else deliberately stopped |
+| Compiler | GCC 13.3.0, CMake `Release` (`-O3 -DNDEBUG`) |
+| Build | `-DRTYPE_BUILD_BENCHMARKS=ON`, tests and demos off |
+| Run | `rtype_engine_bench <entities> 30`, one process per entity count |
+| Repetitions | 30 per case, the first one is not discarded |
+| Timer | `std::chrono::steady_clock`, one reading around each repetition |
+| Components | `Position` and `Velocity`, two `float` each |
+
+To reproduce:
+
+```sh
+cmake -S . -B build/bench -G Ninja -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+      -DRTYPE_BUILD_BENCHMARKS=ON
+cmake --build build/bench --target rtype_engine_bench
+build/bench/bin/rtype_engine_bench 100000 30
+```
+
+### What each case measures
+
+| Case | Measured (per repetition) |
+| --- | --- |
+| `zipper` | iterate the entities owning `Position` and `Velocity` and update the position |
+| `spawn` | `spawnEntity` N times on an empty registry, no component |
+| `kill` | `killEntity` on those N entities, no component |
+| `cmd-record` | record one `add<Position>` command per entity in a `CommandBuffer` |
+| `cmd-flush` | flush those N commands into the registry |
+| `scheduler` | `Scheduler::run` with three systems in three phases over N entities |
+
+The setup of each repetition (building the world, spawning the entities that `kill` and
+`cmd-*` need) is outside the timed section.
+
+### Results
+
+Mean time in nanoseconds per entity (or per command), lower is better.
+
+| Case | 1 000 | 10 000 | 100 000 | 1 000 000 |
+| --- | ---: | ---: | ---: | ---: |
+| `zipper` | 1.2 | 1.2 | 2.3 | 3.5 |
+| `spawn` | 7.4 | 7.6 | 9.1 | 8.8 |
+| `kill` | 8.8 | 8.7 | 11.0 | 10.0 |
+| `cmd-record` | 19.9 | 19.1 | 21.2 | 19.7 |
+| `cmd-flush` | 40.1 | 56.4 | 63.4 | 57.2 |
+| `scheduler` | 18.2 | 20.8 | 23.0 | 22.7 |
+
+The same data as milliseconds for one repetition at 100 000 entities:
+
+| Case | Best (ms) | Mean (ms) |
+| --- | ---: | ---: |
+| `zipper` | 0.126 | 0.225 |
+| `spawn` | 0.735 | 0.914 |
+| `kill` | 0.831 | 1.097 |
+| `cmd-record` | 1.818 | 2.121 |
+| `cmd-flush` | 5.574 | 6.340 |
+| `scheduler` | 1.879 | 2.296 |
+
+### Reading the results
+
+- **Cost per frame.** A frame at 60 Hz lasts 16.7 ms. The scheduler with three systems takes
+  18 µs for 1 000 entities, about 0.1 % of that budget, and 2.3 ms for 100 000 entities. The
+  game is expected to hold about 150 entities (section 5), so the ECS is not a bottleneck at
+  that scale.
+- **Iteration.** The `zipper` stays at about 1.2 ns per entity up to 10 000 entities and
+  rises to 3.5 ns at one million. The data of a million entities is larger than the CPU
+  caches, which is the likely reason, but we did not verify it.
+- **Scheduler against raw iteration.** Each system of the scheduler costs about 7 ns per
+  entity, against 1.2 ns for the raw `zipper` loop, although the `probe` and `wrap` systems
+  do almost nothing. The typed adapter (indexed zipper, then `entityAt` to rebuild the handle
+  of each entity) is where the difference comes from. We did not profile it, so we do not know
+  which part dominates.
+- **Command buffer.** Recording a command costs about 20 ns, flushing it 40 to 63 ns. Each
+  command is a separately allocated object applied through a virtual call, then goes through
+  the registry lookup. The flush is the expensive half; this was not profiled either.
+- **Spawn and kill.** About 8 to 11 ns each. These runs have no component registered, so the
+  cost of removing the components of a killed entity (one virtual `erase` per registered
+  storage) is **not** included.
+
+### Limits of these numbers
+
+- One machine, run under WSL2: the scheduling noise of the host is not controlled. The mean
+  is noticeably higher than the best time from 100 000 entities (`zipper`: 0.126 ms best,
+  0.225 ms mean), so we read the `ns` figures as orders of magnitude, not as exact values.
+- No alternative was benchmarked. We measured the cost of our own choices, not a gain over
+  an archetype storage, a dependency graph or another command encoding.
+- Entities have two components and the same shape, which is the best case for the `zipper`.
+- The benchmark runs in one thread and the data stays in the cache for small counts.
