@@ -21,7 +21,9 @@ nav:
   - Guides:
       - Getting started: guides/getting-started.md
       - Adding a component and a system: guides/adding-a-system.md
-  - Architecture: architecture/overview.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - ECS: architecture/ecs.md
   - Protocol: protocol/rtype-protocol.md
   - Design decisions: decisions.md
   - Comparative study: comparative-study.md
