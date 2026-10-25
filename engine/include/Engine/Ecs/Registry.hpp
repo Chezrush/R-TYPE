@@ -85,6 +85,7 @@ public:
     template <typename Component>
     [[nodiscard]] SparseArray<Component> &getComponents();
 
+    /** @copydoc getComponents() */
     template <typename Component>
     [[nodiscard]] const SparseArray<Component> &getComponents() const;
 

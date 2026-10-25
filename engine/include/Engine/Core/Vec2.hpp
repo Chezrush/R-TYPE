@@ -22,12 +22,17 @@ namespace engine::core {
  * Use nearlyEqual() to compare the results of floating-point computations.
  */
 struct Vec2 {
+    /** @brief Horizontal component. */
     float x = 0.0F;
+
+    /** @brief Vertical component. */
     float y = 0.0F;
 
     friend bool operator==(const Vec2 &, const Vec2 &) = default;
 };
 
+/** @name Component-wise arithmetic, scalar operations scale both axes. */
+///@{
 Vec2 &operator+=(Vec2 &lhs, const Vec2 &rhs) noexcept;
 Vec2 &operator-=(Vec2 &lhs, const Vec2 &rhs) noexcept;
 Vec2 &operator*=(Vec2 &vector, float scalar) noexcept;
@@ -39,6 +44,7 @@ Vec2 &operator/=(Vec2 &vector, float scalar) noexcept;
 [[nodiscard]] Vec2 operator*(Vec2 vector, float scalar) noexcept;
 [[nodiscard]] Vec2 operator*(float scalar, Vec2 vector) noexcept;
 [[nodiscard]] Vec2 operator/(Vec2 vector, float scalar) noexcept;
+///@}
 
 /** @return The dot product of the two vectors. */
 [[nodiscard]] float dot(const Vec2 &lhs, const Vec2 &rhs) noexcept;
