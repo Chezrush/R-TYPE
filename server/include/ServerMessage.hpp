@@ -15,6 +15,12 @@
 
 namespace rtype::server {
 
+inline constexpr std::size_t PACKET_HEADER_SIZE = 6;
+inline constexpr std::uint16_t PROTOCOL_MAGIC = 0x5254;
+inline constexpr std::uint8_t PROTOCOL_VERSION = 1;
+inline constexpr int MAX_MESSAGE_TYPE = 8;
+
+
 /**
  * @brief Command received from the network and processed by the simulation.
  *
@@ -26,22 +32,26 @@ struct IncomingMessage {
     std::string payload;
 };
 
-enum class MessageType {
-    HELLO,
-    WELCOME,
-    GOODBYE,
-    INPUT,
-    ENTITYSPAWN,
-    ENTITYSTATE,
-    ENTITYDESTROY,
-    PLAYERLEFT
+enum class MessageType : uint8_t {
+    HELLO = 1,
+    WELCOME = 2,
+    GOODBYE = 3,
+    INPUT = 4,
+    ENTITYSPAWN = 5,
+    ENTITYSTATE = 6,
+    ENTITYDESTROY = 7,
+    PLAYERLEFT = 8
 };
 
-struct DecryptedMessage {
-    unsigned short magicNumber;
-    unsigned short version;
-    MessageType type;
-    unsigned short size;
+struct MessageHeader {
+    std::uint16_t magicNumber;
+    std::uint8_t version;
+    MessageType type = HELLO;
+    std::uint16_t size;
+};
+
+struct MessageBody {
+
 };
 
 /**

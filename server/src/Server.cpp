@@ -6,9 +6,11 @@
 */
 
 #include "Server.hpp"
+#include "ServerHelpers.hpp"
 #include <iostream>
 
 namespace rtype::server {
+
 
 using nanosecond = std::chrono::nanoseconds;
 
@@ -115,7 +117,9 @@ void Server::updateSimulationTick(nanosecond timestep,
 void Server::readIncomingMessage()
 {
     while (auto message = _incomingMessages.handleDequeue()) {
-        decodeClientPacket(*message);
+        if (!decodeClientPacket(*message)) {
+            continue;
+        }
         /*
          * to do:
          * apply message->payload to the simulation state.
@@ -123,9 +127,38 @@ void Server::readIncomingMessage()
     }
 }
 
+std::optional<MessageHeader> Server::parsHeader(std::string &payload) const
+{
+    MessageHeader header;
+
+    if (payload.size() < PACKET_HEADER_SIZE) {
+        return std::nullopt;
+    }
+    const auto data = payload.data();
+    const auto rawType = static_cast<unsigned char>(data[3]);
+    header.magicNumber = ServerHelpers::readUint16BigEndian(data);
+    header.version = static_cast<std::uint8_t>(data[2]);
+    header.type = static_cast<MessageType>(rawType);
+    header.size = ServerHelpers::readUint16BigEndian(data + 4);
+
+    if (header.magicNumber != PROTOCOL_MAGIC ||
+    header.version != PROTOCOL_VERSION ||
+    rawType < 1U ||
+    rawType > MAX_MESSAGE_TYPE ||
+    header.size != payload.size() - PACKET_HEADER_SIZE) {
+        return std::nullopt;
+    }
+    return header;
+}
+
 bool Server::decodeClientPacket(IncomingMessage &message) const noexcept
 {
+    auto header = parsHeader(message.payload);
+
+    if (!header)
+        return false;
     
+
 }
 
 void Server::runSimulationLoop(const std::stop_token &stopToken,

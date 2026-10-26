@@ -13,7 +13,8 @@
 #include <chrono>
 #include <cstdint>
 #include <thread>
-
+#include <cstddef>
+#include <cstdint>
 #include <asio.hpp>
 #include "ServerMessage.hpp"
 
@@ -90,6 +91,7 @@ private:
     void readIncomingMessage();
     void sendOutgoingMessages();
     bool decodeClientPacket(IncomingMessage &message) const noexcept;
+    std::optional<MessageHeader> parsHeader(std::string &payload) const;
 
     [[nodiscard]] std::chrono::nanoseconds simulationInterval() const noexcept;
 
