@@ -156,10 +156,3 @@ after its `destroy`, so the controller forgets our ship's id as soon as it is de
 
 The protocol has no lives field yet: lives are counted on the client (3 to start). The
 controller unsubscribes its listeners when destroyed, so the `EventBus` must outlive it.
-
-### Demo
-
-`rtype_hud_demo` (built with `RTYPE_BUILD_DEMOS`) opens a window with a scrolling starfield and
-plays the server's part by publishing the same events: arrows move, Space charges the beam
-(release when full for +500), K gets your ship killed (respawned by a new `spawn` 2 s later), J makes P3 join or
-leave, N goes to the next level. It uses `assets/fonts/hud.ttf` when present, a system font otherwise.

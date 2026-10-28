@@ -5,8 +5,8 @@
 ## CMakeLists.txt
 ##
 
-# Client code without SFML (HUD state and widgets), shared by the executable,
-# the demos and the tests.
+# Client code without SFML (HUD state and widgets), shared by the executable
+# and the tests.
 add_library(rtype_client_core STATIC
     src/Hud/BeamGauge.cpp
     src/Hud/HudController.cpp
@@ -19,14 +19,6 @@ target_link_libraries(rtype_client_core
 add_executable(r-type_client src/main.cpp)
 target_include_directories(r-type_client PRIVATE include)
 target_link_libraries(r-type_client PRIVATE rtype_warnings)
-
-if(RTYPE_BUILD_DEMOS)
-    add_executable(rtype_hud_demo demo/HudDemo.cpp)
-    target_link_libraries(rtype_hud_demo
-        PRIVATE rtype_client_core rtype::engine_render rtype_warnings)
-    target_compile_definitions(rtype_hud_demo
-        PRIVATE RTYPE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets")
-endif()
 
 rtype_add_catch_test(rtype_client_tests
     tests/Hud/BeamGauge.cpp
