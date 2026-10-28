@@ -14,6 +14,7 @@ namespace client::hud {
 
 namespace {
 
+using engine::core::Vec2;
 using engine::ecs::Entity;
 using engine::ecs::components::UIAnchor;
 using engine::ecs::components::UIColor;
@@ -21,7 +22,7 @@ using engine::ecs::components::UIPanel;
 using engine::ecs::components::UIProgressBar;
 using engine::ecs::components::UIText;
 using engine::ecs::components::UITextAlign;
-using engine::ecs::components::Vec2;
+using engine::ecs::components::UITransform;
 
 struct WidgetLayout {
     UIAnchor anchor;
@@ -112,25 +113,38 @@ UIPanel colorPanel(UIColor color)
 
 } // namespace
 
-HudView::HudView(std::string fontId, std::string shipTextureId, float width,
-                 float height)
-    : _fontId(std::move(fontId)),
-      _shipTextureId(std::move(shipTextureId)),
-      _layout(width, height)
+template <typename Component>
+Component &HudView::component(Entity entity)
+{
+    return *_registry.getComponents<Component>().get(entity);
+}
+
+HudView::HudView(engine::ecs::Registry &registry, std::string fontId,
+                 std::string shipTextureId, float width)
+    : _registry(registry),
+      _fontId(std::move(fontId)),
+      _shipTextureId(std::move(shipTextureId))
 {
     buildBar();
     buildPlayerTags();
     buildMarkers();
     sync(HudState{});
-    resize(width, height);
+    resize(width);
 }
 
-void HudView::resize(float width, float height)
+HudView::~HudView()
+{
+    for (const auto *group :
+         {&_widgets, &_tags, &_tagOutlines, &_markers, &_markerOutlines}) {
+        for (const Entity entity : *group)
+            _registry.killEntity(entity);
+    }
+}
+
+void HudView::resize(float width)
 {
     for (const HudWidget bar : {HudWidget::BAR, HudWidget::BAR_EDGE})
-        _transforms.get(widget(bar))->size.x = width;
-    _layout.setResolution(width, height);
-    _layout.update(_transforms);
+        component<UITransform>(widget(bar)).size.x = width;
 }
 
 void HudView::sync(const HudState &state)
@@ -138,7 +152,6 @@ void HudView::sync(const HudState &state)
     syncTags(state);
     syncCounters(state);
     syncMarkers(state);
-    _layout.update(_transforms);
 }
 
 void HudView::setMarker(std::size_t player, std::optional<Vec2> shipTop)
@@ -150,9 +163,9 @@ void HudView::setMarker(std::size_t player, std::optional<Vec2> shipTop)
         return;
     const Vec2 offset{shipTop->x - MARKER_SIZE.x / 2.0f,
                       shipTop->y - MARKER_SIZE.y - MARKER_GAP};
-    _transforms.get(_markers.at(player))->offset = offset;
-    _transforms.get(_markerOutlines.at(player))->offset = {offset.x - OUTLINE,
-                                                           offset.y - OUTLINE};
+    component<UITransform>(_markers.at(player)).offset = offset;
+    component<UITransform>(_markerOutlines.at(player)).offset = {
+        offset.x - OUTLINE, offset.y - OUTLINE};
 }
 
 Entity HudView::widget(HudWidget widget) const
@@ -180,27 +193,6 @@ Entity HudView::markerOutline(std::size_t player) const
     return _markerOutlines.at(player);
 }
 
-const engine::ecs::SparseArray<engine::ecs::components::UITransform> &
-HudView::transforms() const noexcept
-{
-    return _transforms;
-}
-
-const engine::ecs::SparseArray<UIPanel> &HudView::panels() const noexcept
-{
-    return _panels;
-}
-
-const engine::ecs::SparseArray<UIProgressBar> &HudView::bars() const noexcept
-{
-    return _bars;
-}
-
-const engine::ecs::SparseArray<UIText> &HudView::texts() const noexcept
-{
-    return _texts;
-}
-
 std::string HudView::formatScore(std::uint32_t score)
 {
     const std::string digits = std::to_string(std::min(score, MAX_SCORE));
@@ -220,14 +212,14 @@ UIColor HudView::playerColor(std::size_t player)
 
 Entity HudView::spawn(UIAnchor anchor, Vec2 offset, Vec2 size, int zIndex)
 {
-    const Entity entity = _allocator.create();
-    engine::ecs::components::UITransform transform;
+    const Entity entity = _registry.spawnEntity();
+    UITransform transform;
 
     transform.anchor = anchor;
     transform.offset = offset;
     transform.size = size;
     transform.zIndex = zIndex;
-    _transforms.insert(entity, transform);
+    _registry.addComponent(entity, transform);
     return entity;
 }
 
@@ -242,28 +234,29 @@ void HudView::buildBar()
     for (const WidgetLayout &layout : LAYOUT)
         _widgets.push_back(
             spawn(layout.anchor, layout.offset, layout.size, layout.zIndex));
-    _panels.insert(widget(HudWidget::BAR), colorPanel(BAR_COLOR));
-    _panels.insert(widget(HudWidget::BAR_EDGE), colorPanel(EDGE_COLOR));
-    _panels.insert(widget(HudWidget::BEAM_FRAME), colorPanel(BEAM_FRAME_COLOR));
+    _registry.addComponent(widget(HudWidget::BAR), colorPanel(BAR_COLOR));
+    _registry.addComponent(widget(HudWidget::BAR_EDGE), colorPanel(EDGE_COLOR));
+    _registry.addComponent(widget(HudWidget::BEAM_FRAME),
+                           colorPanel(BEAM_FRAME_COLOR));
     UIPanel icon = colorPanel(OUTLINE_COLOR);
     icon.textureId = _shipTextureId;
-    _panels.insert(widget(HudWidget::LIVES_ICON), icon);
+    _registry.addComponent(widget(HudWidget::LIVES_ICON), icon);
     buildBarTexts();
 }
 
 void HudView::buildBarTexts()
 {
-    _texts.insert(widget(HudWidget::LIVES),
-                  label("", UITextAlign::LEFT, BAR_TEXT_SIZE));
-    _texts.insert(widget(HudWidget::STAGE),
-                  label("", UITextAlign::LEFT, BAR_TEXT_SIZE));
-    _texts.insert(widget(HudWidget::BEAM_LABEL),
-                  label("BEAM", UITextAlign::RIGHT, BAR_TEXT_SIZE));
-    _bars.insert(
+    _registry.addComponent(widget(HudWidget::LIVES),
+                           label("", UITextAlign::LEFT, BAR_TEXT_SIZE));
+    _registry.addComponent(widget(HudWidget::STAGE),
+                           label("", UITextAlign::LEFT, BAR_TEXT_SIZE));
+    _registry.addComponent(widget(HudWidget::BEAM_LABEL),
+                           label("BEAM", UITextAlign::RIGHT, BAR_TEXT_SIZE));
+    _registry.addComponent(
         widget(HudWidget::BEAM_GAUGE),
         UIProgressBar{0.0f, 1.0f, 0.0f, {}, BAR_COLOR, BEAM_FILL_COLOR});
-    _texts.insert(widget(HudWidget::SCORE),
-                  label("", UITextAlign::RIGHT, BAR_TEXT_SIZE));
+    _registry.addComponent(widget(HudWidget::SCORE),
+                           label("", UITextAlign::RIGHT, BAR_TEXT_SIZE));
 }
 
 void HudView::buildPlayerTags()
@@ -275,10 +268,11 @@ void HudView::buildPlayerTags()
             spawn(UIAnchor::BOTTOM_LEFT, {x - OUTLINE, y + OUTLINE},
                   {TAG_SIZE.x + 2 * OUTLINE, TAG_SIZE.y + 2 * OUTLINE}, 2));
         _tags.push_back(spawn(UIAnchor::BOTTOM_LEFT, {x, y}, TAG_SIZE, 3));
-        _panels.insert(_tagOutlines.back(), colorPanel(HIDDEN));
-        _panels.insert(_tags.back(), colorPanel(OFFLINE_TAG_COLOR));
-        _texts.insert(_tags.back(),
-                      label(playerTag(i), UITextAlign::CENTER, BAR_TEXT_SIZE));
+        _registry.addComponent(_tagOutlines.back(), colorPanel(HIDDEN));
+        _registry.addComponent(_tags.back(), colorPanel(OFFLINE_TAG_COLOR));
+        _registry.addComponent(
+            _tags.back(),
+            label(playerTag(i), UITextAlign::CENTER, BAR_TEXT_SIZE));
     }
 }
 
@@ -291,10 +285,10 @@ void HudView::buildMarkers()
         _markerOutlines.push_back(
             spawn(UIAnchor::TOP_LEFT, {}, outlineSize, 10));
         _markers.push_back(spawn(UIAnchor::TOP_LEFT, {}, MARKER_SIZE, 11));
-        _panels.insert(_markerOutlines.back(), colorPanel(HIDDEN));
-        _panels.insert(_markers.back(), colorPanel(HIDDEN));
-        _texts.insert(_markers.back(),
-                      label("", UITextAlign::CENTER, MARKER_TEXT_SIZE));
+        _registry.addComponent(_markerOutlines.back(), colorPanel(HIDDEN));
+        _registry.addComponent(_markers.back(), colorPanel(HIDDEN));
+        _registry.addComponent(
+            _markers.back(), label("", UITextAlign::CENTER, MARKER_TEXT_SIZE));
     }
 }
 
@@ -313,8 +307,8 @@ void HudView::syncTags(const HudState &state)
 void HudView::syncCounters(const HudState &state)
 {
     const float row = static_cast<float>(state.localPlayer.value_or(0));
-    UIPanel &icon = *_panels.get(widget(HudWidget::LIVES_ICON));
-    UIProgressBar &beam = *_bars.get(widget(HudWidget::BEAM_GAUGE));
+    auto &icon = component<UIPanel>(widget(HudWidget::LIVES_ICON));
+    auto &beam = component<UIProgressBar>(widget(HudWidget::BEAM_GAUGE));
 
     icon.textureRect = {SHIP_FRAME_COLUMN * SHIP_FRAME_WIDTH,
                         row * SHIP_FRAME_HEIGHT, SHIP_FRAME_WIDTH,
@@ -342,15 +336,15 @@ void HudView::syncMarkers(const HudState &state)
 
 void HudView::setPanelColor(Entity entity, UIColor color)
 {
-    _panels.get(entity)->color = color;
+    component<UIPanel>(entity).color = color;
 }
 
 void HudView::setText(Entity entity, std::string text, UIColor color)
 {
-    UIText &component = *_texts.get(entity);
+    auto &widgetText = component<UIText>(entity);
 
-    component.text = std::move(text);
-    component.color = color;
+    widgetText.text = std::move(text);
+    widgetText.color = color;
 }
 
 } // namespace client::hud
