@@ -120,3 +120,46 @@ window.display();
 at most once, through the generic `ResourceCache<T>`. A missing file returns `nullptr` and is
 remembered, so it is not read again every frame. The renderer then skips the text, or
 falls back to the panel color for a missing texture: a missing asset never stops a frame.
+
+## In-game HUD
+
+The arcade HUD lives in `client/` (`Client/Hud/`), in the SFML-free `rtype_client_core`
+library:
+
+| Class | Role |
+| --- | --- |
+| `HudController` | Listens to game events on the `EventBus` and keeps a plain `HudState` (local player, lives, score, stage, beam charge, connected players). |
+| `BeamGauge` | Beam charge: empty when idle, fills while shoot is held, empty again on release. |
+| `HudView` | Builds the widgets from `UITransform`, `UIPanel`, `UIText` and `UIProgressBar`, and copies a `HudState` into them each frame. |
+
+Bottom bar, left to right: player tags `P1`-`P4` (player colors, grey when the slot is empty,
+the local player outlined in white), ship icon and lives, stage, `BEAM` gauge (white when full),
+score on 7 digits (`0079500`). Every ship also gets its colored tag above it
+(`HudView::setMarker`), outlined in white for the local player.
+
+### Where the data comes from
+
+The HUD never reads the network. The network layer publishes one event per decoded message
+(`Client/Events/GameEvents.hpp`), and the controller reacts:
+
+| Event | Protocol message (section 6) | HUD effect |
+| --- | --- | --- |
+| `WelcomeReceived` | `welcome` | local player index, its slot is connected |
+| `EntitySpawned` | `spawn` | a player ship marks its owner connected; the one owned by the local player is our ship (on join and on every respawn) |
+| `EntityDestroyed` | `destroy` | our ship: not alive, beam emptied, one life lost when `reason` is `KILLED` |
+| `PlayerJoined` / `PlayerLeft` | `player_joined` / `player_left` | player slot connected / free |
+| `ScoreChanged` | `score` | score of the local player |
+| `GameStateChanged` | `game_state` | level shown as `STAGE n`, game phase kept for the overlays |
+
+Player indexes outside the 4 HUD slots (and `owner = 0xFF`) are ignored. A `net_id` can be reused
+after its `destroy`, so the controller forgets our ship's id as soon as it is destroyed.
+
+The protocol has no lives field yet: lives are counted on the client (3 to start). The
+controller unsubscribes its listeners when destroyed, so the `EventBus` must outlive it.
+
+### Demo
+
+`rtype_hud_demo` (built with `RTYPE_BUILD_DEMOS`) opens a window with a scrolling starfield and
+plays the server's part by publishing the same events: arrows move, Space charges the beam
+(release when full for +500), K gets your ship killed (respawned by a new `spawn` 2 s later), J makes P3 join or
+leave, N goes to the next level. It uses `assets/fonts/hud.ttf` when present, a system font otherwise.
