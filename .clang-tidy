@@ -49,7 +49,7 @@ CheckOptions:
   - { key: readability-identifier-naming.ConstexprVariableCase, value: UPPER_CASE }
   - { key: readability-identifier-naming.EnumConstantCase,      value: UPPER_CASE }
   - { key: readability-identifier-naming.MacroDefinitionCase,   value: UPPER_CASE }
-  - { key: readability-identifier-naming.MacroDefinitionIgnoredRegexp, value: '^[A-Z0-9]+_HPP_$' }
+  - { key: readability-identifier-naming.MacroDefinitionIgnoredRegexp, value: '^[A-Z0-9]+_(HPP|TPP)_$' }
 
   # K1: private attributes prefixed with an underscore
   - { key: readability-identifier-naming.PrivateMemberPrefix,   value: _ }
@@ -61,5 +61,6 @@ CheckOptions:
   - { key: readability-identifier-naming.EnumCase,          value: CamelCase }
   - { key: readability-identifier-naming.UnionCase,         value: CamelCase }
   - { key: readability-identifier-naming.TypeAliasCase,     value: CamelCase }
+  - { key: readability-identifier-naming.TypeAliasIgnoredRegexp, value: "^(value_type|reference|difference_type|iterator_category)$" }
   - { key: readability-identifier-naming.TypedefCase,       value: CamelCase }
   - { key: readability-identifier-naming.TypeTemplateParameterCase, value: CamelCase }

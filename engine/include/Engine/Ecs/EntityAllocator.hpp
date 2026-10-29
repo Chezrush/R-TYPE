@@ -47,6 +47,16 @@ public:
     /** @brief Number of live entities. */
     [[nodiscard]] std::size_t aliveCount() const noexcept;
 
+    /**
+     * @brief Handle of the entity currently using an index.
+     *
+     * Meant for code that only holds an index, such as a component array
+     * iteration. It cannot tell whether the index is in use: call it for an
+     * index that owns a component.
+     * @throws std::out_of_range if the index was never allocated.
+     */
+    [[nodiscard]] Entity handleAt(std::size_t index) const;
+
 private:
     std::vector<std::uint32_t> _generations;
     std::vector<std::uint32_t> _freeIndices;

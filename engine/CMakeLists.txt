@@ -6,9 +6,18 @@
 ##
 
 add_library(rtype_engine STATIC
+    src/Core/EventBus.cpp
+    src/Core/FixedTimestep.cpp
+    src/Core/GameLoop.cpp
+    src/Core/Vec2.cpp
     src/Core/Version.cpp
+    src/Ecs/Access.cpp
+    src/Ecs/CommandBuffer.cpp
     src/Ecs/Entity.cpp
-    src/Ecs/EntityAllocator.cpp)
+    src/Ecs/EntityAllocator.cpp
+    src/Ecs/Phase.cpp
+    src/Ecs/Scheduler.cpp
+    src/Ecs/Registry.cpp)
 add_library(rtype::engine ALIAS rtype_engine)
 
 target_include_directories(rtype_engine PUBLIC include)
@@ -17,10 +26,22 @@ target_link_libraries(rtype_engine PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_engine_tests
     tests/Version.cpp
+    tests/Core/EventBus.cpp
+    tests/Core/FixedTimestep.cpp
+    tests/Core/GameLoop.cpp
+    tests/Core/Vec2.cpp
+    tests/Ecs/Access.cpp
+    tests/Ecs/CommandBuffer.cpp
     tests/Ecs/Entity.cpp
     tests/Ecs/EntityAllocator.cpp
+    tests/Ecs/IndexedZipper.cpp
     tests/Ecs/IStorage.cpp
-    tests/Ecs/SparseArray.cpp)
+    tests/Ecs/Phase.cpp
+    tests/Ecs/Scheduler.cpp
+    tests/Ecs/Registry.cpp
+    tests/Ecs/SparseArray.cpp
+    tests/Ecs/Zipper.cpp
+    tests/Ecs/ZipperConcepts.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_engine_tests PRIVATE rtype::engine)
 endif()
@@ -28,4 +49,12 @@ endif()
 if(RTYPE_BUILD_DEMOS)
     add_executable(rtype_engine_demo demo/Main.cpp)
     target_link_libraries(rtype_engine_demo PRIVATE rtype::engine rtype_warnings)
+endif()
+
+if(RTYPE_BUILD_BENCHMARKS)
+    add_executable(rtype_engine_bench
+        bench/Cases.cpp
+        bench/Main.cpp
+        bench/Series.cpp)
+    target_link_libraries(rtype_engine_bench PRIVATE rtype::engine rtype_warnings)
 endif()

@@ -65,41 +65,41 @@ std::size_t SparseArray<Component>::size() const noexcept
 }
 
 template <typename Component>
-typename SparseArray<Component>::iterator
+typename SparseArray<Component>::Iterator
 SparseArray<Component>::begin() noexcept
 {
     return _slots.begin();
 }
 
 template <typename Component>
-typename SparseArray<Component>::iterator SparseArray<Component>::end() noexcept
+typename SparseArray<Component>::Iterator SparseArray<Component>::end() noexcept
 {
     return _slots.end();
 }
 
 template <typename Component>
-typename SparseArray<Component>::const_iterator
+typename SparseArray<Component>::ConstIterator
 SparseArray<Component>::begin() const noexcept
 {
     return _slots.begin();
 }
 
 template <typename Component>
-typename SparseArray<Component>::const_iterator
+typename SparseArray<Component>::ConstIterator
 SparseArray<Component>::end() const noexcept
 {
     return _slots.end();
 }
 
 template <typename Component>
-typename SparseArray<Component>::const_iterator
+typename SparseArray<Component>::ConstIterator
 SparseArray<Component>::cbegin() const noexcept
 {
     return _slots.cbegin();
 }
 
 template <typename Component>
-typename SparseArray<Component>::const_iterator
+typename SparseArray<Component>::ConstIterator
 SparseArray<Component>::cend() const noexcept
 {
     return _slots.cend();

@@ -19,8 +19,8 @@ flowchart TD
 
 | Module | Content | Does NOT know about |
 | --- | --- | --- |
-| `engine/ecs` | `registry`, `sparse_array`, `zipper` / `indexed_zipper` | the game, rendering, network |
-| `engine/core` | `fixed_timestep_loop`, `stopwatch`, `event_bus`, `concurrent_queue` | the game |
+| `engine/ecs` | `Registry`, `SparseArray`, `Zipper` / `IndexedZipper`, `Scheduler`, `CommandBuffer` | the game, rendering, network |
+| `engine/core` | `FixedTimestep`, `GameLoop`, `EventBus`, `Vec2` | the game |
 | `engine/net` | `udp_socket` (Asio hidden behind a pimpl), `udp_worker` (I/O thread) | the protocol |
 | `protocol` | message structs, `encode` / `decode`, bounds-checked buffers | sockets |
 | `game` | components, constants, factories, gameplay systems | sockets, windows |
@@ -29,16 +29,15 @@ flowchart TD
 
 ## ECS in a nutshell
 
-- An **entity** is an index (`entity_t`), created only by the `registry`.
-- A **component** is plain data (`position`, `velocity`, `tag`, ...), stored in a
-  `sparse_array<Component>` (one slot per entity, empty when the entity lacks it).
-- A **system** is a function that works on a subset of component arrays. Systems are
-  registered with `registry::add_system<Components...>(fn)` and run by `run_systems()`.
-  `zipper` / `indexed_zipper` iterate several arrays at once and skip entities that miss a
+- An **entity** is a handle made of an index and a generation, created only by the `Registry`.
+- A **component** is plain data, stored in a `SparseArray<Component>` (one slot per entity).
+- A **system** is a function registered in a phase of the `Scheduler`. It declares the
+  components it reads and writes and records its structural changes in a `CommandBuffer`.
+  `Zipper` / `IndexedZipper` iterate several arrays at once and skip entities that miss a
   component.
 
-Rendering only needs `position` + `tag`; it never sees health or velocity. That is the
-decoupling the subject asks for.
+Rendering only needs a position and a tag; it never sees health or velocity. That is the
+decoupling the subject asks for. The details are in the [ECS architecture](ecs.md).
 
 ## Server
 

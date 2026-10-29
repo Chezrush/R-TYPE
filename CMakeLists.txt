@@ -22,6 +22,7 @@ option(RTYPE_BUILD_SERVER "Build r-type_server" ON)
 option(RTYPE_BUILD_CLIENT "Build r-type_client (needs SFML)" ON)
 option(RTYPE_BUILD_TESTS "Build the unit tests" ON)
 option(RTYPE_BUILD_DEMOS "Build the engine demo programs" ON)
+option(RTYPE_BUILD_BENCHMARKS "Build the engine benchmarks (not run by ctest)" OFF)
 
 find_package(Threads REQUIRED)
 
