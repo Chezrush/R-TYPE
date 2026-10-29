@@ -9,7 +9,6 @@
 #include <csignal>
 #include <iostream>
 #include <thread>
-
 #include "Server.hpp"
 
 namespace {

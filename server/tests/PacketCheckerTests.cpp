@@ -31,6 +31,7 @@ ServerConfig testConfig()
 /**
  * @brief Header with no session and no acknowledgement.
  */
+
 Bytes emptyHeader()
 {
     return {0x52, 0x54, 0x01, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -50,7 +51,6 @@ bool accepts(Server &server, const Bytes &bytes)
         IncomingMessage{1, std::string(bytes.begin(), bytes.end())});
 }
 
-// Examples of section 13 of docs/protocol/rtype-protocol.md.
 const Bytes HELLO_EXAMPLE = {0x52, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                              0x01, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -70,8 +70,6 @@ const Bytes SPAWN_EXAMPLE =
     packet({0x81, 0x00, 0x0F, 0x00, 0x03, 0x00, 0x09, 0x03, 0x00, 0x00, 0x05,
             0x00, 0x0B, 0x40, 0x20, 0x00, 0x00, 0x00});
 
-} // namespace
-
 void testValidPackets()
 {
     Server server(testConfig());
@@ -80,9 +78,21 @@ void testValidPackets()
     CHECK(accepts(server, INPUT_EXAMPLE));
     CHECK(accepts(server, SNAPSHOT_EXAMPLE));
     CHECK(accepts(server, SPAWN_EXAMPLE));
-    // A packet with no record is a keepalive.
     CHECK(accepts(server, emptyHeader()));
     CHECK(server.rejectedPackets() == 0);
+}
+
+void checkTruncationsRejected(Server &server, const Bytes &example)
+{
+    std::size_t accepted = 0;
+
+    for (std::size_t size = 0; size < example.size(); ++size) {
+        const Bytes truncated(example.begin(),
+                              example.begin() +
+                                  static_cast<std::ptrdiff_t>(size));
+        accepted += accepts(server, truncated) ? 1 : 0;
+    }
+    CHECK(accepted == 1);
 }
 
 void testTruncatedPackets()
@@ -91,16 +101,7 @@ void testTruncatedPackets()
 
     for (const Bytes *example :
          {&HELLO_EXAMPLE, &INPUT_EXAMPLE, &SNAPSHOT_EXAMPLE}) {
-        for (std::size_t size = 0; size < example->size(); ++size) {
-            // Cutting right after the header leaves a valid keepalive.
-            if (size == rtype::server::PACKET_HEADER_SIZE) {
-                continue;
-            }
-            const Bytes truncated(example->begin(),
-                                  example->begin() +
-                                      static_cast<std::ptrdiff_t>(size));
-            CHECK(!accepts(server, truncated));
-        }
+        checkTruncationsRejected(server, *example);
     }
 }
 
@@ -133,7 +134,6 @@ void testInvalidHeaders()
     bytes = emptyHeader();
     bytes[3] = 0x02;
     CHECK(!accepts(server, bytes));
-    // ack set without the ACK_VALID flag
     bytes = emptyHeader();
     bytes[11] = 0x01;
     CHECK(!accepts(server, bytes));
@@ -143,20 +143,20 @@ void testInvalidRecordSizes()
 {
     Server server(testConfig());
 
-    // record prefix cut, then a length running past the packet
     CHECK(!accepts(server, packet({0x05, 0x00})));
     CHECK(!accepts(server, packet({0x05, 0x00, 0x02, 0x00})));
-    // type 0x00 and a reliable record without its rel_id
     CHECK(!accepts(server, packet({0x00, 0x00, 0x00})));
     CHECK(!accepts(server, packet({0x86, 0x00, 0x01, 0x00})));
-    // goodbye with a trailing byte
     CHECK(!accepts(server, packet({0x05, 0x00, 0x02, 0x00, 0x00})));
-    // input announcing 2 samples but carrying 1
     CHECK(!accepts(server, packet({0x10, 0x00, 0x04, 0x00, 0x01, 0x02, 0x00})));
-    // snapshot announcing 1 entity with no entity
     CHECK(!accepts(server, packet({0x11, 0x00, 0x07, 0, 0, 0, 0, 0, 0, 0x01})));
+}
 
+void testRecordCountLimit()
+{
+    Server server(testConfig());
     Bytes records = emptyHeader();
+
     for (int i = 0; i < 64; ++i) {
         records.insert(records.end(), {0x20, 0x00, 0x00});
     }
@@ -169,20 +169,15 @@ void testInvalidFieldValues()
 {
     Server server(testConfig());
 
-    // input count 0, then 9
     CHECK(!accepts(server, packet({0x10, 0x00, 0x03, 0x00, 0x01, 0x00})));
     CHECK(!accepts(server, packet({0x10, 0x00, 0x0C, 0x00, 0x01, 0x09, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0})));
-    // input keys with a reserved bit
     CHECK(!accepts(server, packet({0x10, 0x00, 0x04, 0x00, 0x01, 0x01, 0x20})));
-    // hello name longer than 16 bytes, then with a non printable character
     CHECK(!accepts(server,
                    packet({0x01, 0x00, 0x09, 0, 0, 0, 0, 0, 0, 0, 0, 0x11})));
     CHECK(!accepts(server, packet({0x01, 0x00, 0x0A, 0, 0, 0, 0, 0, 0, 0, 0,
                                    0x01, 0x0A})));
-    // player_left with player_index 16
     CHECK(!accepts(server, packet({0x84, 0x00, 0x04, 0x00, 0x00, 0x10, 0x00})));
-    // welcome with snapshot_rate above tick_rate
     CHECK(
         !accepts(server, packet({0x03, 0x00, 0x0E, 0x00, 0x04, 0x3C, 0x3D, 0x05,
                                  0x00, 0x02, 0xD0, 0x01, 0x2C, 0, 0, 0, 0})));
@@ -192,10 +187,8 @@ void testUnknownValuesAreAccepted()
 {
     Server server(testConfig());
 
-    // unknown unreliable and reliable record types are skipped
     CHECK(accepts(server, packet({0x20, 0x00, 0x02, 0xAA, 0xBB, 0xA0, 0x00,
                                   0x02, 0x00, 0x09})));
-    // open enumerations: goodbye and destroy with an unknown reason
     CHECK(accepts(server, packet({0x05, 0x00, 0x01, 0xFE})));
     CHECK(accepts(server, packet({0x82, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01,
                                   0x7F, 0xFF})));
@@ -217,6 +210,7 @@ int main()
     testBitMutationsDoNotCrash();
     testInvalidHeaders();
     testInvalidRecordSizes();
+    testRecordCountLimit();
     testInvalidFieldValues();
     testUnknownValuesAreAccepted();
     testValidPacketAfterInvalidOne();

@@ -19,7 +19,7 @@
 
 namespace rtype::server {
 
-using udp = asio::ip::udp;
+using Udp = asio::ip::udp;
 
 struct ServerConfig {
     /**
@@ -117,7 +117,7 @@ private:
     OutgoingQueue _outgoingMessages;
 
     asio::io_context _context;
-    udp::socket _socket;
+    Udp::socket _socket;
 };
 
 } /* namespace rtype::server */

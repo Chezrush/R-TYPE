@@ -98,6 +98,7 @@ bool checkInput(std::string_view body) noexcept
     if (count < 1 || count > MAX_INPUTS || body.size() != 3 + count) {
         return false;
     }
+
     for (const char keys : body.substr(3)) {
         if ((static_cast<std::uint8_t>(keys) & ~KEYS_MASK) != 0) {
             return false;

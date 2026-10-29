@@ -12,13 +12,13 @@
 
 namespace rtype::server {
 
-using nanosecond = std::chrono::nanoseconds;
+using Nanosecond = std::chrono::nanoseconds;
 
 Server::Server(ServerConfig config)
     : _config(config),
       _incomingMessages(config.maxQueueCapacity),
       _outgoingMessages(config.maxQueueCapacity),
-      _socket(_context, udp::endpoint(udp::v4(), config.port))
+      _socket(_context, Udp::endpoint(Udp::v4(), config.port))
 {}
 
 Server::~Server()
@@ -72,12 +72,12 @@ std::uint64_t Server::tickCount() const noexcept
     return _tickCount.load();
 }
 
-nanosecond Server::simulationInterval() const noexcept
+Nanosecond Server::simulationInterval() const noexcept
 {
     const double hz = _config.simulationHz > 0 ? _config.simulationHz : 60;
     const auto castedHz = static_cast<double>(hz);
 
-    return std::chrono::duration_cast<nanosecond>(
+    return std::chrono::duration_cast<Nanosecond>(
         std::chrono::duration<double>(1.0 / castedHz));
 }
 
@@ -103,7 +103,7 @@ void Server::sendOutgoingMessages()
     }
 }
 
-void Server::updateSimulationTick(nanosecond timestep, nanosecond &accumulator,
+void Server::updateSimulationTick(Nanosecond timestep, Nanosecond &accumulator,
                                   const std::stop_token &stopToken)
 {
     while (accumulator >= timestep && !stopToken.stop_requested()) {
@@ -137,20 +137,20 @@ std::uint64_t Server::rejectedPackets() const noexcept
 }
 
 void Server::runSimulationLoop(const std::stop_token &stopToken,
-                               nanosecond timestep)
+                               Nanosecond timestep)
 {
     using Clock = std::chrono::steady_clock;
     const auto maxFrameTime =
         std::chrono::duration_cast<Clock::duration>(_config.maxFrameTime);
     auto previousTime = Clock::now();
-    nanosecond accumulator = nanosecond::zero();
+    Nanosecond accumulator = Nanosecond::zero();
 
     while (!stopToken.stop_requested()) {
         const auto currentTime = Clock::now();
         const auto frameTime =
             std::min(currentTime - previousTime, maxFrameTime);
         previousTime = currentTime;
-        accumulator += std::chrono::duration_cast<nanosecond>(frameTime);
+        accumulator += std::chrono::duration_cast<Nanosecond>(frameTime);
         readIncomingMessage();
         updateSimulationTick(timestep, accumulator, stopToken);
         std::this_thread::sleep_until(previousTime + timestep);
