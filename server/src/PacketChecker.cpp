@@ -6,6 +6,7 @@
 */
 
 #include "PacketChecker.hpp"
+
 #include "ServerHelpers.hpp"
 
 namespace rtype::server {

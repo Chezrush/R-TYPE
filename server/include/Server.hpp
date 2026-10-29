@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <thread>
+
 #include "ServerMessage.hpp"
 
 namespace rtype::server {
