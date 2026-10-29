@@ -13,6 +13,7 @@
 class ServerHelpers {
 public:
     static std::uint16_t readUint16BigEndian(const char *data) noexcept;
+    static std::uint32_t readUint32BigEndian(const char *data) noexcept;
     ~ServerHelpers() = default;
 
 protected:

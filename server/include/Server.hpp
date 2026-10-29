@@ -9,18 +9,17 @@
 #define SERVER_HPP_
 
 #include <algorithm>
+#include <asio.hpp>
 #include <atomic>
 #include <chrono>
-#include <cstdint>
-#include <thread>
 #include <cstddef>
 #include <cstdint>
-#include <asio.hpp>
+#include <thread>
 #include "ServerMessage.hpp"
 
 namespace rtype::server {
 
-    using udp = asio::ip::udp;
+using udp = asio::ip::udp;
 
 struct ServerConfig {
     /**
@@ -40,12 +39,15 @@ struct ServerConfig {
      */
     std::size_t maxQueueCapacity = 1024;
 
-    int port = 4242;
+    /**
+     * @brief UDP port of the server, 0 picks a free one.
+     */
+    std::uint16_t port = 4242;
 };
 
 class Server {
 public:
-    explicit Server(ServerConfig config = {}, asio::io_context context) noexcept;
+    explicit Server(ServerConfig config = {});
     ~Server();
 
     Server(const Server &) = delete;
@@ -82,6 +84,16 @@ public:
     void runSimulationLoop(const std::stop_token &stopToken,
                            std::chrono::nanoseconds timestep);
 
+    /**
+     * @brief Queues the packet if it is valid, otherwise drops it.
+     */
+    bool receivePacket(IncomingMessage message);
+
+    /**
+     * @brief Returns the number of packets dropped by receivePacket().
+     */
+    [[nodiscard]] std::uint64_t rejectedPackets() const noexcept;
+
 private:
     void runNetwork(const std::stop_token &stopToken);
     void runSimulation(const std::stop_token &stopToken);
@@ -90,14 +102,13 @@ private:
                               const std::stop_token &stopToken);
     void readIncomingMessage();
     void sendOutgoingMessages();
-    bool decodeClientPacket(IncomingMessage &message) const noexcept;
-    std::optional<MessageHeader> parsHeader(std::string &payload) const;
 
     [[nodiscard]] std::chrono::nanoseconds simulationInterval() const noexcept;
 
     ServerConfig _config;
     std::atomic<bool> _running{false};
     std::atomic<std::uint64_t> _tickCount{0};
+    std::atomic<std::uint64_t> _rejectedPackets{0};
 
     std::jthread _networkThread;
     std::jthread _simulationThread;
@@ -105,6 +116,7 @@ private:
     IncomingQueue _incomingMessages;
     OutgoingQueue _outgoingMessages;
 
+    asio::io_context _context;
     udp::socket _socket;
 };
 

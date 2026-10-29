@@ -6,21 +6,20 @@
 */
 
 #include "Server.hpp"
-#include "ServerHelpers.hpp"
 #include <iostream>
+#include <utility>
+#include "PacketChecker.hpp"
 
 namespace rtype::server {
 
-
 using nanosecond = std::chrono::nanoseconds;
 
-Server::Server(ServerConfig config, asio::io_context context) noexcept
+Server::Server(ServerConfig config)
     : _config(config),
       _incomingMessages(config.maxQueueCapacity),
       _outgoingMessages(config.maxQueueCapacity),
-      _socket(context, udp::endpoint(udp::v4(), config.port))
-{
-}
+      _socket(_context, udp::endpoint(udp::v4(), config.port))
+{}
 
 Server::~Server()
 {
@@ -104,8 +103,7 @@ void Server::sendOutgoingMessages()
     }
 }
 
-void Server::updateSimulationTick(nanosecond timestep,
-                                  nanosecond &accumulator,
+void Server::updateSimulationTick(nanosecond timestep, nanosecond &accumulator,
                                   const std::stop_token &stopToken)
 {
     while (accumulator >= timestep && !stopToken.stop_requested()) {
@@ -117,9 +115,6 @@ void Server::updateSimulationTick(nanosecond timestep,
 void Server::readIncomingMessage()
 {
     while (auto message = _incomingMessages.handleDequeue()) {
-        if (!decodeClientPacket(*message)) {
-            continue;
-        }
         /*
          * to do:
          * apply message->payload to the simulation state.
@@ -127,40 +122,19 @@ void Server::readIncomingMessage()
     }
 }
 
-std::optional<MessageHeader> Server::parsHeader(std::string &payload) const
+bool Server::receivePacket(IncomingMessage message)
 {
-    MessageHeader header;
-
-    if (payload.size() < PACKET_HEADER_SIZE) {
-        return std::nullopt;
-    }
-    const auto data = payload.data();
-    const auto rawType = static_cast<unsigned char>(data[3]);
-    header.magicNumber = ServerHelpers::readUint16BigEndian(data);
-    header.version = static_cast<std::uint8_t>(data[2]);
-    header.type = static_cast<MessageType>(rawType);
-    header.size = ServerHelpers::readUint16BigEndian(data + 4);
-
-    if (header.magicNumber != PROTOCOL_MAGIC ||
-    header.version != PROTOCOL_VERSION ||
-    rawType < 1U ||
-    rawType > MAX_MESSAGE_TYPE ||
-    header.size != payload.size() - PACKET_HEADER_SIZE) {
-        return std::nullopt;
-    }
-    return header;
-}
-
-bool Server::decodeClientPacket(IncomingMessage &message) const noexcept
-{
-    auto header = parsHeader(message.payload);
-
-    if (!header)
+    if (!PacketChecker::isValid(message.payload)) {
+        _rejectedPackets.fetch_add(1);
         return false;
-    
+    }
+    return _incomingMessages.handleEnqueue(std::move(message));
 }
 
-
+std::uint64_t Server::rejectedPackets() const noexcept
+{
+    return _rejectedPackets.load();
+}
 
 void Server::runSimulationLoop(const std::stop_token &stopToken,
                                nanosecond timestep)
@@ -176,8 +150,7 @@ void Server::runSimulationLoop(const std::stop_token &stopToken,
         const auto frameTime =
             std::min(currentTime - previousTime, maxFrameTime);
         previousTime = currentTime;
-        accumulator +=
-            std::chrono::duration_cast<nanosecond>(frameTime);
+        accumulator += std::chrono::duration_cast<nanosecond>(frameTime);
         readIncomingMessage();
         updateSimulationTick(timestep, accumulator, stopToken);
         std::this_thread::sleep_until(previousTime + timestep);
