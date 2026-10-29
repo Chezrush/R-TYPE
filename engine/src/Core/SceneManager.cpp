@@ -110,4 +110,3 @@ const IScene &SceneManager::currentScene() const
 }
 
 } // namespace engine::core
-

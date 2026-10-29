@@ -88,4 +88,3 @@ private:
 } // namespace engine::core
 
 #endif /* !SCENEMANAGER_HPP_ */
-

@@ -21,11 +21,9 @@ namespace {
 
 class MockScene : public IScene {
 public:
-    explicit MockScene(
-        std::string name,
-        std::vector<std::string> *events = nullptr,
-        bool overlay = false
-    )
+    explicit MockScene(std::string name,
+                       std::vector<std::string> *events = nullptr,
+                       bool overlay = false)
         : _name(std::move(name)),
           _events(events),
           _overlay(overlay)
@@ -124,11 +122,8 @@ TEST_CASE("pushing a second scene pauses the first and enters second",
     manager.pushScene(std::make_unique<MockScene>("pause", &events, true));
 
     REQUIRE(manager.size() == 2);
-    const std::vector<std::string> expected = {
-        "enter:game",
-        "pause:game",
-        "enter:pause"
-    };
+    const std::vector<std::string> expected = {"enter:game", "pause:game",
+                                               "enter:pause"};
     REQUIRE(events == expected);
 }
 
@@ -144,10 +139,7 @@ TEST_CASE("popping a scene exits top and resumes previous",
 
     manager.popScene();
     REQUIRE(manager.size() == 1);
-    const std::vector<std::string> expected = {
-        "exit:pause",
-        "resume:game"
-    };
+    const std::vector<std::string> expected = {"exit:pause", "resume:game"};
     REQUIRE(events == expected);
 }
 
@@ -163,11 +155,8 @@ TEST_CASE("switchScene clears previous stack and enters new scene",
 
     manager.switchScene(std::make_unique<MockScene>("menu", &events));
     REQUIRE(manager.size() == 1);
-    const std::vector<std::string> expected = {
-        "exit:pause",
-        "exit:game",
-        "enter:menu"
-    };
+    const std::vector<std::string> expected = {"exit:pause", "exit:game",
+                                               "enter:menu"};
     REQUIRE(events == expected);
 }
 
@@ -184,10 +173,7 @@ TEST_CASE("update and handleInput only reach the active top scene",
     manager.update(0.016f);
     manager.handleInput();
 
-    const std::vector<std::string> expected = {
-        "update:pause",
-        "input:pause"
-    };
+    const std::vector<std::string> expected = {"update:pause", "input:pause"};
     REQUIRE(events == expected);
 }
 
@@ -202,10 +188,7 @@ TEST_CASE("render draws overlay on top of underlying scene",
     events.clear();
 
     manager.render();
-    const std::vector<std::string> expected = {
-        "render:game",
-        "render:pause"
-    };
+    const std::vector<std::string> expected = {"render:game", "render:pause"};
     REQUIRE(events == expected);
 }
 
@@ -220,9 +203,7 @@ TEST_CASE("render draws only top scene if top is not an overlay",
     events.clear();
 
     manager.render();
-    const std::vector<std::string> expected = {
-        "render:settings"
-    };
+    const std::vector<std::string> expected = {"render:settings"};
     REQUIRE(events == expected);
 }
 
@@ -237,10 +218,6 @@ TEST_CASE("clear exits all scenes", "[core][scenemanager]")
         manager.clear();
         REQUIRE(manager.empty());
     }
-    const std::vector<std::string> expected = {
-        "exit:pause",
-        "exit:game"
-    };
+    const std::vector<std::string> expected = {"exit:pause", "exit:game"};
     REQUIRE(events == expected);
 }
-

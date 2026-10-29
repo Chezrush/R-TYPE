@@ -9,6 +9,7 @@
 #define UIBUTTON_HPP_
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "Engine/Ecs/Components/UIColor.hpp"
@@ -18,7 +19,7 @@ namespace engine::ecs::components {
 /**
  * @brief Current interaction state of a button.
  */
-enum class UIButtonState {
+enum class UIButtonState : std::uint8_t {
     NORMAL,
     HOVERED,
     PRESSED,
@@ -39,7 +40,7 @@ struct UIButton {
     UIColor disabledColor{100, 100, 100, 180};
     UIColor focusedOutlineColor{255, 215, 0, 255};
 
-    [[nodiscard]] bool operator==(const UIButton &) const noexcept = default;
+    friend bool operator==(const UIButton &, const UIButton &) = default;
 };
 
 /**
@@ -49,8 +50,8 @@ struct UIButtonClickedEvent {
     std::size_t entityIndex = 0;
     std::string action;
 
-    [[nodiscard]] bool
-    operator==(const UIButtonClickedEvent &) const noexcept = default;
+    friend bool operator==(const UIButtonClickedEvent &,
+                           const UIButtonClickedEvent &) = default;
 };
 
 } // namespace engine::ecs::components

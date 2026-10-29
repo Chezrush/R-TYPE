@@ -21,7 +21,7 @@ struct UIColor {
     std::uint8_t b = 255;
     std::uint8_t a = 255;
 
-    [[nodiscard]] bool operator==(const UIColor &) const noexcept = default;
+    friend bool operator==(const UIColor &, const UIColor &) = default;
 };
 
 } // namespace engine::ecs::components

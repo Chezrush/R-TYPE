@@ -81,6 +81,20 @@ For accessibility compliance, menus can be fully navigated without a mouse:
 - `Up` / `Left`: Moves focus to the previous enabled button.
 - `Enter` / `Space` / Gamepad A: Activates the focused button, emitting `UIButtonClickedEvent`.
 
+Focus rules: at most one button is focused at a time, and clicking a button gives it the focus.
+A `DISABLED` button is never focused: a button disabled by game code loses its focus at the
+next call to `UIInteractionSystem`, and a button disabled while it is held down does not emit a
+click when it is released. While the pointer leaves a held button, the button shows `NORMAL`; it
+shows `PRESSED` again when the pointer comes back.
+
+### Event listeners and scenes
+
+A UI scene that subscribes to the `EventBus` keeps the `ListenerId` returned by `subscribe()` and
+calls `EventBus::unsubscribe()` for each of them in `onExit()` (or in its destructor). Otherwise a
+popped scene stays registered and the next event calls into a destroyed object. The bus itself
+must outlive every object that subscribed to it. `HudController` is an example: it stores its
+listener ids and unsubscribes them in its destructor.
+
 ## Rendering
 
 UI drawing lives in a separate library, `rtype::engine_render`, because it needs SFML. It

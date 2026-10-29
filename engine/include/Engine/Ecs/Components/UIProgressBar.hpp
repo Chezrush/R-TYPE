@@ -8,6 +8,8 @@
 #ifndef UIPROGRESSBAR_HPP_
 #define UIPROGRESSBAR_HPP_
 
+#include <cstdint>
+
 #include "Engine/Ecs/Components/UIColor.hpp"
 
 namespace engine::ecs::components {
@@ -17,7 +19,7 @@ namespace engine::ecs::components {
  *
  * HORIZONTAL fills from left to right, VERTICAL from bottom to top.
  */
-enum class UIFillDirection {
+enum class UIFillDirection : std::uint8_t {
     HORIZONTAL,
     VERTICAL
 };
@@ -36,8 +38,8 @@ struct UIProgressBar {
     UIColor backgroundColor{40, 40, 40, 200};
     UIColor fillColor{80, 200, 120, 255};
 
-    [[nodiscard]] bool
-    operator==(const UIProgressBar &) const noexcept = default;
+    friend bool operator==(const UIProgressBar &,
+                           const UIProgressBar &) = default;
 };
 
 } // namespace engine::ecs::components

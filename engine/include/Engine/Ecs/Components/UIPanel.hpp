@@ -8,6 +8,7 @@
 #ifndef UIPANEL_HPP_
 #define UIPANEL_HPP_
 
+#include <cstdint>
 #include <string>
 
 #include "Engine/Ecs/Components/UIColor.hpp"
@@ -18,7 +19,7 @@ namespace engine::ecs::components {
 /**
  * @brief How a textured panel is stretched over its bounds.
  */
-enum class UIPanelMode {
+enum class UIPanelMode : std::uint8_t {
     STRETCH,
     NINE_SLICE
 };
@@ -32,7 +33,7 @@ struct UIBorders {
     float right = 0.0f;
     float bottom = 0.0f;
 
-    [[nodiscard]] bool operator==(const UIBorders &) const noexcept = default;
+    friend bool operator==(const UIBorders &, const UIBorders &) = default;
 };
 
 /**
@@ -50,7 +51,7 @@ struct UIPanel {
     UIPanelMode mode = UIPanelMode::STRETCH;
     UIBorders borders;
 
-    [[nodiscard]] bool operator==(const UIPanel &) const noexcept = default;
+    friend bool operator==(const UIPanel &, const UIPanel &) = default;
 };
 
 } // namespace engine::ecs::components

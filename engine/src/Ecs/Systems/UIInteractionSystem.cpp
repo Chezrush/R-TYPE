@@ -14,51 +14,105 @@ namespace engine::ecs::systems {
 
 namespace {
 
-/** @brief Slot at a raw index, through the public iterators. */
+using components::UIButton;
+using components::UIButtonClickedEvent;
+using components::UIButtonState;
+using components::UITransform;
+
 template <typename Component>
-typename SparseArray<Component>::Slot &slotAt(
-    SparseArray<Component> &array,
-    std::size_t index
-) noexcept
+Component *componentAt(SparseArray<Component> &array,
+                       std::size_t index) noexcept
 {
-    return *(array.begin() + static_cast<std::ptrdiff_t>(index));
+    if (index >= array.size())
+        return nullptr;
+    auto &slot = *(array.begin() + static_cast<std::ptrdiff_t>(index));
+    return slot.has_value() ? &*slot : nullptr;
 }
 
 template <typename Component>
-const typename SparseArray<Component>::Slot &slotAt(
-    const SparseArray<Component> &array,
-    std::size_t index
-) noexcept
+const Component *componentAt(const SparseArray<Component> &array,
+                             std::size_t index) noexcept
 {
-    return *(array.begin() + static_cast<std::ptrdiff_t>(index));
+    if (index >= array.size())
+        return nullptr;
+    const auto &slot = *(array.begin() + static_cast<std::ptrdiff_t>(index));
+    return slot.has_value() ? &*slot : nullptr;
 }
 
-void updateButtonHover(
-    components::UIButton &btn,
-    bool inside,
-    bool isPressedEntity
-) noexcept
+bool isEnabled(const UIButton &button) noexcept
 {
-    using components::UIButtonState;
-    if (isPressedEntity) {
-        btn.state = inside ? UIButtonState::PRESSED : UIButtonState::HOVERED;
-    } else if (btn.state != UIButtonState::PRESSED) {
-        btn.state = inside ? UIButtonState::HOVERED : UIButtonState::NORMAL;
+    return button.state != UIButtonState::DISABLED;
+}
+
+UIButton *enabledButtonAt(SparseArray<UIButton> &buttons,
+                          std::size_t index) noexcept
+{
+    UIButton *button = componentAt(buttons, index);
+
+    return button != nullptr && isEnabled(*button) ? button : nullptr;
+}
+
+void clearFocus(SparseArray<UIButton> &buttons) noexcept
+{
+    for (auto &slot : buttons) {
+        if (slot.has_value())
+            slot->isFocused = false;
     }
 }
 
-std::vector<std::size_t> findEnabledButtons(
-    const SparseArray<components::UIButton> &buttons
-)
+void dropDisabledFocus(SparseArray<UIButton> &buttons) noexcept
+{
+    for (auto &slot : buttons) {
+        if (slot.has_value() && !isEnabled(*slot))
+            slot->isFocused = false;
+    }
+}
+
+std::vector<std::size_t>
+findEnabledButtons(const SparseArray<UIButton> &buttons)
 {
     std::vector<std::size_t> enabled;
+
     for (std::size_t i = 0; i < buttons.size(); ++i) {
-        if (slotAt(buttons, i).has_value() &&
-            slotAt(buttons, i)->state != components::UIButtonState::DISABLED) {
+        const UIButton *button = componentAt(buttons, i);
+        if (button != nullptr && isEnabled(*button))
             enabled.push_back(i);
-        }
     }
     return enabled;
+}
+
+std::optional<std::size_t>
+focusedPosition(const SparseArray<UIButton> &buttons,
+                const std::vector<std::size_t> &enabled) noexcept
+{
+    for (std::size_t i = 0; i < enabled.size(); ++i) {
+        const UIButton *button = componentAt(buttons, enabled[i]);
+        if (button != nullptr && button->isFocused)
+            return i;
+    }
+    return std::nullopt;
+}
+
+void moveFocus(SparseArray<UIButton> &buttons, bool forward)
+{
+    const auto enabled = findEnabledButtons(buttons);
+    const std::size_t count = enabled.size();
+    const auto current = focusedPosition(buttons, enabled);
+    std::size_t next = forward ? 0 : count - 1;
+
+    clearFocus(buttons);
+    if (count == 0)
+        return;
+    if (current.has_value())
+        next = (*current + (forward ? 1 : count - 1)) % count;
+    componentAt(buttons, enabled[next])->isFocused = true;
+}
+
+UIButtonState hoverState(bool inside, bool pressed) noexcept
+{
+    if (pressed)
+        return inside ? UIButtonState::PRESSED : UIButtonState::NORMAL;
+    return inside ? UIButtonState::HOVERED : UIButtonState::NORMAL;
 }
 
 } // namespace
@@ -67,164 +121,122 @@ UIInteractionSystem::UIInteractionSystem(core::EventBus &eventBus) noexcept
     : _eventBus(eventBus)
 {}
 
-bool UIInteractionSystem::contains(
-    const components::Rect &rect,
-    float x,
-    float y
-) noexcept
+bool UIInteractionSystem::contains(const components::Rect &rect, float x,
+                                   float y) noexcept
 {
-    return x >= rect.x && x <= (rect.x + rect.width) &&
-           y >= rect.y && y <= (rect.y + rect.height);
+    return x >= rect.x && x <= (rect.x + rect.width) && y >= rect.y &&
+           y <= (rect.y + rect.height);
+}
+
+std::optional<std::size_t>
+UIInteractionSystem::buttonAt(float x, float y,
+                              const SparseArray<UITransform> &transforms,
+                              const SparseArray<UIButton> &buttons)
+{
+    const std::size_t count = std::min(transforms.size(), buttons.size());
+
+    for (std::size_t i = 0; i < count; ++i) {
+        const UITransform *transform = componentAt(transforms, i);
+        const UIButton *button = componentAt(buttons, i);
+        if (transform != nullptr && button != nullptr && isEnabled(*button) &&
+            contains(transform->actualBounds, x, y))
+            return i;
+    }
+    return std::nullopt;
 }
 
 void UIInteractionSystem::onMouseMove(
-    float mouseX,
-    float mouseY,
-    const SparseArray<components::UITransform> &transforms,
-    SparseArray<components::UIButton> &buttons
-)
+    float mouseX, float mouseY, const SparseArray<UITransform> &transforms,
+    SparseArray<UIButton> &buttons)
 {
     const std::size_t count = std::min(transforms.size(), buttons.size());
+
+    dropDisabledFocus(buttons);
     for (std::size_t i = 0; i < count; ++i) {
-        const auto &transform = slotAt(transforms, i);
-        auto &button = slotAt(buttons, i);
-        if (transform.has_value() && button.has_value()) {
-            auto &btn = *button;
-            if (btn.state != components::UIButtonState::DISABLED) {
-                const bool inside =
-                    contains(transform->actualBounds, mouseX, mouseY);
-                const bool isPressed =
-                    _pressedEntity.has_value() && _pressedEntity.value() == i;
-                updateButtonHover(btn, inside, isPressed);
-            }
-        }
+        const UITransform *transform = componentAt(transforms, i);
+        UIButton *button = enabledButtonAt(buttons, i);
+        if (transform == nullptr || button == nullptr)
+            continue;
+        button->state =
+            hoverState(contains(transform->actualBounds, mouseX, mouseY),
+                       _pressedEntity == i);
     }
 }
 
 void UIInteractionSystem::onMouseDown(
-    float mouseX,
-    float mouseY,
-    const SparseArray<components::UITransform> &transforms,
-    SparseArray<components::UIButton> &buttons
-)
+    float mouseX, float mouseY, const SparseArray<UITransform> &transforms,
+    SparseArray<UIButton> &buttons)
 {
-    const std::size_t count = std::min(transforms.size(), buttons.size());
-    for (std::size_t i = 0; i < count; ++i) {
-        const auto &transform = slotAt(transforms, i);
-        auto &button = slotAt(buttons, i);
-        if (transform.has_value() && button.has_value()) {
-            auto &btn = *button;
-            if (btn.state == components::UIButtonState::DISABLED) {
-                continue;
-            }
-            if (contains(transform->actualBounds, mouseX, mouseY)) {
-                btn.state = components::UIButtonState::PRESSED;
-                _pressedEntity = i;
-                btn.isFocused = true;
-                return;
-            }
-        }
-    }
+    const auto hit = buttonAt(mouseX, mouseY, transforms, buttons);
+
+    dropDisabledFocus(buttons);
+    if (!hit.has_value())
+        return;
+    clearFocus(buttons);
+    UIButton &button = *componentAt(buttons, *hit);
+    button.state = UIButtonState::PRESSED;
+    button.isFocused = true;
+    _pressedEntity = hit;
 }
 
-void UIInteractionSystem::onMouseUp(
-    float mouseX,
-    float mouseY,
-    const SparseArray<components::UITransform> &transforms,
-    SparseArray<components::UIButton> &buttons
-)
+void UIInteractionSystem::onMouseUp(float mouseX, float mouseY,
+                                    const SparseArray<UITransform> &transforms,
+                                    SparseArray<UIButton> &buttons)
 {
-    if (!_pressedEntity.has_value()) {
-        return;
-    }
-    const std::size_t idx = _pressedEntity.value();
+    const auto pressed = _pressedEntity;
+
     _pressedEntity.reset();
-    if (idx < buttons.size() && slotAt(buttons, idx).has_value()) {
-        auto &btn = *slotAt(buttons, idx);
-        const bool inside = idx < transforms.size() &&
-            slotAt(transforms, idx).has_value() &&
-            contains(slotAt(transforms, idx)->actualBounds, mouseX, mouseY);
-        btn.state = inside ? components::UIButtonState::HOVERED
-                           : components::UIButtonState::NORMAL;
-        if (inside && btn.state != components::UIButtonState::DISABLED) {
-            _eventBus.publish(
-                components::UIButtonClickedEvent{idx, btn.action});
-        }
-    }
-}
-
-void UIInteractionSystem::focusNext(
-    SparseArray<components::UIButton> &buttons
-)
-{
-    const auto enabled = findEnabledButtons(buttons);
-    if (enabled.empty()) {
+    dropDisabledFocus(buttons);
+    if (!pressed.has_value())
         return;
-    }
-    std::size_t nextPos = 0;
-    for (std::size_t i = 0; i < enabled.size(); ++i) {
-        if (slotAt(buttons, enabled[i])->isFocused) {
-            nextPos = (i + 1) % enabled.size();
-            slotAt(buttons, enabled[i])->isFocused = false;
-            break;
-        }
-    }
-    slotAt(buttons, enabled[nextPos])->isFocused = true;
-}
-
-void UIInteractionSystem::focusPrevious(
-    SparseArray<components::UIButton> &buttons
-)
-{
-    const auto enabled = findEnabledButtons(buttons);
-    if (enabled.empty()) {
+    UIButton *button = enabledButtonAt(buttons, *pressed);
+    if (button == nullptr)
         return;
-    }
-    std::size_t prevPos = enabled.size() - 1;
-    for (std::size_t i = 0; i < enabled.size(); ++i) {
-        if (slotAt(buttons, enabled[i])->isFocused) {
-            prevPos = (i + enabled.size() - 1) % enabled.size();
-            slotAt(buttons, enabled[i])->isFocused = false;
-            break;
-        }
-    }
-    slotAt(buttons, enabled[prevPos])->isFocused = true;
+    const UITransform *transform = componentAt(transforms, *pressed);
+    const bool inside = transform != nullptr &&
+                        contains(transform->actualBounds, mouseX, mouseY);
+    button->state = inside ? UIButtonState::HOVERED : UIButtonState::NORMAL;
+    if (inside)
+        _eventBus.publish(UIButtonClickedEvent{*pressed, button->action});
 }
 
-void UIInteractionSystem::activateFocused(
-    SparseArray<components::UIButton> &buttons
-)
+void UIInteractionSystem::focusNext(SparseArray<UIButton> &buttons)
 {
-    for (std::size_t i = 0; i < buttons.size(); ++i) {
-        const auto &button = slotAt(buttons, i);
-        if (button.has_value() && button->isFocused &&
-            button->state != components::UIButtonState::DISABLED) {
-            _eventBus.publish(
-                components::UIButtonClickedEvent{i, button->action});
-            return;
-        }
-    }
+    moveFocus(buttons, true);
 }
 
-void UIInteractionSystem::onKeyPressed(
-    UIKey key,
-    SparseArray<components::UIButton> &buttons
-)
+void UIInteractionSystem::focusPrevious(SparseArray<UIButton> &buttons)
+{
+    moveFocus(buttons, false);
+}
+
+void UIInteractionSystem::activateFocused(SparseArray<UIButton> &buttons)
+{
+    dropDisabledFocus(buttons);
+    const auto focused = focusedEntity(buttons);
+    if (!focused.has_value())
+        return;
+    _eventBus.publish(
+        UIButtonClickedEvent{*focused, componentAt(buttons, *focused)->action});
+}
+
+void UIInteractionSystem::onKeyPressed(UIKey key,
+                                       SparseArray<UIButton> &buttons)
 {
     switch (key) {
-    case UIKey::TAB:
-    case UIKey::DOWN:
-    case UIKey::RIGHT:
-        focusNext(buttons);
-        break;
-    case UIKey::UP:
-    case UIKey::LEFT:
-        focusPrevious(buttons);
-        break;
-    case UIKey::ENTER:
-    case UIKey::SPACE:
-        activateFocused(buttons);
-        break;
+        case UIKey::TAB:
+        case UIKey::DOWN:
+        case UIKey::RIGHT:
+            focusNext(buttons);
+            break;
+        case UIKey::UP:
+        case UIKey::LEFT:
+            focusPrevious(buttons);
+            break;
+        case UIKey::ENTER:
+        case UIKey::SPACE:
+            activateFocused(buttons);
+            break;
     }
 }
 
@@ -234,16 +246,14 @@ std::optional<std::size_t> UIInteractionSystem::pressedEntity() const noexcept
 }
 
 std::optional<std::size_t> UIInteractionSystem::focusedEntity(
-    const SparseArray<components::UIButton> &buttons
-) const noexcept
+    const SparseArray<UIButton> &buttons) noexcept
 {
     for (std::size_t i = 0; i < buttons.size(); ++i) {
-        if (slotAt(buttons, i).has_value() && slotAt(buttons, i)->isFocused) {
+        const UIButton *button = componentAt(buttons, i);
+        if (button != nullptr && isEnabled(*button) && button->isFocused)
             return i;
-        }
     }
     return std::nullopt;
 }
 
 } // namespace engine::ecs::systems
-

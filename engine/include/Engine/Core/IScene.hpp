@@ -59,4 +59,3 @@ public:
 } // namespace engine::core
 
 #endif /* !ISCENE_HPP_ */
-

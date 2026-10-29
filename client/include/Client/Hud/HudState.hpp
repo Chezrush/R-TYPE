@@ -37,7 +37,7 @@ struct HudState {
     float beamCharge = 0.0f;
     std::array<bool, MAX_PLAYERS> connected{};
 
-    [[nodiscard]] bool operator==(const HudState &) const noexcept = default;
+    friend bool operator==(const HudState &, const HudState &) = default;
 };
 
 } // namespace client::hud

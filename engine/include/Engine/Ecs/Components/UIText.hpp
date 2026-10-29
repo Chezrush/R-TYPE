@@ -8,6 +8,7 @@
 #ifndef UITEXT_HPP_
 #define UITEXT_HPP_
 
+#include <cstdint>
 #include <string>
 
 #include "Engine/Ecs/Components/UIColor.hpp"
@@ -17,7 +18,7 @@ namespace engine::ecs::components {
 /**
  * @brief Horizontal placement of a text inside its UITransform bounds.
  */
-enum class UITextAlign {
+enum class UITextAlign : std::uint8_t {
     LEFT,
     CENTER,
     RIGHT
@@ -37,7 +38,7 @@ struct UIText {
     UIColor color{255, 255, 255, 255};
     UITextAlign align = UITextAlign::LEFT;
 
-    [[nodiscard]] bool operator==(const UIText &) const noexcept = default;
+    friend bool operator==(const UIText &, const UIText &) = default;
 };
 
 } // namespace engine::ecs::components

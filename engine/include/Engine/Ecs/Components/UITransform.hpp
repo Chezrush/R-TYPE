@@ -9,13 +9,14 @@
 #define UITRANSFORM_HPP_
 
 #include <compare>
+#include <cstdint>
 
 namespace engine::ecs::components {
 
 /**
  * @brief Standard 9-anchor attachment points for UI layout.
  */
-enum class UIAnchor {
+enum class UIAnchor : std::uint8_t {
     TOP_LEFT,
     TOP_CENTER,
     TOP_RIGHT,
@@ -34,7 +35,7 @@ struct Vec2 {
     float x = 0.0f;
     float y = 0.0f;
 
-    [[nodiscard]] bool operator==(const Vec2 &) const noexcept = default;
+    friend bool operator==(const Vec2 &, const Vec2 &) = default;
 };
 
 /**
@@ -46,7 +47,7 @@ struct Rect {
     float width = 0.0f;
     float height = 0.0f;
 
-    [[nodiscard]] bool operator==(const Rect &) const noexcept = default;
+    friend bool operator==(const Rect &, const Rect &) = default;
 };
 
 /**
@@ -60,12 +61,11 @@ struct UITransform {
     bool normalizedSize = false;
     Rect actualBounds{0.0f, 0.0f, 0.0f, 0.0f};
 
-    [[nodiscard]] auto operator<=>(const UITransform &other) const noexcept
-    {
-        return zIndex <=> other.zIndex;
-    }
+    /** @brief Orders transforms by zIndex only (drawing order). */
+    friend std::strong_ordering operator<=>(const UITransform &lhs,
+                                            const UITransform &rhs) noexcept;
 
-    [[nodiscard]] bool operator==(const UITransform &) const noexcept = default;
+    friend bool operator==(const UITransform &, const UITransform &) = default;
 };
 
 } // namespace engine::ecs::components
@@ -80,4 +80,3 @@ using components::Vec2;
 } // namespace engine::ecs
 
 #endif /* !UITRANSFORM_HPP_ */
-

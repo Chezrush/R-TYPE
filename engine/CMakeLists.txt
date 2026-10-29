@@ -19,6 +19,7 @@ add_library(rtype_engine STATIC
     src/Ecs/Phase.cpp
     src/Ecs/Scheduler.cpp
     src/Ecs/Registry.cpp
+    src/Ecs/Components/UITransform.cpp
     src/Ecs/Systems/UIInteractionSystem.cpp
     src/Ecs/Systems/UILayoutSystem.cpp)
 add_library(rtype::engine ALIAS rtype_engine)

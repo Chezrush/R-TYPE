@@ -8,6 +8,8 @@
 #include "Engine/Ecs/Systems/UIInteractionSystem.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "Engine/Core/EventBus.hpp"
@@ -80,8 +82,7 @@ TEST_CASE("full click flow: NORMAL -> HOVERED -> PRESSED -> CLICKED",
     eventBus.subscribe<UIButtonClickedEvent>(
         [&](const UIButtonClickedEvent &event) {
             receivedEvents.push_back(event);
-        }
-    );
+        });
 
     // 1. Mouse enters
     system.onMouseMove(150.0f, 120.0f, transforms, buttons);
@@ -123,8 +124,7 @@ TEST_CASE("releasing mouse outside bounds cancels the click",
 
     bool eventTriggered = false;
     eventBus.subscribe<UIButtonClickedEvent>(
-        [&](const UIButtonClickedEvent &) { eventTriggered = true; }
-    );
+        [&](const UIButtonClickedEvent &) { eventTriggered = true; });
 
     system.onMouseDown(150.0f, 120.0f, transforms, buttons);
     REQUIRE(buttons.get(e)->state == UIButtonState::PRESSED);
@@ -157,8 +157,7 @@ TEST_CASE("disabled button ignores mouse hover and clicks",
 
     bool eventTriggered = false;
     eventBus.subscribe<UIButtonClickedEvent>(
-        [&](const UIButtonClickedEvent &) { eventTriggered = true; }
-    );
+        [&](const UIButtonClickedEvent &) { eventTriggered = true; });
 
     system.onMouseMove(150.0f, 120.0f, transforms, buttons);
     REQUIRE(buttons.get(e)->state == UIButtonState::DISABLED);
@@ -203,8 +202,7 @@ TEST_CASE("keyboard navigation cycles focus and activates buttons",
     eventBus.subscribe<UIButtonClickedEvent>(
         [&](const UIButtonClickedEvent &event) {
             activations.push_back(event.action);
-        }
-    );
+        });
 
     // Initial focus on button 1
     REQUIRE(system.focusedEntity(buttons) == static_cast<std::size_t>(e1));
@@ -230,3 +228,131 @@ TEST_CASE("keyboard navigation cycles focus and activates buttons",
     REQUIRE(activations == std::vector<std::string>{"btn1", "btn2"});
 }
 
+namespace {
+
+struct TwoButtons {
+    EventBus bus;
+    UIInteractionSystem system{bus};
+    EntityAllocator allocator;
+    SparseArray<UITransform> transforms;
+    SparseArray<UIButton> buttons;
+    engine::ecs::Entity first = add({0.0f, 0.0f, 100.0f, 40.0f}, "first");
+    engine::ecs::Entity second = add({0.0f, 100.0f, 100.0f, 40.0f}, "second");
+    std::vector<std::string> clicks;
+
+    TwoButtons()
+    {
+        bus.subscribe<UIButtonClickedEvent>(
+            [this](const UIButtonClickedEvent &event) {
+                clicks.push_back(event.action);
+            });
+    }
+
+    engine::ecs::Entity add(Rect bounds, std::string action)
+    {
+        const auto entity = allocator.create();
+        UITransform transform;
+        UIButton button;
+
+        transform.actualBounds = bounds;
+        button.action = std::move(action);
+        transforms.insert(entity, transform);
+        buttons.insert(entity, button);
+        return entity;
+    }
+
+    [[nodiscard]] int focusedCount() const
+    {
+        int count = 0;
+
+        for (const auto &slot : buttons)
+            count += slot.has_value() && slot->isFocused ? 1 : 0;
+        return count;
+    }
+};
+
+} // namespace
+
+TEST_CASE("clicking a button takes the focus from the others",
+          "[ecs][ui][interaction][focus]")
+{
+    TwoButtons ui;
+    ui.system.onKeyPressed(UIKey::TAB, ui.buttons);
+    REQUIRE(ui.system.focusedEntity(ui.buttons) ==
+            static_cast<std::size_t>(ui.first));
+
+    ui.system.onMouseDown(50.0f, 120.0f, ui.transforms, ui.buttons);
+    ui.system.onMouseUp(50.0f, 120.0f, ui.transforms, ui.buttons);
+
+    REQUIRE(ui.focusedCount() == 1);
+    REQUIRE(ui.system.focusedEntity(ui.buttons) ==
+            static_cast<std::size_t>(ui.second));
+    ui.system.onKeyPressed(UIKey::ENTER, ui.buttons);
+    REQUIRE(ui.clicks == std::vector<std::string>{"second", "second"});
+}
+
+TEST_CASE("keyboard navigation repairs several focused buttons",
+          "[ecs][ui][interaction][focus]")
+{
+    TwoButtons ui;
+    ui.buttons.get(ui.first)->isFocused = true;
+    ui.buttons.get(ui.second)->isFocused = true;
+
+    ui.system.onKeyPressed(UIKey::TAB, ui.buttons);
+
+    REQUIRE(ui.focusedCount() == 1);
+}
+
+TEST_CASE("a button disabled while pressed never clicks",
+          "[ecs][ui][interaction][focus]")
+{
+    TwoButtons ui;
+    ui.system.onMouseDown(50.0f, 20.0f, ui.transforms, ui.buttons);
+    ui.buttons.get(ui.first)->state = UIButtonState::DISABLED;
+
+    ui.system.onMouseUp(50.0f, 20.0f, ui.transforms, ui.buttons);
+
+    REQUIRE(ui.clicks.empty());
+    REQUIRE(ui.buttons.get(ui.first)->state == UIButtonState::DISABLED);
+    REQUIRE_FALSE(ui.system.pressedEntity().has_value());
+}
+
+TEST_CASE("a disabled button loses its focus", "[ecs][ui][interaction][focus]")
+{
+    TwoButtons ui;
+    ui.system.onKeyPressed(UIKey::TAB, ui.buttons);
+    ui.buttons.get(ui.first)->state = UIButtonState::DISABLED;
+
+    REQUIRE_FALSE(ui.system.focusedEntity(ui.buttons).has_value());
+    ui.system.onKeyPressed(UIKey::ENTER, ui.buttons);
+    REQUIRE(ui.clicks.empty());
+    REQUIRE_FALSE(ui.buttons.get(ui.first)->isFocused);
+
+    ui.system.onKeyPressed(UIKey::TAB, ui.buttons);
+    REQUIRE(ui.system.focusedEntity(ui.buttons) ==
+            static_cast<std::size_t>(ui.second));
+}
+
+TEST_CASE("a pressed button shows NORMAL while the pointer is outside",
+          "[ecs][ui][interaction][focus]")
+{
+    TwoButtons ui;
+    ui.system.onMouseDown(50.0f, 20.0f, ui.transforms, ui.buttons);
+
+    ui.system.onMouseMove(500.0f, 500.0f, ui.transforms, ui.buttons);
+    REQUIRE(ui.buttons.get(ui.first)->state == UIButtonState::NORMAL);
+
+    ui.system.onMouseMove(50.0f, 20.0f, ui.transforms, ui.buttons);
+    REQUIRE(ui.buttons.get(ui.first)->state == UIButtonState::PRESSED);
+}
+
+TEST_CASE("focus wraps backwards from no focus to the last button",
+          "[ecs][ui][interaction][focus]")
+{
+    TwoButtons ui;
+
+    ui.system.onKeyPressed(UIKey::UP, ui.buttons);
+
+    REQUIRE(ui.system.focusedEntity(ui.buttons) ==
+            static_cast<std::size_t>(ui.second));
+}

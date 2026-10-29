@@ -21,10 +21,8 @@ namespace engine::ecs::systems {
  */
 class UILayoutSystem {
 public:
-    explicit UILayoutSystem(
-        float windowWidth = 1280.0f,
-        float windowHeight = 720.0f
-    ) noexcept;
+    explicit UILayoutSystem(float windowWidth = 1280.0f,
+                            float windowHeight = 720.0f) noexcept;
 
     /** @brief Sets viewport resolution for layout recalculation. */
     void setResolution(float windowWidth, float windowHeight) noexcept;
@@ -38,11 +36,9 @@ public:
     /**
      * @brief Computes absolute viewport bounds for a given UITransform.
      */
-    [[nodiscard]] static components::Rect computeBounds(
-        const components::UITransform &transform,
-        float windowWidth,
-        float windowHeight
-    ) noexcept;
+    [[nodiscard]] static components::Rect
+    computeBounds(const components::UITransform &transform, float windowWidth,
+                  float windowHeight) noexcept;
 
     /**
      * @brief Updates all UITransform components in the sparse array.
@@ -66,4 +62,3 @@ using systems::UILayoutSystem;
 } // namespace engine::ecs
 
 #endif /* !UILAYOUTSYSTEM_HPP_ */
-

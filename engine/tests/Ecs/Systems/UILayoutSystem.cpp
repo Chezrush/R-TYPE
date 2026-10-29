@@ -24,8 +24,8 @@ using engine::ecs::systems::UILayoutSystem;
 
 TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
 {
-    constexpr float width = 1280.0f;
-    constexpr float height = 720.0f;
+    constexpr float WIDTH = 1280.0f;
+    constexpr float HEIGHT = 720.0f;
 
     SECTION("TOP_LEFT anchor")
     {
@@ -34,7 +34,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {10.0f, 15.0f};
         t.size = {100.0f, 50.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{10.0f, 15.0f, 100.0f, 50.0f});
     }
 
@@ -45,7 +45,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {0.0f, 10.0f};
         t.size = {200.0f, 50.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{540.0f, 10.0f, 200.0f, 50.0f});
     }
 
@@ -56,7 +56,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {-20.0f, 10.0f};
         t.size = {150.0f, 40.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{1110.0f, 10.0f, 150.0f, 40.0f});
     }
 
@@ -67,7 +67,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {10.0f, 0.0f};
         t.size = {50.0f, 200.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{10.0f, 260.0f, 50.0f, 200.0f});
     }
 
@@ -78,7 +78,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {5.0f, -5.0f};
         t.size = {300.0f, 100.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{495.0f, 305.0f, 300.0f, 100.0f});
     }
 
@@ -89,7 +89,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {-10.0f, 0.0f};
         t.size = {50.0f, 200.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{1220.0f, 260.0f, 50.0f, 200.0f});
     }
 
@@ -100,7 +100,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {10.0f, -10.0f};
         t.size = {100.0f, 50.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{10.0f, 660.0f, 100.0f, 50.0f});
     }
 
@@ -111,7 +111,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {0.0f, -20.0f};
         t.size = {800.0f, 60.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{240.0f, 640.0f, 800.0f, 60.0f});
     }
 
@@ -122,7 +122,7 @@ TEST_CASE("all 9 anchors resolve accurately at 1280x720", "[ecs][ui][layout]")
         t.offset = {-15.0f, -15.0f};
         t.size = {120.0f, 60.0f};
 
-        const Rect bounds = UILayoutSystem::computeBounds(t, width, height);
+        const Rect bounds = UILayoutSystem::computeBounds(t, WIDTH, HEIGHT);
         REQUIRE(bounds == Rect{1145.0f, 645.0f, 120.0f, 60.0f});
     }
 }
@@ -155,8 +155,7 @@ TEST_CASE("normalized size scales proportionally to resolution",
     bar.size = {0.5f, 0.1f};
     bar.normalizedSize = true;
 
-    const Rect bounds720p =
-        UILayoutSystem::computeBounds(bar, 1280.0f, 720.0f);
+    const Rect bounds720p = UILayoutSystem::computeBounds(bar, 1280.0f, 720.0f);
     REQUIRE(bounds720p.width == 640.0f);
     REQUIRE(bounds720p.height == 72.0f);
     REQUIRE(bounds720p.x == 320.0f);
@@ -219,4 +218,3 @@ TEST_CASE("UILayoutSystem updates sparse array components in-place",
     REQUIRE(transforms.get(e2)->actualBounds ==
             Rect{1130.0f, 570.0f, 100.0f, 100.0f});
 }
-
