@@ -5,8 +5,12 @@
 ## CMakeLists.txt
 ##
 
+find_package(asio CONFIG REQUIRED)
+
 add_library(rtype_server_core STATIC
+    src/PacketChecker.cpp
     src/Server.cpp
+    src/ServerHelpers.cpp
 )
 
 target_include_directories(rtype_server_core
@@ -21,6 +25,7 @@ target_link_libraries(rtype_server_core
         rtype_warnings
     PUBLIC
         Threads::Threads
+        asio::asio
 )
 
 add_executable(r-type_server
