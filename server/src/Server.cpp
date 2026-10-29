@@ -158,8 +158,9 @@ bool Server::decodeClientPacket(IncomingMessage &message) const noexcept
     if (!header)
         return false;
     
-
 }
+
+
 
 void Server::runSimulationLoop(const std::stop_token &stopToken,
                                nanosecond timestep)
