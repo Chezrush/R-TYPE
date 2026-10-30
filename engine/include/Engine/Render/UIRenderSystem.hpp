@@ -19,7 +19,8 @@
 #include "Engine/Ecs/Components/UIProgressBar.hpp"
 #include "Engine/Ecs/Components/UIText.hpp"
 #include "Engine/Ecs/Components/UITransform.hpp"
-#include "Engine/Ecs/SparseArray.hpp"
+#include "Engine/Ecs/Entity.hpp"
+#include "Engine/Ecs/Registry.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
 
 namespace engine::render {
@@ -36,23 +37,19 @@ class UIRenderSystem {
 public:
     explicit UIRenderSystem(resources::ResourceManager &resources) noexcept;
 
-    /** @brief Draws every UI entity on the target. */
-    void
-    render(sf::RenderTarget &target,
-           const ecs::SparseArray<ecs::components::UITransform> &transforms,
-           const ecs::SparseArray<ecs::components::UIPanel> &panels,
-           const ecs::SparseArray<ecs::components::UIProgressBar> &bars,
-           const ecs::SparseArray<ecs::components::UIText> &texts);
+    /**
+     * @brief Draws every UI entity of the registry on the target.
+     *
+     * The UI components must be registered (see registerUIComponents()).
+     */
+    void render(sf::RenderTarget &target, const ecs::Registry &registry);
 
     /** @brief Fixed view mapping one unit to one pixel of the target. */
     [[nodiscard]] static sf::View screenView(sf::Vector2u targetSize);
 
-    /** @brief Indices of the drawable entities, by zIndex then index. */
-    [[nodiscard]] static std::vector<std::size_t>
-    drawOrder(const ecs::SparseArray<ecs::components::UITransform> &transforms,
-              const ecs::SparseArray<ecs::components::UIPanel> &panels,
-              const ecs::SparseArray<ecs::components::UIProgressBar> &bars,
-              const ecs::SparseArray<ecs::components::UIText> &texts);
+    /** @brief Drawable entities, by zIndex then entity order. */
+    [[nodiscard]] static std::vector<ecs::Entity>
+    drawOrder(const ecs::Registry &registry);
 
     /** @brief Filled part of the bar, in [0, 1]. */
     [[nodiscard]] static float
@@ -75,6 +72,9 @@ public:
                const ecs::components::Rect &bounds) noexcept;
 
 private:
+    void drawEntity(sf::RenderTarget &target, const ecs::Registry &registry,
+                    ecs::Entity entity);
+
     void drawPanel(sf::RenderTarget &target,
                    const ecs::components::UIPanel &panel,
                    const ecs::components::Rect &bounds);

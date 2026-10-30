@@ -11,11 +11,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 #include "Engine/Core/EventBus.hpp"
 #include "Engine/Ecs/Components/UIButton.hpp"
 #include "Engine/Ecs/Components/UITransform.hpp"
-#include "Engine/Ecs/SparseArray.hpp"
+#include "Engine/Ecs/Entity.hpp"
+#include "Engine/Ecs/Phase.hpp"
+#include "Engine/Ecs/Registry.hpp"
+#include "Engine/Ecs/Scheduler.hpp"
 
 namespace engine::ecs::systems {
 
@@ -33,63 +37,91 @@ enum class UIKey : std::uint8_t {
 };
 
 /**
- * @brief System that processes mouse/keyboard interactions and emits events.
+ * @brief Turns pointer and key input into button states and click events.
+ *
+ * The on*() methods only queue the input, in arrival order; process() applies
+ * the queue to the UITransform and UIButton components of a registry (both
+ * must be registered, see registerUIComponents()). Registered with addTo(),
+ * process() runs as a scheduler system.
  *
  * Focus rules: at most one button is focused, and a DISABLED button is never
  * focused. Clicking a button gives it the focus. A button disabled by game
- * code loses its focus at the next call to this system. A button disabled
- * while pressed never emits a click.
+ * code loses its focus at the next processed input. A button disabled while
+ * pressed never emits a click.
  */
 class UIInteractionSystem {
 public:
     explicit UIInteractionSystem(core::EventBus &eventBus) noexcept;
 
-    /** @brief Handles mouse movement over UI elements. */
-    void onMouseMove(float mouseX, float mouseY,
-                     const SparseArray<components::UITransform> &transforms,
-                     SparseArray<components::UIButton> &buttons);
+    /** @brief Queues a pointer move. */
+    void onMouseMove(float mouseX, float mouseY);
 
-    /** @brief Handles mouse button press. */
-    void onMouseDown(float mouseX, float mouseY,
-                     const SparseArray<components::UITransform> &transforms,
-                     SparseArray<components::UIButton> &buttons);
+    /** @brief Queues a pointer press. */
+    void onMouseDown(float mouseX, float mouseY);
 
-    /** @brief Handles mouse button release. Triggers click if over button. */
-    void onMouseUp(float mouseX, float mouseY,
-                   const SparseArray<components::UITransform> &transforms,
-                   SparseArray<components::UIButton> &buttons);
+    /** @brief Queues a pointer release (a click if over the pressed button). */
+    void onMouseUp(float mouseX, float mouseY);
 
-    /** @brief Handles keyboard/gamepad key navigation. */
-    void onKeyPressed(UIKey key, SparseArray<components::UIButton> &buttons);
+    /** @brief Queues a keyboard / gamepad navigation key. */
+    void onKeyPressed(UIKey key);
+
+    /** @brief Applies the queued input, in order, then empties the queue. */
+    void process(Registry &registry);
+
+    /**
+     * @brief Registers process() as a scheduler system.
+     *
+     * Declared access: reads UITransform, writes UIButton. This object must
+     * outlive the scheduler entry. PRE_UPDATE by default, where input goes.
+     */
+    Scheduler::SystemId addTo(Scheduler &scheduler,
+                              Phase phase = Phase::PRE_UPDATE);
 
     /** @brief Advances focus to the next enabled button. */
-    static void focusNext(SparseArray<components::UIButton> &buttons);
+    static void focusNext(Registry &registry);
 
     /** @brief Moves focus to the previous enabled button. */
-    static void focusPrevious(SparseArray<components::UIButton> &buttons);
+    static void focusPrevious(Registry &registry);
 
-    /** @brief Activates the currently focused button, emitting click event. */
-    void activateFocused(SparseArray<components::UIButton> &buttons);
+    /** @brief Button currently held down by the pointer (if any). */
+    [[nodiscard]] std::optional<Entity> pressedEntity() const noexcept;
 
-    /** @brief Returns index of currently pressed button (if any). */
-    [[nodiscard]] std::optional<std::size_t> pressedEntity() const noexcept;
-
-    /** @brief Returns index of the focused enabled button (if any). */
-    [[nodiscard]] static std::optional<std::size_t>
-    focusedEntity(const SparseArray<components::UIButton> &buttons) noexcept;
+    /** @brief Focused enabled button (if any). */
+    [[nodiscard]] static std::optional<Entity>
+    focusedEntity(const Registry &registry);
 
 private:
+    struct Input {
+        enum class Type : std::uint8_t {
+            MOVE,
+            DOWN,
+            UP,
+            KEY
+        };
+
+        Type type;
+        float x;
+        float y;
+        UIKey key;
+    };
+
+    void apply(const Input &input, Registry &registry);
+    void pointerMoved(float x, float y, Registry &registry);
+    void pointerPressed(float x, float y, Registry &registry);
+    void pointerReleased(float x, float y, Registry &registry);
+    void keyPressed(UIKey key, Registry &registry);
+    void activateFocused(Registry &registry);
+
     static bool contains(const components::Rect &rect, float x,
                          float y) noexcept;
 
-    /** @brief First enabled button whose bounds contain the point. */
-    static std::optional<std::size_t>
-    buttonAt(float x, float y,
-             const SparseArray<components::UITransform> &transforms,
-             const SparseArray<components::UIButton> &buttons);
+    /** @brief Index of the first enabled button containing the point. */
+    static std::optional<std::size_t> buttonAt(float x, float y,
+                                               const Registry &registry);
 
     core::EventBus &_eventBus;
-    std::optional<std::size_t> _pressedEntity;
+    std::vector<Input> _pending;
+    std::optional<Entity> _pressed;
 };
 
 } // namespace engine::ecs::systems

@@ -14,13 +14,14 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "Engine/Ecs/EntityAllocator.hpp"
+#include "Engine/Ecs/Components/UIComponents.hpp"
+#include "Engine/Ecs/Registry.hpp"
 
 using engine::ecs::Entity;
-using engine::ecs::EntityAllocator;
-using engine::ecs::SparseArray;
+using engine::ecs::Registry;
 using engine::ecs::components::Rect;
 using engine::ecs::components::UIBorders;
 using engine::ecs::components::UIColor;
@@ -37,21 +38,28 @@ using engine::resources::ResourceManager;
 namespace {
 
 struct UIWorld {
-    EntityAllocator allocator;
-    SparseArray<UITransform> transforms;
-    SparseArray<UIPanel> panels;
-    SparseArray<UIProgressBar> bars;
-    SparseArray<UIText> texts;
+    Registry registry;
+
+    UIWorld()
+    {
+        engine::ecs::registerUIComponents(registry);
+    }
 
     Entity spawn(const Rect &bounds, int zIndex = 0)
     {
-        const Entity entity = allocator.create();
+        const Entity entity = registry.spawnEntity();
         UITransform transform;
 
         transform.zIndex = zIndex;
         transform.actualBounds = bounds;
-        transforms.insert(entity, transform);
+        registry.addComponent(entity, transform);
         return entity;
+    }
+
+    template <typename Component>
+    void add(Entity entity, Component component)
+    {
+        registry.addComponent(entity, std::move(component));
     }
 };
 
@@ -163,19 +171,17 @@ TEST_CASE("draw order follows zIndex and skips non drawable entities",
     const Entity bottom = world.spawn({}, -1);
     const Entity transformOnly = world.spawn({}, 0);
     const Entity sameLayer = world.spawn({}, 5);
-    const Entity noTransform = world.allocator.create();
+    const Entity noTransform = world.registry.spawnEntity();
 
-    world.panels.insert(top, UIPanel{});
-    world.bars.insert(bottom, UIProgressBar{});
-    world.texts.insert(sameLayer, UIText{});
-    world.panels.insert(noTransform, UIPanel{});
+    world.add(top, UIPanel{});
+    world.add(bottom, UIProgressBar{});
+    world.add(sameLayer, UIText{});
+    world.add(noTransform, UIPanel{});
 
-    const std::vector<std::size_t> order = UIRenderSystem::drawOrder(
-        world.transforms, world.panels, world.bars, world.texts);
+    const std::vector<Entity> order = UIRenderSystem::drawOrder(world.registry);
 
-    REQUIRE(order == std::vector<std::size_t>{bottom.index(), top.index(),
-                                              sameLayer.index()});
-    REQUIRE(transformOnly.index() != top.index());
+    REQUIRE(order == std::vector<Entity>{bottom, top, sameLayer});
+    REQUIRE(transformOnly != top);
 }
 
 TEST_CASE("a stretched panel is one textured quad", "[render][ui][panel]")
@@ -239,14 +245,13 @@ TEST_CASE("UI stays in screen space whatever the world view",
     worldView.move({1000.0f, 500.0f});
     target.setView(worldView);
     UIWorld world;
-    world.panels.insert(world.spawn({8.0f, 8.0f, 16.0f, 16.0f}),
-                        colorPanel({255, 0, 0, 255}));
+    world.add(world.spawn({8.0f, 8.0f, 16.0f, 16.0f}),
+              colorPanel({255, 0, 0, 255}));
     ResourceManager resources;
     UIRenderSystem system(resources);
 
     target.clear(sf::Color::Black);
-    system.render(target, world.transforms, world.panels, world.bars,
-                  world.texts);
+    system.render(target, world.registry);
     target.display();
     const sf::Image image = target.getTexture().copyToImage();
 
@@ -267,14 +272,13 @@ TEST_CASE("missing fonts and textures do not stop the frame",
     const Entity entity = world.spawn({0.0f, 0.0f, 32.0f, 32.0f});
     UIPanel panel = colorPanel({0, 255, 0, 255});
     panel.textureId = "missing.png";
-    world.panels.insert(entity, panel);
-    world.texts.insert(entity, UIText{"Score", "missing.ttf"});
+    world.add(entity, panel);
+    world.add(entity, UIText{"Score", "missing.ttf"});
     ResourceManager resources("does/not/exist");
     UIRenderSystem system(resources);
 
     target.clear(sf::Color::Black);
-    system.render(target, world.transforms, world.panels, world.bars,
-                  world.texts);
+    system.render(target, world.registry);
     target.display();
 
     REQUIRE(target.getTexture().copyToImage().getPixel({16, 16}) ==
@@ -293,13 +297,12 @@ TEST_CASE("progress bars draw background then fill", "[render][ui][gl]")
     bar.value = 0.5f;
     bar.backgroundColor = {0, 0, 255, 255};
     bar.fillColor = {255, 0, 0, 255};
-    world.bars.insert(world.spawn({0.0f, 0.0f, 40.0f, 10.0f}), bar);
+    world.add(world.spawn({0.0f, 0.0f, 40.0f, 10.0f}), bar);
     ResourceManager resources;
     UIRenderSystem system(resources);
 
     target.clear(sf::Color::Black);
-    system.render(target, world.transforms, world.panels, world.bars,
-                  world.texts);
+    system.render(target, world.registry);
     target.display();
     const sf::Image image = target.getTexture().copyToImage();
 
@@ -332,13 +335,12 @@ TEST_CASE("text with a real font draws pixels", "[render][ui][gl]")
     UIWorld world;
     UIText text{"Score", font.filename().string(), 20};
     text.align = UITextAlign::CENTER;
-    world.texts.insert(world.spawn({0.0f, 0.0f, 128.0f, 32.0f}), text);
+    world.add(world.spawn({0.0f, 0.0f, 128.0f, 32.0f}), text);
     ResourceManager resources(font.parent_path());
     UIRenderSystem system(resources);
 
     target.clear(sf::Color::Black);
-    system.render(target, world.transforms, world.panels, world.bars,
-                  world.texts);
+    system.render(target, world.registry);
     target.display();
     const sf::Image image = target.getTexture().copyToImage();
 

@@ -15,27 +15,21 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <utility>
+
+#include "Engine/Ecs/IndexedZipper.hpp"
 
 namespace engine::render {
 
 namespace {
 
-using ecs::SparseArray;
+using ecs::Entity;
+using ecs::Registry;
 using ecs::components::Rect;
 using ecs::components::UIColor;
 using ecs::components::UIPanel;
 using ecs::components::UIProgressBar;
 using ecs::components::UITextAlign;
-
-template <typename Component>
-const Component *componentAt(const SparseArray<Component> &array,
-                             std::size_t index) noexcept
-{
-    if (index >= array.size())
-        return nullptr;
-    const auto &slot = *(array.begin() + static_cast<std::ptrdiff_t>(index));
-    return slot.has_value() ? &*slot : nullptr;
-}
 
 sf::Color toSfColor(const UIColor &color) noexcept
 {
@@ -138,13 +132,12 @@ void appendNineSlice(sf::VertexArray &vertices, const UIPanel &panel,
                    toSfColor(panel.color));
 }
 
-bool isDrawable(std::size_t index, const SparseArray<UIPanel> &panels,
-                const SparseArray<UIProgressBar> &bars,
-                const SparseArray<ecs::components::UIText> &texts) noexcept
+bool isDrawable(const Registry &registry, Entity entity)
 {
-    return componentAt(panels, index) != nullptr ||
-           componentAt(bars, index) != nullptr ||
-           componentAt(texts, index) != nullptr;
+    return registry.getComponents<UIPanel>().get(entity) != nullptr ||
+           registry.getComponents<UIProgressBar>().get(entity) != nullptr ||
+           registry.getComponents<ecs::components::UIText>().get(entity) !=
+               nullptr;
 }
 
 } // namespace
@@ -153,25 +146,14 @@ UIRenderSystem::UIRenderSystem(resources::ResourceManager &resources) noexcept
     : _resources(resources)
 {}
 
-void UIRenderSystem::render(
-    sf::RenderTarget &target,
-    const ecs::SparseArray<ecs::components::UITransform> &transforms,
-    const ecs::SparseArray<ecs::components::UIPanel> &panels,
-    const ecs::SparseArray<ecs::components::UIProgressBar> &bars,
-    const ecs::SparseArray<ecs::components::UIText> &texts)
+void UIRenderSystem::render(sf::RenderTarget &target,
+                            const ecs::Registry &registry)
 {
     const sf::View previous = target.getView();
 
     target.setView(screenView(target.getSize()));
-    for (const std::size_t index : drawOrder(transforms, panels, bars, texts)) {
-        const Rect &bounds = componentAt(transforms, index)->actualBounds;
-        if (const auto *panel = componentAt(panels, index))
-            drawPanel(target, *panel, bounds);
-        if (const auto *bar = componentAt(bars, index))
-            drawProgressBar(target, *bar, bounds);
-        if (const auto *text = componentAt(texts, index))
-            drawText(target, *text, bounds);
-    }
+    for (const Entity entity : drawOrder(registry))
+        drawEntity(target, registry, entity);
     target.setView(previous);
 }
 
@@ -180,24 +162,24 @@ sf::View UIRenderSystem::screenView(sf::Vector2u targetSize)
     return sf::View(sf::FloatRect({0.0f, 0.0f}, sf::Vector2f(targetSize)));
 }
 
-std::vector<std::size_t> UIRenderSystem::drawOrder(
-    const ecs::SparseArray<ecs::components::UITransform> &transforms,
-    const ecs::SparseArray<ecs::components::UIPanel> &panels,
-    const ecs::SparseArray<ecs::components::UIProgressBar> &bars,
-    const ecs::SparseArray<ecs::components::UIText> &texts)
+std::vector<ecs::Entity>
+UIRenderSystem::drawOrder(const ecs::Registry &registry)
 {
-    std::vector<std::size_t> order;
+    std::vector<std::pair<int, Entity>> layers;
+    std::vector<Entity> order;
 
-    for (std::size_t i = 0; i < transforms.size(); ++i) {
-        if (componentAt(transforms, i) != nullptr &&
-            isDrawable(i, panels, bars, texts))
-            order.push_back(i);
+    for (auto [index, transform] : ecs::makeIndexedZipper(
+             registry.getComponents<ecs::components::UITransform>())) {
+        const Entity entity = registry.entityAt(index);
+        if (isDrawable(registry, entity))
+            layers.emplace_back(transform.zIndex, entity);
     }
-    std::stable_sort(order.begin(), order.end(),
-                     [&transforms](std::size_t lhs, std::size_t rhs) {
-                         return componentAt(transforms, lhs)->zIndex <
-                                componentAt(transforms, rhs)->zIndex;
-                     });
+    std::stable_sort(
+        layers.begin(), layers.end(),
+        [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
+    order.reserve(layers.size());
+    for (const auto &layer : layers)
+        order.push_back(layer.second);
     return order;
 }
 
@@ -244,6 +226,23 @@ UIRenderSystem::textAnchor(ecs::components::UITextAlign align,
 {
     return {bounds.x + bounds.width * alignFactor(align),
             bounds.y + bounds.height / 2.0f};
+}
+
+void UIRenderSystem::drawEntity(sf::RenderTarget &target,
+                                const ecs::Registry &registry,
+                                ecs::Entity entity)
+{
+    const Rect &bounds = registry.getComponents<ecs::components::UITransform>()
+                             .get(entity)
+                             ->actualBounds;
+
+    if (const auto *panel = registry.getComponents<UIPanel>().get(entity))
+        drawPanel(target, *panel, bounds);
+    if (const auto *bar = registry.getComponents<UIProgressBar>().get(entity))
+        drawProgressBar(target, *bar, bounds);
+    if (const auto *text =
+            registry.getComponents<ecs::components::UIText>().get(entity))
+        drawText(target, *text, bounds);
 }
 
 void UIRenderSystem::drawPanel(sf::RenderTarget &target,

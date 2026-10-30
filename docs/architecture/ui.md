@@ -27,30 +27,62 @@ BOTTOM_LEFT (0,H) -------- BOTTOM_CENTER (W/2,H) -------- BOTTOM_RIGHT (W,H)
 - **`actualBounds`**: The resolved 2D rectangle (`x, y, width, height`) computed by
   `UILayoutSystem`.
 
-## UILayoutSystem
+## Setting up the UI in a game
 
-`UILayoutSystem` resolves the final screen bounds for all entities with a `UITransform`:
+The UI components are ordinary ECS components: they live in the game `Registry`, and the UI
+systems run on the game `Scheduler` like any other system (see the [ECS page](ecs.md)).
 
 ```cpp
-#include "Engine/Ecs/Components/UITransform.hpp"
+#include "Engine/Ecs/Components/UIComponents.hpp"
+#include "Engine/Ecs/Systems/UIInteractionSystem.hpp"
 #include "Engine/Ecs/Systems/UILayoutSystem.hpp"
+#include "Engine/Render/UIRenderSystem.hpp"
 
-// Setup layout system with initial window resolution:
-engine::ecs::UILayoutSystem layoutSystem(1280.0f, 720.0f);
+engine::ecs::Registry registry;
+engine::ecs::Scheduler scheduler;
+engine::core::EventBus bus;
 
-// Create a HUD element anchored at the bottom-center of the screen:
-engine::ecs::UITransform hudTransform;
-hudTransform.anchor = engine::ecs::UIAnchor::BOTTOM_CENTER;
-hudTransform.size = {800.0f, 60.0f};
-hudTransform.offset = {0.0f, -20.0f}; // 20 pixels above the bottom edge
+engine::ecs::registerUIComponents(registry);           // UITransform, UIButton, UIPanel, ...
+
+engine::ecs::UILayoutSystem layout(1280.0f, 720.0f);
+engine::ecs::UIInteractionSystem interaction(bus);
+interaction.addTo(scheduler);                          // PRE_UPDATE: applies the queued input
+layout.addTo(scheduler);                               // POST_UPDATE: resolves actualBounds
+
+// Window events only queue input; the scheduler applies it on the next run():
+interaction.onMouseMove(mouseX, mouseY);
+interaction.onKeyPressed(engine::ecs::UIKey::ENTER);
+layout.setResolution(newWidth, newHeight);             // on resize
+
+scheduler.run(registry, step);
+uiRenderer.render(window, registry);                   // after the world, see Rendering
+```
+
+`layout` and `interaction` must outlive the scheduler entries that `addTo()` creates. In a test,
+`layout.update(registry)` and `interaction.process(registry)` do the same work without a
+scheduler.
+
+## UILayoutSystem
+
+`UILayoutSystem` resolves the final screen bounds of every entity with a `UITransform`:
+
+```cpp
+// A HUD element anchored at the bottom-center of the screen:
+const engine::ecs::Entity hud = registry.spawnEntity();
+engine::ecs::UITransform transform;
+transform.anchor = engine::ecs::UIAnchor::BOTTOM_CENTER;
+transform.size = {800.0f, 60.0f};
+transform.offset = {0.0f, -20.0f}; // 20 pixels above the bottom edge
+registry.addComponent(hud, transform);
 
 // When the window is resized to 1920x1080:
-layoutSystem.setResolution(1920.0f, 1080.0f);
-layoutSystem.update(transforms);
+layout.setResolution(1920.0f, 1080.0f);
+layout.update(registry);
 
-// hudTransform.actualBounds is now: {560.0f, 1000.0f, 800.0f, 60.0f}
-// The element remains centered and 20px above the bottom without drift.
+// actualBounds is now {560.0f, 1000.0f, 800.0f, 60.0f}: centered, 20px above the bottom.
 ```
+
+`offset` and `size` use the engine `core::Vec2`.
 
 ## Interactive buttons & EventBus decoupling
 
@@ -124,7 +156,7 @@ engine::render::UIRenderSystem uiRenderer(resources);
 
 window.setView(worldCamera);
 // ... draw the starfield and the entities ...
-uiRenderer.render(window, transforms, panels, bars, texts);
+uiRenderer.render(window, registry);
 window.display();
 ```
 
@@ -144,7 +176,7 @@ library:
 | --- | --- |
 | `HudController` | Listens to game events on the `EventBus` and keeps a plain `HudState` (local player, lives, score, stage, beam charge, connected players). |
 | `BeamGauge` | Beam charge: empty when idle, fills while shoot is held, empty again on release. |
-| `HudView` | Builds the widgets from `UITransform`, `UIPanel`, `UIText` and `UIProgressBar`, and copies a `HudState` into them each frame. |
+| `HudView` | Creates its widgets as entities of the game `Registry` (`UITransform`, `UIPanel`, `UIText`, `UIProgressBar`), copies a `HudState` into them each frame, and kills them when destroyed. |
 
 Bottom bar, left to right: player tags `P1`-`P4` (player colors, grey when the slot is empty,
 the local player outlined in white), ship icon and lives, stage, `BEAM` gauge (white when full),
