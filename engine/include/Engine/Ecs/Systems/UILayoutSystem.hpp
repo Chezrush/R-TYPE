@@ -9,7 +9,9 @@
 #define UILAYOUTSYSTEM_HPP_
 
 #include "Engine/Ecs/Components/UITransform.hpp"
-#include "Engine/Ecs/SparseArray.hpp"
+#include "Engine/Ecs/Phase.hpp"
+#include "Engine/Ecs/Registry.hpp"
+#include "Engine/Ecs/Scheduler.hpp"
 
 namespace engine::ecs::systems {
 
@@ -17,7 +19,8 @@ namespace engine::ecs::systems {
  * @brief System responsible for resolving UI bounding boxes.
  *
  * Computes absolute viewport coordinates (actualBounds) based on UIAnchor,
- * offset, size, and the current screen/viewport resolution.
+ * offset, size, and the current screen/viewport resolution. UITransform must
+ * be registered in the registry (see registerUIComponents()).
  */
 class UILayoutSystem {
 public:
@@ -40,13 +43,18 @@ public:
     computeBounds(const components::UITransform &transform, float windowWidth,
                   float windowHeight) noexcept;
 
-    /**
-     * @brief Updates all UITransform components in the sparse array.
-     */
-    void update(SparseArray<components::UITransform> &transforms) const;
+    /** @brief Resolves the bounds of every UITransform of the registry. */
+    void update(Registry &registry) const;
 
-    /** @brief Callable operator for ECS registry integration. */
-    void operator()(SparseArray<components::UITransform> &transforms) const;
+    /**
+     * @brief Registers the layout as a scheduler system (writes UITransform).
+     *
+     * The system reads the resolution of this object at each run, so this
+     * object must outlive the scheduler entry. POST_UPDATE by default: the
+     * bounds are resolved after gameplay changed the UI, before rendering.
+     */
+    Scheduler::SystemId addTo(Scheduler &scheduler,
+                              Phase phase = Phase::POST_UPDATE) const;
 
 private:
     float _windowWidth;

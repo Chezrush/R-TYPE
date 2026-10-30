@@ -7,12 +7,14 @@
 
 #include "Engine/Ecs/Systems/UILayoutSystem.hpp"
 
+#include "Engine/Ecs/Zipper.hpp"
+
 namespace engine::ecs::systems {
 
 namespace {
 
-components::Vec2 computeSize(const components::UITransform &transform,
-                             float windowWidth, float windowHeight) noexcept
+core::Vec2 computeSize(const components::UITransform &transform,
+                       float windowWidth, float windowHeight) noexcept
 {
     if (transform.normalizedSize) {
         return {transform.size.x * windowWidth,
@@ -85,8 +87,7 @@ components::Rect
 UILayoutSystem::computeBounds(const components::UITransform &transform,
                               float windowWidth, float windowHeight) noexcept
 {
-    const components::Vec2 size =
-        computeSize(transform, windowWidth, windowHeight);
+    const core::Vec2 size = computeSize(transform, windowWidth, windowHeight);
     const float x =
         computeX(transform.anchor, transform.offset.x, size.x, windowWidth);
     const float y =
@@ -95,21 +96,25 @@ UILayoutSystem::computeBounds(const components::UITransform &transform,
     return {x, y, size.x, size.y};
 }
 
-void UILayoutSystem::update(
-    SparseArray<components::UITransform> &transforms) const
+void UILayoutSystem::update(Registry &registry) const
 {
-    for (auto &slot : transforms) {
-        if (slot.has_value()) {
-            slot->actualBounds =
-                computeBounds(*slot, _windowWidth, _windowHeight);
-        }
-    }
+    auto &transforms = registry.getComponents<components::UITransform>();
+
+    for (auto [transform] : makeZipper(transforms))
+        transform.actualBounds =
+            computeBounds(transform, _windowWidth, _windowHeight);
 }
 
-void UILayoutSystem::operator()(
-    SparseArray<components::UITransform> &transforms) const
+Scheduler::SystemId UILayoutSystem::addTo(Scheduler &scheduler,
+                                          Phase phase) const
 {
-    update(transforms);
+    return scheduler.addSystem<components::UITransform>(
+        "ui_layout", phase,
+        [this](Entity, components::UITransform &transform, CommandBuffer &,
+               double) {
+            transform.actualBounds =
+                computeBounds(transform, _windowWidth, _windowHeight);
+        });
 }
 
 } // namespace engine::ecs::systems

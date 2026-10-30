@@ -11,6 +11,8 @@
 #include <compare>
 #include <cstdint>
 
+#include "Engine/Core/Vec2.hpp"
+
 namespace engine::ecs::components {
 
 /**
@@ -26,16 +28,6 @@ enum class UIAnchor : std::uint8_t {
     BOTTOM_LEFT,
     BOTTOM_CENTER,
     BOTTOM_RIGHT
-};
-
-/**
- * @brief 2D float vector for UI positioning and sizing.
- */
-struct Vec2 {
-    float x = 0.0f;
-    float y = 0.0f;
-
-    friend bool operator==(const Vec2 &, const Vec2 &) = default;
 };
 
 /**
@@ -55,8 +47,8 @@ struct Rect {
  */
 struct UITransform {
     UIAnchor anchor = UIAnchor::TOP_LEFT;
-    Vec2 offset{0.0f, 0.0f};
-    Vec2 size{0.0f, 0.0f};
+    core::Vec2 offset{0.0f, 0.0f};
+    core::Vec2 size{0.0f, 0.0f};
     int zIndex = 0;
     bool normalizedSize = false;
     Rect actualBounds{0.0f, 0.0f, 0.0f, 0.0f};
@@ -75,7 +67,6 @@ namespace engine::ecs {
 using components::Rect;
 using components::UIAnchor;
 using components::UITransform;
-using components::Vec2;
 
 } // namespace engine::ecs
 
