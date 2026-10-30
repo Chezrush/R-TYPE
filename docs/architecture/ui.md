@@ -92,8 +92,8 @@ gameplay rules or network calls. Instead, widget clicks emit typed events on the
 
 ```mermaid
 flowchart LR
-    User["Mouse Click / Keyboard (Enter/Space)"] --> Sys["UIInteractionSystem"]
-    Sys -- emits --> Event["UIButtonClickedEvent { entityIndex, action }"]
+    User["Mouse / Keyboard / Gamepad / Text"] --> Sys["UIInteractionSystem"]
+    Sys -- emits --> Event["UIButtonClickedEvent, UITextChangedEvent,<br/>UIValueChangedEvent, UISelectionChangedEvent"]
     Event --> Bus["EventBus"]
     Bus --> Sub["Subscribers (e.g. GameScene, MenuScene)"]
 ```
@@ -108,16 +108,58 @@ A `UIButton` cycles through 4 states:
 
 ### Accessibility: Keyboard and Gamepad navigation
 
-For accessibility compliance, menus can be fully navigated without a mouse:
-- `Tab` / `Down` / `Right`: Advances focus (`isFocused = true`) to the next enabled button.
-- `Up` / `Left`: Moves focus to the previous enabled button.
-- `Enter` / `Space` / Gamepad A: Activates the focused button, emitting `UIButtonClickedEvent`.
+For accessibility compliance, menus can be fully navigated without a mouse. The window code
+maps the keyboard and the gamepad onto `UIKey` (the engine never sees SFML types), for example
+Tab / RB to `TAB`, Shift+Tab / LB to `BACK_TAB`, the D-pad to the arrows, A to `ENTER` and B to
+`ESCAPE`, and forwards typed characters with `onTextEntered()`.
 
-Focus rules: at most one button is focused at a time, and clicking a button gives it the focus.
-A `DISABLED` button is never focused: a button disabled by game code loses its focus at the
-next call to `UIInteractionSystem`, and a button disabled while it is held down does not emit a
-click when it is released. While the pointer leaves a held button, the button shows `NORMAL`; it
-shows `PRESSED` again when the pointer comes back.
+- `TAB` / `BACK_TAB`: next / previous enabled widget, whatever is focused.
+- The focused widget gets the other keys first (see [Widgets](#widgets)). The keys it does not
+  use navigate: `Down` / `Right` next, `Up` / `Left` previous.
+- `Enter` / `Space` on a focused button emits `UIButtonClickedEvent`.
+
+Focus rules: at most one widget is focused at a time, and clicking a widget gives it the focus.
+A disabled widget (a `DISABLED` button, or `enabled = false`) is never focused: one disabled by
+game code loses its focus at the next processed input, and a button disabled while it is held
+down does not emit a click when it is released. While the pointer leaves a held button, the
+button shows `NORMAL`; it shows `PRESSED` again when the pointer comes back.
+
+### Widgets
+
+Five generic widgets complete `UIButton`. Each is a component on an entity with a
+`UITransform`, has `isFocused`, `enabled`, an `action` id copied into its events, and a
+`UIWidgetStyle` (background, foreground, accent and focus outline colors, font, character
+size). `UIRenderSystem` draws them and an outline around the focused one.
+
+| Component | Mouse | Keys when focused | Event |
+| --- | --- | --- | --- |
+| `UITextInput` | click: focus, caret at the end | typed characters, `Left` / `Right`, `Home` / `End`, `Backspace`, `Del` | `UITextChangedEvent { text }` |
+| `UISlider` | click or drag: value under the pointer | `Left` / `Right` one step, `Home` / `End` min / max | `UIValueChangedEvent { value }` |
+| `UIToggle` | click released over it: flip | `Enter` / `Space`: flip | `UIValueChangedEvent { 1 or 0 }` |
+| `UIDropdown` | click: open / close, click an option: select | closed: `Enter` / `Space` open, `Left` / `Right` change; open: `Up` / `Down`, `Enter` / `Space` select, `Escape` close | `UISelectionChangedEvent { index, label }` |
+| `UIScrollList` | click a row: select, wheel: scroll | `Up` / `Down`, `Home` / `End` | `UISelectionChangedEvent { index, label }` |
+
+- A text input keeps UTF-8 text; its `filter` (`PRINTABLE`, `ALPHANUMERIC`, `DIGITS`) and
+  `maxLength` (in characters) are enforced on every typed character.
+- A slider keeps its value on a multiple of `step` from `min` (`step <= 0`: continuous).
+- An open dropdown draws its options below its bounds, on top of every other entity, and takes
+  the clicks there before anything else. Clicking elsewhere or moving the focus closes it.
+- Events are only published when the value really changes.
+- The editing rules (UTF-8 caret, snapping, scrolling, row geometry) are pure functions in
+  `Engine/Ecs/Systems/UIWidgetLogic.hpp`, shared by the input and the rendering.
+
+```cpp
+const engine::ecs::Entity volume = registry.spawnEntity();
+engine::ecs::UITransform transform;
+transform.anchor = engine::ecs::UIAnchor::CENTER;
+transform.size = {300.0f, 24.0f};
+registry.addComponent(volume, transform);
+registry.addComponent(volume, engine::ecs::UISlider{0.0f, 100.0f, 5.0f, 80.0f});
+
+bus.subscribe<engine::ecs::UIValueChangedEvent>([](const auto &event) {
+    // event.entityIndex, event.action, event.value
+});
+```
 
 ### Event listeners and scenes
 

@@ -22,6 +22,8 @@ add_library(rtype_engine STATIC
     src/Ecs/Components/UITransform.cpp
     src/Ecs/Components/UIComponents.cpp
     src/Ecs/Systems/UIInteractionSystem.cpp
+    src/Ecs/Systems/UIWidgetInput.cpp
+    src/Ecs/Systems/UIWidgetLogic.cpp
     src/Ecs/Systems/UILayoutSystem.cpp)
 add_library(rtype::engine ALIAS rtype_engine)
 
@@ -49,6 +51,8 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/Zipper.cpp
     tests/Ecs/ZipperConcepts.cpp
     tests/Ecs/Systems/UIInteractionSystem.cpp
+    tests/Ecs/Systems/UIWidgetLogic.cpp
+    tests/Ecs/Systems/UIWidgets.cpp
     tests/Ecs/Systems/UILayoutSystem.cpp
     tests/Resources/ResourceCache.cpp)
 if(RTYPE_BUILD_TESTS)
