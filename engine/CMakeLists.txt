@@ -10,6 +10,7 @@ add_library(rtype_engine STATIC
     src/Core/FixedTimestep.cpp
     src/Core/GameLoop.cpp
     src/Core/Vec2.cpp
+    src/Core/SceneManager.cpp
     src/Core/Version.cpp
     src/Ecs/Access.cpp
     src/Ecs/CommandBuffer.cpp
@@ -17,7 +18,10 @@ add_library(rtype_engine STATIC
     src/Ecs/EntityAllocator.cpp
     src/Ecs/Phase.cpp
     src/Ecs/Scheduler.cpp
-    src/Ecs/Registry.cpp)
+    src/Ecs/Registry.cpp
+    src/Ecs/Components/UITransform.cpp
+    src/Ecs/Systems/UIInteractionSystem.cpp
+    src/Ecs/Systems/UILayoutSystem.cpp)
 add_library(rtype::engine ALIAS rtype_engine)
 
 target_include_directories(rtype_engine PUBLIC include)
@@ -25,6 +29,7 @@ target_compile_features(rtype_engine PUBLIC cxx_std_20)
 target_link_libraries(rtype_engine PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_engine_tests
+    tests/Core/SceneManager.cpp
     tests/Version.cpp
     tests/Core/EventBus.cpp
     tests/Core/FixedTimestep.cpp
@@ -41,9 +46,36 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/Registry.cpp
     tests/Ecs/SparseArray.cpp
     tests/Ecs/Zipper.cpp
-    tests/Ecs/ZipperConcepts.cpp)
+    tests/Ecs/ZipperConcepts.cpp
+    tests/Ecs/Systems/UIInteractionSystem.cpp
+    tests/Ecs/Systems/UILayoutSystem.cpp
+    tests/Resources/ResourceCache.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_engine_tests PRIVATE rtype::engine)
+endif()
+
+# Rendering needs SFML, so it lives in its own library: the server only links
+# rtype::engine and never pulls SFML in.
+if(RTYPE_BUILD_CLIENT)
+    find_package(SFML 3 COMPONENTS Graphics CONFIG REQUIRED)
+
+    add_library(rtype_engine_render STATIC
+        src/Render/UIRenderSystem.cpp
+        src/Resources/ResourceManager.cpp)
+    add_library(rtype::engine_render ALIAS rtype_engine_render)
+    target_link_libraries(rtype_engine_render
+        PUBLIC rtype::engine SFML::Graphics
+        PRIVATE rtype_warnings)
+
+    rtype_add_catch_test(rtype_engine_render_tests
+        tests/Render/UIRenderSystem.cpp
+        tests/Resources/ResourceManager.cpp)
+    if(RTYPE_BUILD_TESTS)
+        target_link_libraries(rtype_engine_render_tests
+            PRIVATE rtype::engine_render)
+        target_compile_definitions(rtype_engine_render_tests
+            PRIVATE RTYPE_TEST_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets")
+    endif()
 endif()
 
 if(RTYPE_BUILD_DEMOS)

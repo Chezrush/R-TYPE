@@ -45,17 +45,19 @@ bool SparseArray<Component>::has(Entity entity) const
 template <typename Component>
 Component *SparseArray<Component>::get(Entity entity) noexcept
 {
-    if (entity.index() >= _slots.size() || !_slots[entity.index()])
+    if (entity.index() >= _slots.size())
         return nullptr;
-    return &*_slots[entity.index()];
+    Slot &slot = _slots[entity.index()];
+    return slot.has_value() ? &*slot : nullptr;
 }
 
 template <typename Component>
 const Component *SparseArray<Component>::get(Entity entity) const noexcept
 {
-    if (entity.index() >= _slots.size() || !_slots[entity.index()])
+    if (entity.index() >= _slots.size())
         return nullptr;
-    return &*_slots[entity.index()];
+    const Slot &slot = _slots[entity.index()];
+    return slot.has_value() ? &*slot : nullptr;
 }
 
 template <typename Component>

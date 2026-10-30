@@ -20,7 +20,7 @@ flowchart TD
 | Module | Content | Does NOT know about |
 | --- | --- | --- |
 | `engine/ecs` | `Registry`, `SparseArray`, `Zipper` / `IndexedZipper`, `Scheduler`, `CommandBuffer` | the game, rendering, network |
-| `engine/core` | `FixedTimestep`, `GameLoop`, `EventBus`, `Vec2` | the game |
+| `engine/core` | `FixedTimestep`, `GameLoop`, `EventBus`, `Vec2`, `SceneManager` | the game |
 | `engine/net` | `udp_socket` (Asio hidden behind a pimpl), `udp_worker` (I/O thread) | the protocol |
 | `protocol` | message structs, `encode` / `decode`, bounds-checked buffers | sockets |
 | `game` | components, constants, factories, gameplay systems | sockets, windows |
@@ -64,7 +64,8 @@ flowchart LR
 - It keeps a local `registry` that mirrors the server's entities (created on first sight,
   updated by snapshots, removed on `entity_destroy`, or after 1 s of silence in case a destroy
   packet was lost).
-- SFML is confined to `client/src/window.cpp`.
+- SFML is confined to `client/src/window.cpp` and to the engine render library
+  (`rtype::engine_render`, see [UI](ui.md#rendering)), which the server never links.
 
 ## Known limits of Part 1 (candidates for Part 2)
 
