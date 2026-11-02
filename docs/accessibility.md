@@ -33,15 +33,6 @@ Each palette is checked with a simulation of the vision it targets (Machado, Oli
 players, and a text contrast of at least 4.5:1 on player tags. Players also keep their number and
 shape, so colour is never the only clue.
 
-The images below show the HUD as seen through that simulation:
-
-| Palette | Simulated vision |
-| --- | --- |
-| Protanopia | ![HUD, protanopia palette, simulated protanopia](images/accessibility/protanopia.png) |
-| Deuteranopia | ![HUD, deuteranopia palette, simulated deuteranopia](images/accessibility/deuteranopia.png) |
-| Tritanopia | ![HUD, tritanopia palette, simulated tritanopia](images/accessibility/tritanopia.png) |
-| Normal, no simulation | ![HUD, normal palette](images/accessibility/normal.png) |
-
 Game sprites are not tinted by the palettes, so a ship can differ from the colour of its tag.
 
 ## Mental and cognitive
