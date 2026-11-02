@@ -203,6 +203,8 @@ void testValidPacketAfterInvalidOne()
     CHECK(server.rejectedPackets() == 1);
 }
 
+} // namespace
+
 int main()
 {
     testValidPackets();
