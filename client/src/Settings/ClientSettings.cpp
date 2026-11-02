@@ -118,6 +118,7 @@ std::string formatSettings(const ClientSettings &settings)
         << settings.resolution.height << '\n'
         << "vsync=" << boolText(settings.vsync) << '\n'
         << "ui_scale=" << settings.uiScalePercent << '\n';
+    out << formatBindings(settings.bindings);
     return out.str();
 }
 
@@ -136,6 +137,7 @@ ClientSettings parseSettings(const std::string &content)
         const std::string value = trimmed(line.substr(equal + 1));
         readAudio(key, value, settings);
         readVideo(key, value, settings);
+        readBinding(key, value, settings.bindings);
     }
     return settings;
 }

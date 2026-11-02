@@ -121,6 +121,11 @@ engine::ecs::Registry &UIScene::registry() noexcept
     return _context.registry;
 }
 
+UIInteractionSystem &UIScene::interaction() noexcept
+{
+    return _context.interaction;
+}
+
 const std::string &UIScene::fontId() const noexcept
 {
     return _context.fontId;

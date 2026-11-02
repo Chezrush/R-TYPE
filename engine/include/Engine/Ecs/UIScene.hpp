@@ -100,6 +100,7 @@ protected:
 
     [[nodiscard]] engine::core::EventBus &bus() noexcept;
     [[nodiscard]] engine::ecs::Registry &registry() noexcept;
+    [[nodiscard]] engine::ecs::UIInteractionSystem &interaction() noexcept;
     [[nodiscard]] const std::string &fontId() const noexcept;
     [[nodiscard]] engine::core::Vec2 viewport() const noexcept;
 

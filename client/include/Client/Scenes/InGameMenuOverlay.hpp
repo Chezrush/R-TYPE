@@ -19,9 +19,9 @@ namespace client::scenes {
 /**
  * @brief Menu above the game, which keeps running behind it.
  *
- * Resume (or Escape) publishes ResumeRequested. Settings and Controls open
- * their screen above the menu. Disconnect publishes DisconnectRequested, then
- * asks for the main menu.
+ * Resume (or Escape) publishes ResumeRequested. Settings, Controls and How to
+ * play open their screen above the menu. Disconnect publishes
+ * DisconnectRequested, then asks for the main menu.
  */
 class InGameMenuOverlay : public engine::ecs::UIOverlay {
 public:

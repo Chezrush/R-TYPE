@@ -322,7 +322,10 @@ void SettingsScene::onButton(const UIButtonClickedEvent &event)
 
 void SettingsScene::reset()
 {
+    const settings::KeyBindings bindings = _store.settings().bindings;
+
     _store.settings() = settings::ClientSettings{};
+    _store.settings().bindings = bindings;
     syncWidgets();
     publishVolumes();
     bus().publish(events::MuteChanged{_store.settings().muted});

@@ -10,8 +10,10 @@
 #include <memory>
 
 #include "Client/Scenes/ConnectScene.hpp"
+#include "Client/Scenes/ControlsScene.hpp"
 #include "Client/Scenes/GameOverOverlay.hpp"
 #include "Client/Scenes/GameOverlays.hpp"
+#include "Client/Scenes/HowToPlayScene.hpp"
 #include "Client/Scenes/InGameMenuOverlay.hpp"
 #include "Client/Scenes/MainMenuScene.hpp"
 #include "Client/Scenes/RespawnOverlay.hpp"
@@ -85,6 +87,19 @@ TEST_CASE("every screen fits a 720p window at the largest UI scale",
         SceneFixture fixture;
         std::uint32_t score = 0;
         requireSceneFits<client::scenes::GameOverOverlay>(fixture, score);
+    }
+    SECTION("controls")
+    {
+        SceneFixture fixture;
+        const TempDirectory directory;
+        client::settings::SettingsStore store(directory.path() / "s.cfg");
+        requireSceneFits<client::scenes::ControlsScene>(fixture, store);
+    }
+    SECTION("how to play")
+    {
+        SceneFixture fixture;
+        const client::settings::KeyBindings bindings;
+        requireSceneFits<client::scenes::HowToPlayScene>(fixture, bindings);
     }
     SECTION("settings")
     {

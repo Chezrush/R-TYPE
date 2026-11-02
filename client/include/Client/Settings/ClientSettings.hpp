@@ -12,6 +12,7 @@
 #include <string>
 
 #include "Client/Events/SettingsEvents.hpp"
+#include "Client/Settings/KeyBindings.hpp"
 
 namespace client::settings {
 
@@ -36,6 +37,7 @@ struct ClientSettings {
     events::Resolution resolution;
     bool vsync = true;
     int uiScalePercent = 100;
+    KeyBindings bindings;
 
     friend bool operator==(const ClientSettings &,
                            const ClientSettings &) = default;

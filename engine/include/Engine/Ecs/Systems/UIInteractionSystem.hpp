@@ -94,6 +94,10 @@ public:
     /** @brief Queues a typed character, for the focused text input. */
     void onTextEntered(char32_t character);
 
+    /** @brief Forgets the queued input, for a modal that reads devices itself.
+     */
+    void discardInput() noexcept;
+
     /** @brief Applies the queued input, in order, then empties the queue. */
     void process(Registry &registry);
 

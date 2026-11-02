@@ -127,6 +127,20 @@ ignored and the default stays. At startup the client calls `store.load()` and ap
 layout.setScale(static_cast<float>(store.settings().uiScalePercent) / 100.0f);
 ```
 
+### Controls and how to play
+
+`KeyBindings` holds a key and a gamepad button per action, plus the auto-fire and beam charge
+options. Keys are USB HID codes: they name a position on the keyboard, so they work on QWERTY and
+AZERTY, and depend on no window library. The window code converts its own scancodes to them. The
+bindings are saved with `ClientSettings`, and the "Reset to defaults" of each screen only touches its
+own values.
+
+`ControlsScene` changes them. Activating a row waits for a key or a button: meanwhile the UI input
+is discarded, and the scene reads `RawKeyPressed` and `RawGamepadButtonPressed`. The window code must
+publish those before calling `handleInput()`. A conflict shows a warning without refusing the change.
+Every change publishes `BindingsChanged`. `HowToPlayScene` explains the game with the current
+bindings.
+
 ### Talking to the network layer
 
 `ConnectScene` never calls network code. All the messages are `EventBus` events, declared in
