@@ -5,6 +5,8 @@
 ** MessageQueueTests.cpp
 */
 
+#include <exception>
+#include <iostream>
 #include <thread>
 #include <vector>
 
@@ -32,9 +34,9 @@ void testEnqueueDequeue()
     CHECK(first.has_value());
     CHECK(second.has_value());
     CHECK(third.has_value());
-    CHECK(first.value() == 1);
-    CHECK(second.value() == 2);
-    CHECK(third.value() == 3);
+    CHECK(first == 1);
+    CHECK(second == 2);
+    CHECK(third == 3);
     CHECK(queue.empty());
 }
 
@@ -107,10 +109,14 @@ void testConcurrentAccess()
 
 int main()
 {
-    testEnqueueDequeue();
-    testCapacityLimit();
-    testEmptyQueueReports();
-    testConcurrentAccess();
-
+    try {
+        testEnqueueDequeue();
+        testCapacityLimit();
+        testEmptyQueueReports();
+        testConcurrentAccess();
+    } catch (const std::exception &error) {
+        std::cerr << "Unexpected exception: " << error.what() << "\n";
+        return 1;
+    }
     return TEST_RESULT();
 }

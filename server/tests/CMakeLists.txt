@@ -26,3 +26,14 @@ target_link_libraries(message_queue_tests
 )
 
 set_tests_properties(message_queue_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(packet_validation_tests
+    PacketCheckerTests.cpp
+)
+
+target_link_libraries(packet_validation_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(packet_validation_tests PROPERTIES TIMEOUT 10)

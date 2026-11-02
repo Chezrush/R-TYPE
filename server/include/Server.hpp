@@ -9,14 +9,19 @@
 #define SERVER_HPP_
 
 #include <algorithm>
+#include <asio.hpp>
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <thread>
 
 #include "ServerMessage.hpp"
 
 namespace rtype::server {
+
+using Udp = asio::ip::udp;
+
 struct ServerConfig {
     /**
      * @brief Simulation frequency, in ticks per second.
@@ -34,11 +39,16 @@ struct ServerConfig {
      * @brief Maximum number of messages retained by each queue.
      */
     std::size_t maxQueueCapacity = 1024;
+
+    /**
+     * @brief UDP port of the server, 0 picks a free one.
+     */
+    std::uint16_t port = 4242;
 };
 
 class Server {
 public:
-    explicit Server(ServerConfig config = {}) noexcept;
+    explicit Server(ServerConfig config = {});
     ~Server();
 
     Server(const Server &) = delete;
@@ -75,6 +85,16 @@ public:
     void runSimulationLoop(const std::stop_token &stopToken,
                            std::chrono::nanoseconds timestep);
 
+    /**
+     * @brief Queues the packet if it is valid, otherwise drops it.
+     */
+    bool receivePacket(IncomingMessage message);
+
+    /**
+     * @brief Returns the number of packets dropped by receivePacket().
+     */
+    [[nodiscard]] std::uint64_t rejectedPackets() const noexcept;
+
 private:
     void runNetwork(const std::stop_token &stopToken);
     void runSimulation(const std::stop_token &stopToken);
@@ -89,12 +109,16 @@ private:
     ServerConfig _config;
     std::atomic<bool> _running{false};
     std::atomic<std::uint64_t> _tickCount{0};
+    std::atomic<std::uint64_t> _rejectedPackets{0};
 
     std::jthread _networkThread;
     std::jthread _simulationThread;
 
     IncomingQueue _incomingMessages;
     OutgoingQueue _outgoingMessages;
+
+    asio::io_context _context;
+    Udp::socket _socket;
 };
 
 } /* namespace rtype::server */
