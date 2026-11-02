@@ -46,8 +46,9 @@ TEST_CASE("text filters accept the right characters", "[ui][widgets][text]")
     REQUIRE_FALSE(widgets::acceptsCharacter(UITextFilter::DIGITS, U'a'));
     REQUIRE(widgets::acceptsCharacter(UITextFilter::ALPHANUMERIC, U'Z'));
     REQUIRE_FALSE(widgets::acceptsCharacter(UITextFilter::ALPHANUMERIC, U'-'));
-    REQUIRE_FALSE(widgets::acceptsCharacter(UITextFilter::ALPHANUMERIC, U'é'));
-    REQUIRE(widgets::acceptsCharacter(UITextFilter::PRINTABLE, U'é'));
+    REQUIRE_FALSE(
+        widgets::acceptsCharacter(UITextFilter::ALPHANUMERIC, U'\u00E9'));
+    REQUIRE(widgets::acceptsCharacter(UITextFilter::PRINTABLE, U'\u00E9'));
     REQUIRE(widgets::acceptsCharacter(UITextFilter::PRINTABLE, U' '));
     REQUIRE_FALSE(widgets::acceptsCharacter(UITextFilter::PRINTABLE, U'\n'));
     REQUIRE_FALSE(widgets::acceptsCharacter(UITextFilter::PRINTABLE, 0x7F));
@@ -57,8 +58,8 @@ TEST_CASE("text filters accept the right characters", "[ui][widgets][text]")
 TEST_CASE("characters are encoded in UTF-8", "[ui][widgets][text]")
 {
     REQUIRE(widgets::encodeUtf8(U'A') == "A");
-    REQUIRE(widgets::encodeUtf8(U'é') == "\xC3\xA9");
-    REQUIRE(widgets::encodeUtf8(U'€') == "\xE2\x82\xAC");
+    REQUIRE(widgets::encodeUtf8(U'\u00E9') == "\xC3\xA9");
+    REQUIRE(widgets::encodeUtf8(U'\u20AC') == "\xE2\x82\xAC");
     REQUIRE(widgets::encodeUtf8(0x1F680) == "\xF0\x9F\x9A\x80");
     REQUIRE(widgets::encodeUtf8(0x110000).empty());
     REQUIRE(widgets::characterCount("h\xC3\xA9llo") == 5);
@@ -72,7 +73,7 @@ TEST_CASE("typing inserts at the caret", "[ui][widgets][text]")
     REQUIRE(widgets::insertCharacter(input, U'b'));
     REQUIRE(input.text == "abc");
     REQUIRE(input.caret == 2);
-    REQUIRE(widgets::insertCharacter(input, U'é'));
+    REQUIRE(widgets::insertCharacter(input, U'\u00E9'));
     REQUIRE(input.text == "ab\xC3\xA9"
                           "c");
     REQUIRE(input.caret == 4);
@@ -95,8 +96,8 @@ TEST_CASE("max length counts characters, not bytes", "[ui][widgets][text]")
     UITextInput input;
     input.maxLength = 2;
 
-    REQUIRE(widgets::insertCharacter(input, U'é'));
-    REQUIRE(widgets::insertCharacter(input, U'é'));
+    REQUIRE(widgets::insertCharacter(input, U'\u00E9'));
+    REQUIRE(widgets::insertCharacter(input, U'\u00E9'));
     REQUIRE_FALSE(widgets::insertCharacter(input, U'a'));
     REQUIRE(widgets::characterCount(input.text) == 2);
 }

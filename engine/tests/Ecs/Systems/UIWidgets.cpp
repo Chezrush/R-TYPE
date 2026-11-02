@@ -205,7 +205,7 @@ TEST_CASE("editing keys move the caret and erase", "[ecs][ui][widgets][text]")
     ui.key(UIKey::DEL);
     REQUIRE(ui.get<UITextInput>(name).text == "c");
     ui.key(UIKey::END);
-    ui.type(U" é");
+    ui.type(U" \u00E9");
     REQUIRE(ui.get<UITextInput>(name).text == "c \xC3\xA9");
     REQUIRE(ui.focused() == name);
 }
