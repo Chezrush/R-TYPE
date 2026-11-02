@@ -48,7 +48,7 @@ Bytes packet(std::initializer_list<std::uint8_t> records)
 bool accepts(Server &server, const Bytes &bytes)
 {
     return server.receivePacket(
-        IncomingMessage{1, std::string(bytes.begin(), bytes.end())});
+        IncomingMessage{1, std::string(bytes.begin(), bytes.end()), {}});
 }
 
 const Bytes HELLO_EXAMPLE = {0x52, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
