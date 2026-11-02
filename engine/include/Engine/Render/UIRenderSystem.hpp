@@ -13,12 +13,17 @@
 #include <SFML/Graphics/View.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <cstddef>
+#include <string>
 #include <vector>
 
+#include "Engine/Ecs/Components/UIDropdown.hpp"
 #include "Engine/Ecs/Components/UIPanel.hpp"
 #include "Engine/Ecs/Components/UIProgressBar.hpp"
+#include "Engine/Ecs/Components/UIScrollList.hpp"
 #include "Engine/Ecs/Components/UIText.hpp"
+#include "Engine/Ecs/Components/UITextInput.hpp"
 #include "Engine/Ecs/Components/UITransform.hpp"
+#include "Engine/Ecs/Components/UIWidgetStyle.hpp"
 #include "Engine/Ecs/Entity.hpp"
 #include "Engine/Ecs/Registry.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
@@ -29,7 +34,9 @@ namespace engine::render {
  * @brief Draws the UI entities in screen space, sorted by zIndex.
  *
  * An entity is drawn when it has a UITransform and at least one of UIPanel,
- * UIProgressBar or UIText, in that order, inside its actualBounds. The UI
+ * UIProgressBar, UIText or an interactive widget, in that order, inside its
+ * actualBounds. A focused widget gets an outline; an open dropdown list is
+ * drawn last, on top of everything. The UI
  * uses its own view, one unit per pixel of the target, so it does not move
  * with the world camera. The target view is restored afterwards.
  */
@@ -81,6 +88,29 @@ private:
 
     void drawText(sf::RenderTarget &target, const ecs::components::UIText &text,
                   const ecs::components::Rect &bounds);
+
+    void drawWidgets(sf::RenderTarget &target, const ecs::Registry &registry,
+                     ecs::Entity entity, const ecs::components::Rect &bounds);
+    void drawOpenDropdowns(sf::RenderTarget &target,
+                           const ecs::Registry &registry);
+    void drawTextInput(sf::RenderTarget &target,
+                       const ecs::components::UITextInput &input,
+                       const ecs::components::Rect &bounds);
+    void drawCaret(sf::RenderTarget &target,
+                   const ecs::components::UITextInput &input,
+                   const ecs::components::Rect &bounds);
+    void drawDropdown(sf::RenderTarget &target,
+                      const ecs::components::UIDropdown &dropdown,
+                      const ecs::components::Rect &bounds);
+    void drawDropdownOptions(sf::RenderTarget &target,
+                             const ecs::components::UIDropdown &dropdown,
+                             const ecs::components::Rect &bounds);
+    void drawScrollList(sf::RenderTarget &target,
+                        const ecs::components::UIScrollList &list,
+                        const ecs::components::Rect &bounds);
+    void drawLabel(sf::RenderTarget &target, const std::string &text,
+                   const ecs::components::UIWidgetStyle &style,
+                   const ecs::components::Rect &bounds, sf::Color color);
 
     resources::ResourceManager &_resources;
 };

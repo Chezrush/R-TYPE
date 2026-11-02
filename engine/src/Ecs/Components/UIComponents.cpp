@@ -16,6 +16,11 @@ void registerUIComponents(Registry &registry)
     registry.registerComponent<components::UIPanel>();
     registry.registerComponent<components::UIProgressBar>();
     registry.registerComponent<components::UIText>();
+    registry.registerComponent<components::UITextInput>();
+    registry.registerComponent<components::UISlider>();
+    registry.registerComponent<components::UIToggle>();
+    registry.registerComponent<components::UIDropdown>();
+    registry.registerComponent<components::UIScrollList>();
 }
 
 } // namespace engine::ecs

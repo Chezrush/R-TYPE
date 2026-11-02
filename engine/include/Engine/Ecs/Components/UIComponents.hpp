@@ -9,10 +9,16 @@
 #define UICOMPONENTS_HPP_
 
 #include "Engine/Ecs/Components/UIButton.hpp"
+#include "Engine/Ecs/Components/UIDropdown.hpp"
 #include "Engine/Ecs/Components/UIPanel.hpp"
 #include "Engine/Ecs/Components/UIProgressBar.hpp"
+#include "Engine/Ecs/Components/UIScrollList.hpp"
+#include "Engine/Ecs/Components/UISlider.hpp"
 #include "Engine/Ecs/Components/UIText.hpp"
+#include "Engine/Ecs/Components/UITextInput.hpp"
+#include "Engine/Ecs/Components/UIToggle.hpp"
 #include "Engine/Ecs/Components/UITransform.hpp"
+#include "Engine/Ecs/Components/UIWidgetEvents.hpp"
 #include "Engine/Ecs/Registry.hpp"
 
 namespace engine::ecs {
