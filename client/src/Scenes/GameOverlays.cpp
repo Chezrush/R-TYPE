@@ -161,7 +161,7 @@ void GameOverlays::show(GameOverlay overlay)
     if (overlay == _active)
         return;
     if (_active != GameOverlay::NONE)
-        _bus.publish(engine::core::OverlayCloseRequested{});
+        _bus.publish(engine::core::OverlaysClearRequested{});
     if (_active == GameOverlay::IN_GAME_MENU)
         _bus.publish(events::InGameMenuClosed{});
     if (overlay == GameOverlay::IN_GAME_MENU)

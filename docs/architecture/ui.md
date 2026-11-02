@@ -98,6 +98,14 @@ flowchart LR
     Bus --> Sub["Subscribers (e.g. GameScene, MenuScene)"]
 ```
 
+### UI scale
+
+`UILayoutSystem::setScale()` multiplies offsets, sizes and text sizes, for players who need a larger
+interface. Normalized sizes are left alone, since they are already relative to the window, and so is
+an entity with `followsUIScale = false`, whose offset is a real screen position (a tag above a ship).
+The layout writes the value used in `UITransform::resolvedScale`, and `UIRenderSystem` applies it to
+the text of that entity.
+
 ### Button states
 
 A `UIButton` cycles through 4 states:

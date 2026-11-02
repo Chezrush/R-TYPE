@@ -354,3 +354,20 @@ TEST_CASE("popped overlays remove their widgets and listeners",
     game.router.apply();
     REQUIRE(game.closed == 2);
 }
+
+TEST_CASE("game over closes everything above the game, settings included",
+          "[client][scenes][overlay]")
+{
+    GameFixture game;
+    game.press(UIKey::ESCAPE);
+    game.bus.publish(
+        client::scenes::OverlayRequested{SceneRoute::IN_GAME_MENU});
+    game.step();
+    REQUIRE(game.scenes.size() == 3);
+
+    game.bus.publish(GameStateChanged{GamePhase::GAME_OVER, 1});
+    game.step();
+
+    REQUIRE(game.top<GameOverOverlay>() != nullptr);
+    REQUIRE(game.scenes.size() == 2);
+}

@@ -285,6 +285,8 @@ void HudView::buildMarkers()
         _markerOutlines.push_back(
             spawn(UIAnchor::TOP_LEFT, {}, outlineSize, 10));
         _markers.push_back(spawn(UIAnchor::TOP_LEFT, {}, MARKER_SIZE, 11));
+        component<UITransform>(_markerOutlines.back()).followsUIScale = false;
+        component<UITransform>(_markers.back()).followsUIScale = false;
         _registry.addComponent(_markerOutlines.back(), colorPanel(HIDDEN));
         _registry.addComponent(_markers.back(), colorPanel(HIDDEN));
         _registry.addComponent(

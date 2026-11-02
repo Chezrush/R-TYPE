@@ -19,7 +19,10 @@ add_library(rtype_client_core STATIC
     src/Scenes/MainMenuScene.cpp
     src/Scenes/MenuContext.cpp
     src/Scenes/RespawnOverlay.cpp
-    src/Scenes/Starfield.cpp)
+    src/Scenes/SettingsScene.cpp
+    src/Scenes/Starfield.cpp
+    src/Settings/ClientSettings.cpp
+    src/Settings/SettingsStore.cpp)
 target_include_directories(rtype_client_core PUBLIC include)
 target_link_libraries(rtype_client_core
     PUBLIC rtype::engine
@@ -37,9 +40,14 @@ rtype_add_catch_test(rtype_client_tests
     tests/Scenes/ConnectScene.cpp
     tests/Scenes/GameOverlays.cpp
     tests/Scenes/MainMenuScene.cpp
-    tests/Scenes/SceneRouter.cpp)
+    tests/Scenes/SceneRouter.cpp
+    tests/Scenes/SettingsScene.cpp
+    tests/Scenes/UIScaleFit.cpp
+    tests/Settings/ClientSettings.cpp
+    tests/Settings/SettingsStore.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_client_tests PRIVATE rtype_client_core)
-    target_include_directories(rtype_client_tests PRIVATE tests/Scenes)
+    target_include_directories(rtype_client_tests PRIVATE tests/Scenes
+        tests/Settings)
     add_test(NAME smoke_client COMMAND r-type_client)
 endif()

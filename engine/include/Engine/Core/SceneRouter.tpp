@@ -31,6 +31,10 @@ SceneRouter<Route>::SceneRouter(SceneManager &scenes, EventBus &bus)
         [this](const OverlayCloseRequested &) {
             _pending.emplace_back([this] { closeOverlay(); });
         }));
+    _listeners.push_back(_bus.subscribe<OverlaysClearRequested>(
+        [this](const OverlaysClearRequested &) {
+            _pending.emplace_back([this] { closeOverlays(); });
+        }));
     _listeners.push_back(_bus.subscribe<QuitRequested>(
         [this](const QuitRequested &) { _quit = true; }));
 }
@@ -86,6 +90,13 @@ template <typename Route>
 void SceneRouter<Route>::closeOverlay()
 {
     if (!_scenes.empty() && _scenes.currentScene().isOverlay())
+        _scenes.popScene();
+}
+
+template <typename Route>
+void SceneRouter<Route>::closeOverlays()
+{
+    while (!_scenes.empty() && _scenes.currentScene().isOverlay())
         _scenes.popScene();
 }
 

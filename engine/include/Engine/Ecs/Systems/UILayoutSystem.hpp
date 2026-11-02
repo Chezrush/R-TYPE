@@ -20,7 +20,10 @@ namespace engine::ecs::systems {
  *
  * Computes absolute viewport coordinates (actualBounds) based on UIAnchor,
  * offset, size, and the current screen/viewport resolution. UITransform must
- * be registered in the registry (see registerUIComponents()).
+ * be registered in the registry (see registerUIComponents()). The UI scale
+ * multiplies offsets and sizes, except normalized sizes (already relative to
+ * the window) and entities with followsUIScale = false. Text sizes follow it
+ * too.
  */
 class UILayoutSystem {
 public:
@@ -29,6 +32,12 @@ public:
 
     /** @brief Sets viewport resolution for layout recalculation. */
     void setResolution(float windowWidth, float windowHeight) noexcept;
+
+    /** @brief Sets the UI scale (1.0: unchanged). A value <= 0 is ignored. */
+    void setScale(float scale) noexcept;
+
+    /** @brief Current UI scale. */
+    [[nodiscard]] float scale() const noexcept;
 
     /** @brief Current viewport width. */
     [[nodiscard]] float windowWidth() const noexcept;
@@ -41,7 +50,7 @@ public:
      */
     [[nodiscard]] static components::Rect
     computeBounds(const components::UITransform &transform, float windowWidth,
-                  float windowHeight) noexcept;
+                  float windowHeight, float scale = 1.0f) noexcept;
 
     /** @brief Resolves the bounds of every UITransform of the registry. */
     void update(Registry &registry) const;
@@ -57,8 +66,11 @@ public:
                               Phase phase = Phase::POST_UPDATE) const;
 
 private:
+    void resolve(components::UITransform &transform) const noexcept;
+
     float _windowWidth;
     float _windowHeight;
+    float _scale = 1.0f;
 };
 
 } // namespace engine::ecs::systems

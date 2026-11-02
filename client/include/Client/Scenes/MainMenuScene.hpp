@@ -19,7 +19,8 @@ namespace client::scenes {
 /**
  * @brief First screen: logo, scrolling starfield and the main buttons.
  *
- * Each button publishes a NavigationRequested (Quit: QuitRequested). The first
+ * Play publishes a NavigationRequested, Quit a QuitRequested, and the others
+ * an OverlayRequested, so that going back returns to this menu. The first
  * one has the focus, so the menu works without a mouse from the start.
  */
 class MainMenuScene : public engine::ecs::UIScene {

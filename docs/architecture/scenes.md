@@ -78,7 +78,7 @@ Two generic helpers build screens for any game. They know nothing about R-Type:
   `NavigationRequested<Route>`, and `apply()` switches between two frames: switching at once would
   destroy the scene while its own listener runs. `Route` is chosen by the game, usually an enum. A
   route with no scene yet is ignored. `OverlayRequested<Route>` and `OverlayCloseRequested` push
-  and close overlays the same way. `QuitRequested` sets `quitRequested()`.
+  and close overlays the same way, and `OverlaysClearRequested` closes all of them. `QuitRequested` sets `quitRequested()`.
 - **`engine::ecs::UIOverlay`** is a `UIScene` drawn above the others: its widgets get a higher
   z-index, `addBackdrop()` covers the window, and the scene below keeps updating unless told not to.
 
@@ -111,6 +111,21 @@ overlay. Game over wins over the in-game menu, which wins over the respawn count
 
 The menu publishes `InGameMenuOpened` / `InGameMenuClosed`; leaving publishes
 `DisconnectRequested`. The countdown keeps running under the menu. The server is never paused.
+
+### Settings
+
+`SettingsScene` is an overlay opened from the main menu and from the in-game menu. It edits
+`ClientSettings` and publishes the changes, without applying them: `VolumeChanged`, `MuteChanged`
+and `VideoSettingsChanged` are for the audio and window code. Only the UI scale is applied by the
+screen itself, on `UILayoutSystem`.
+
+`SettingsStore` keeps the values in a `key=value` file (`settings.cfg` in the user data directory),
+written when the screen exits. A missing or broken file gives usable settings: each invalid line is
+ignored and the default stays. At startup the client calls `store.load()` and applies the values:
+
+```cpp
+layout.setScale(static_cast<float>(store.settings().uiScalePercent) / 100.0f);
+```
 
 ### Talking to the network layer
 

@@ -252,3 +252,21 @@ TEST_CASE("an unknown route neither pushes nor clears the stack",
     REQUIRE(fixture.current() == "title");
     REQUIRE(fixture.scenes.size() == 1);
 }
+
+TEST_CASE("clearing closes every overlay and nothing else",
+          "[core][scene][router]")
+{
+    RouterFixture fixture;
+    fixture.go(Screen::TITLE);
+    fixture.router.apply();
+    fixture.bus.publish(OverlayRequested<Screen>{Screen::POPUP});
+    fixture.bus.publish(OverlayRequested<Screen>{Screen::POPUP});
+    fixture.router.apply();
+    REQUIRE(fixture.scenes.size() == 3);
+
+    fixture.bus.publish(engine::core::OverlaysClearRequested{});
+    fixture.router.apply();
+
+    REQUIRE(fixture.current() == "title");
+    REQUIRE(fixture.scenes.size() == 1);
+}

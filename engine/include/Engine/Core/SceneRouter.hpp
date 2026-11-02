@@ -34,6 +34,9 @@ struct OverlayRequested {
 /** @brief A scene asks to close the overlay on top of the stack. */
 struct OverlayCloseRequested {};
 
+/** @brief A scene asks to close every overlay on top of the stack. */
+struct OverlaysClearRequested {};
+
 /** @brief The player asked to quit the game. */
 struct QuitRequested {};
 
@@ -76,6 +79,7 @@ private:
     void requestNavigation(const Route &route);
     void requestOverlay(const Route &route);
     void closeOverlay();
+    void closeOverlays();
 
     SceneManager &_scenes;
     EventBus &_bus;

@@ -51,7 +51,11 @@ struct UITransform {
     core::Vec2 size{0.0f, 0.0f};
     int zIndex = 0;
     bool normalizedSize = false;
+    /** False for a position that is real pixels, such as a tag above a ship. */
+    bool followsUIScale = true;
     Rect actualBounds{0.0f, 0.0f, 0.0f, 0.0f};
+    /** UI scale applied by the layout, followed by the text of this entity. */
+    float resolvedScale = 1.0f;
 
     /** @brief Orders transforms by zIndex only (drawing order). */
     friend std::strong_ordering operator<=>(const UITransform &lhs,

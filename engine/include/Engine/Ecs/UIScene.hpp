@@ -103,11 +103,15 @@ protected:
     [[nodiscard]] const std::string &fontId() const noexcept;
     [[nodiscard]] engine::core::Vec2 viewport() const noexcept;
 
+    /** @brief Whether the widgets exist (false under another scene). */
+    [[nodiscard]] bool isActive() const noexcept;
+
 private:
     void deactivate();
 
     UISceneContext _context;
     std::vector<engine::ecs::Entity> _entities;
+    bool _active = false;
     std::vector<engine::core::EventBus::ListenerId> _listeners;
 };
 

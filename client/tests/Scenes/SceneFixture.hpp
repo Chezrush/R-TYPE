@@ -30,6 +30,11 @@ struct SceneFixture {
                 route = request.route;
                 ++navigations;
             });
+        bus.subscribe<client::scenes::OverlayRequested>(
+            [this](const client::scenes::OverlayRequested &request) {
+                route = request.route;
+                ++overlayRequests;
+            });
         bus.subscribe<engine::core::QuitRequested>(
             [this](const engine::core::QuitRequested &) { ++quits; });
     }
@@ -81,6 +86,7 @@ struct SceneFixture {
     engine::core::SceneManager scenes;
     client::scenes::SceneRoute route = client::scenes::SceneRoute::MAIN_MENU;
     int navigations = 0;
+    int overlayRequests = 0;
     int quits = 0;
 };
 

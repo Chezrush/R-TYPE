@@ -33,6 +33,7 @@ UIScene::~UIScene()
 
 void UIScene::onEnter()
 {
+    _active = true;
     activate();
 }
 
@@ -48,6 +49,7 @@ void UIScene::onPause()
 
 void UIScene::onResume()
 {
+    _active = true;
     activate();
 }
 
@@ -124,6 +126,11 @@ const std::string &UIScene::fontId() const noexcept
     return _context.fontId;
 }
 
+bool UIScene::isActive() const noexcept
+{
+    return _active;
+}
+
 Vec2 UIScene::viewport() const noexcept
 {
     return _context.viewport;
@@ -131,6 +138,7 @@ Vec2 UIScene::viewport() const noexcept
 
 void UIScene::deactivate()
 {
+    _active = false;
     for (const auto listener : _listeners)
         _context.bus.unsubscribe(listener);
     _listeners.clear();

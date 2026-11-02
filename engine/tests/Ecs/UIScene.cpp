@@ -33,6 +33,11 @@ class ShopScene : public UIScene {
 public:
     using UIScene::UIScene;
 
+    [[nodiscard]] bool active() const noexcept
+    {
+        return isActive();
+    }
+
     int activations = 0;
     int clicks = 0;
     std::optional<Entity> buy;
@@ -150,4 +155,20 @@ TEST_CASE("the game chooses the look of the buttons", "[ecs][ui][scene]")
     REQUIRE(label.text == "Buy");
     REQUIRE(label.fontId == "font.ttf");
     REQUIRE(label.characterSize == 40);
+}
+
+TEST_CASE("a UI scene knows whether its widgets exist", "[ecs][ui][scene]")
+{
+    SceneWorld world;
+    ShopScene scene(world.context());
+
+    REQUIRE_FALSE(scene.active());
+    scene.onEnter();
+    REQUIRE(scene.active());
+    scene.onPause();
+    REQUIRE_FALSE(scene.active());
+    scene.onResume();
+    REQUIRE(scene.active());
+    scene.onExit();
+    REQUIRE_FALSE(scene.active());
 }

@@ -50,12 +50,36 @@ TEST_CASE("each menu button asks for its screen", "[client][scenes][menu]")
 
         fixture.click(menu.button(label));
 
-        REQUIRE(fixture.navigations == 1);
+        REQUIRE(fixture.navigations + fixture.overlayRequests == 1);
         REQUIRE(fixture.route == route);
         REQUIRE(fixture.registry.getComponents<UIText>()
                     .get(menu.button(label))
                     ->text == label);
     }
+}
+
+TEST_CASE("Play replaces the menu, the other screens go above it",
+          "[client][scenes][menu]")
+{
+    SceneFixture play;
+    play.click(enterMenu(play).button("Play"));
+    REQUIRE(play.navigations == 1);
+
+    SceneFixture settings;
+    settings.click(enterMenu(settings).button("Settings"));
+    REQUIRE(settings.overlayRequests == 1);
+    REQUIRE(settings.navigations == 0);
+}
+
+TEST_CASE("a menu below another scene can still be updated",
+          "[client][scenes][menu]")
+{
+    SceneFixture fixture;
+    MainMenuScene &menu = enterMenu(fixture);
+
+    menu.onPause();
+    menu.update(0.5f);
+    REQUIRE(fixture.registry.aliveCount() == 0);
 }
 
 TEST_CASE("Quit asks to quit", "[client][scenes][menu]")

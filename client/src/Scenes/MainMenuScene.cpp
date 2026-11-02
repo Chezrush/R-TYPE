@@ -33,25 +33,26 @@ using engine::ecs::components::UITransform;
 struct MenuEntry {
     const char *label;
     std::optional<SceneRoute> route;
+    bool overlay;
 };
 
 constexpr std::array<MenuEntry, 5> ENTRIES{{
-    {"Play", SceneRoute::CONNECT},
-    {"Settings", SceneRoute::SETTINGS},
-    {"Controls", SceneRoute::CONTROLS},
-    {"How to play", SceneRoute::HOW_TO_PLAY},
-    {"Quit", std::nullopt},
+    {"Play", SceneRoute::CONNECT, false},
+    {"Settings", SceneRoute::SETTINGS, true},
+    {"Controls", SceneRoute::CONTROLS, true},
+    {"How to play", SceneRoute::HOW_TO_PLAY, true},
+    {"Quit", std::nullopt, false},
 }};
 
 constexpr std::size_t STAR_COUNT = 120;
 constexpr std::uint32_t STAR_SEED = 1987;
 constexpr int STAR_Z_INDEX = -10;
-constexpr unsigned int LOGO_TEXT_SIZE = 96;
-constexpr Vec2 LOGO_OFFSET{0.0f, -230.0f};
-constexpr Vec2 LOGO_SIZE{800.0f, 120.0f};
+constexpr unsigned int LOGO_TEXT_SIZE = 84;
+constexpr Vec2 LOGO_OFFSET{0.0f, -170.0f};
+constexpr Vec2 LOGO_SIZE{800.0f, 100.0f};
 constexpr Vec2 BUTTON_SIZE{320.0f, 52.0f};
-constexpr float FIRST_BUTTON_Y = -90.0f;
-constexpr float BUTTON_SPACING = 66.0f;
+constexpr float FIRST_BUTTON_Y = -80.0f;
+constexpr float BUTTON_SPACING = 60.0f;
 
 } // namespace
 
@@ -63,7 +64,8 @@ MainMenuScene::MainMenuScene(engine::ecs::UISceneContext context)
 void MainMenuScene::update(float dt)
 {
     _starfield.advance(dt);
-    placeStars();
+    if (isActive())
+        placeStars();
 }
 
 Entity MainMenuScene::button(const std::string &label) const
@@ -96,6 +98,8 @@ void MainMenuScene::buildStars()
         const Entity entity =
             spawn(UIAnchor::TOP_LEFT, {}, {star.size, star.size}, STAR_Z_INDEX);
         UIPanel panel;
+
+        widget<UITransform>(entity).followsUIScale = false;
 
         panel.color =
             UIColor{star.brightness, star.brightness, star.brightness, 255};
@@ -133,10 +137,12 @@ void MainMenuScene::onButton(const UIButtonClickedEvent &event)
     for (const MenuEntry &entry : ENTRIES) {
         if (event.action != entry.label)
             continue;
-        if (entry.route.has_value())
-            bus().publish(NavigationRequested{*entry.route});
-        else
+        if (!entry.route.has_value())
             bus().publish(engine::core::QuitRequested{});
+        else if (entry.overlay)
+            bus().publish(OverlayRequested{*entry.route});
+        else
+            bus().publish(NavigationRequested{*entry.route});
     }
 }
 
