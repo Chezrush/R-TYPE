@@ -87,6 +87,7 @@ void Server::runNetwork(const std::stop_token &stopToken)
 {
     std::cout << "[server] Network thread started\n";
     while (!stopToken.stop_requested()) {
+        disconnectInactiveClients();
         sendOutgoingMessages();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -114,13 +115,61 @@ void Server::updateSimulationTick(Nanosecond timestep, Nanosecond &accumulator,
     }
 }
 
+void Server::disconnectInactiveClients()
+{
+    const auto expired = _activity.takeExpired(ClientActivity::Clock::now(),
+                                               _config.inactivityTimeout);
+
+    for (const std::uint32_t clientId : expired) {
+        requestDisconnect(clientId, DisconnectReason::TIMEOUT);
+    }
+}
+
+void Server::requestDisconnect(std::uint32_t clientId, DisconnectReason reason)
+{
+    const bool queued =
+        _incomingMessages.handleEnqueue(IncomingMessage{clientId, {}, reason});
+
+    if (!queued) {
+        /* Tracked again, so the timeout retries once the queue drains. */
+        _activity.touch(clientId, ClientActivity::Clock::now());
+    }
+}
+
+void Server::handleGoodbye(std::uint32_t clientId)
+{
+    if (_activity.forget(clientId)) {
+        requestDisconnect(clientId, DisconnectReason::QUIT);
+    }
+}
+
 void Server::readIncomingMessage()
 {
     while (auto message = _incomingMessages.handleDequeue()) {
-        /*
-         * to do:
-         * apply message->payload to the simulation state.
-         */
+        applyMessage(*message);
+    }
+    _playerCount.store(_players.size());
+}
+
+void Server::applyMessage(const IncomingMessage &message)
+{
+    if (message.disconnect) {
+        removePlayer(message.clientId, *message.disconnect);
+        return;
+    }
+    if (PacketChecker::hasRecord(message.payload, MessageType::HELLO)) {
+        _players.join(message.clientId);
+    }
+    /*
+     * to do:
+     * apply the other records of message.payload to the simulation state.
+     */
+}
+
+void Server::removePlayer(std::uint32_t clientId, DisconnectReason reason)
+{
+    for (auto &notice : _players.leave(clientId, reason)) {
+        _outgoingMessages.handleEnqueue(std::move(notice));
     }
 }
 
@@ -130,12 +179,22 @@ bool Server::receivePacket(IncomingMessage message)
         _rejectedPackets.fetch_add(1);
         return false;
     }
+    if (PacketChecker::hasRecord(message.payload, MessageType::GOODBYE)) {
+        handleGoodbye(message.clientId);
+        return true;
+    }
+    _activity.touch(message.clientId, ClientActivity::Clock::now());
     return _incomingMessages.handleEnqueue(std::move(message));
 }
 
 std::uint64_t Server::rejectedPackets() const noexcept
 {
     return _rejectedPackets.load();
+}
+
+std::size_t Server::playerCount() const noexcept
+{
+    return _playerCount.load();
 }
 
 void Server::runSimulationLoop(const std::stop_token &stopToken,
