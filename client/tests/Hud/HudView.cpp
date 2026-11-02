@@ -219,3 +219,86 @@ TEST_CASE("the view lives in the game registry and cleans up after itself",
     REQUIRE(registry.aliveCount() == 1);
     REQUIRE(registry.isAlive(gameEntity));
 }
+
+TEST_CASE("each player has its own shape, in the bar and above the ship",
+          "[client][hud][view][accessibility]")
+{
+    Registry registry = uiRegistry();
+    HudView hud(registry, "font.ttf");
+    const auto &shapes = registry.getComponents<engine::ecs::UIShape>();
+
+    hud.setMarker(1, Vec2{400.0f, 300.0f});
+    hud.sync(localPlayerState());
+
+    for (std::size_t i = 0; i < 4; ++i) {
+        REQUIRE(shapes.get(hud.tagShape(i))->kind == HudView::playerShape(i));
+        for (std::size_t j = i + 1; j < 4; ++j)
+            REQUIRE(HudView::playerShape(i) != HudView::playerShape(j));
+    }
+    REQUIRE(shapes.get(hud.markerShape(1))->colorRole ==
+            HudView::playerRole(1));
+    REQUIRE(shapes.get(hud.markerShape(0))->color.a == 0);
+}
+
+TEST_CASE("the HUD colors go through the theme",
+          "[client][hud][view][accessibility]")
+{
+    Registry registry = uiRegistry();
+    HudView hud(registry, "font.ttf");
+
+    hud.sync(localPlayerState());
+
+    REQUIRE(registry.getComponents<UIPanel>().get(hud.tag(0))->colorRole ==
+            engine::ecs::UIColorRole::PLAYER_1);
+    REQUIRE(registry.getComponents<UIPanel>().get(hud.tag(2))->colorRole ==
+            engine::ecs::UIColorRole::NONE);
+    REQUIRE(barOf(registry, hud.widget(HudWidget::BEAM_GAUGE)).fillRole ==
+            engine::ecs::UIColorRole::GAUGE);
+}
+
+TEST_CASE("reduced motion removes the flash of a full beam",
+          "[client][hud][view][accessibility]")
+{
+    Registry registry = uiRegistry();
+    HudView hud(registry, "font.ttf");
+    HudState state = localPlayerState();
+    state.beamCharge = 1.0f;
+
+    hud.sync(state);
+    REQUIRE(barOf(registry, hud.widget(HudWidget::BEAM_GAUGE)).fillRole ==
+            engine::ecs::UIColorRole::GAUGE_FULL);
+
+    state.reducedMotion = true;
+    hud.sync(state);
+    REQUIRE(barOf(registry, hud.widget(HudWidget::BEAM_GAUGE)).fillRole ==
+            engine::ecs::UIColorRole::GAUGE);
+}
+
+TEST_CASE("the bar has no overlap at the largest UI scale",
+          "[client][hud][view][accessibility]")
+{
+    Registry registry = uiRegistry();
+    HudView hud(registry, "font.ttf");
+    UILayoutSystem layout(1280.0f, 720.0f);
+
+    layout.setScale(1.5f);
+    layout.update(registry);
+
+    const auto right = [&registry](Entity entity) {
+        const Rect &box = boundsOf(registry, entity);
+        return box.x + box.width;
+    };
+    const auto left = [&registry](Entity entity) {
+        return boundsOf(registry, entity).x;
+    };
+    REQUIRE(right(hud.tagShape(3)) <= left(hud.widget(HudWidget::LIVES_ICON)));
+    REQUIRE(right(hud.widget(HudWidget::LIVES)) <=
+            left(hud.widget(HudWidget::STAGE)));
+    REQUIRE(right(hud.widget(HudWidget::STAGE)) <=
+            left(hud.widget(HudWidget::BEAM_LABEL)));
+    REQUIRE(right(hud.widget(HudWidget::BEAM_LABEL)) <=
+            left(hud.widget(HudWidget::BEAM_FRAME)));
+    REQUIRE(right(hud.widget(HudWidget::BEAM_FRAME)) <=
+            left(hud.widget(HudWidget::SCORE)));
+    REQUIRE(right(hud.widget(HudWidget::SCORE)) <= 1280.0f);
+}

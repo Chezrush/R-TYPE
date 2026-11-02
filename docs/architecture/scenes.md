@@ -141,6 +141,17 @@ publish those before calling `handleInput()`. A conflict shows a warning without
 Every change publishes `BindingsChanged`. `HowToPlayScene` explains the game with the current
 bindings.
 
+### Accessibility options
+
+The palette, high contrast and reduced motion are in the settings screen and in `ClientSettings`.
+`makeTheme()` turns them into a `UITheme`, which the client owns: `SettingsScene` updates it, and
+`UIRenderSystem` and the scenes read it, so a change shows at once. At startup the client builds it
+from the loaded settings, gives it to `setTheme()` and `makeMenuContext()`, and publishes
+`ReducedMotionChanged` for `HudController` and the rest of the game.
+
+`VisualCueIndicator` shows `VisualCueRequested { icon, direction }` as a label on that side of the
+screen. The audio and gameplay code publish those events.
+
 ### Talking to the network layer
 
 `ConnectScene` never calls network code. All the messages are `EventBus` events, declared in

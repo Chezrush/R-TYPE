@@ -7,6 +7,7 @@
 
 #include "Engine/Render/UIRenderSystem.hpp"
 
+#include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/ConvexShape.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
@@ -21,6 +22,7 @@
 #include <utility>
 
 #include "Engine/Ecs/Components/UIButton.hpp"
+#include "Engine/Ecs/Components/UIShape.hpp"
 #include "Engine/Ecs/Components/UISlider.hpp"
 #include "Engine/Ecs/Components/UIToggle.hpp"
 #include "Engine/Ecs/IndexedZipper.hpp"
@@ -36,18 +38,25 @@ using ecs::Registry;
 using ecs::components::Rect;
 using ecs::components::UIButton;
 using ecs::components::UIColor;
+using ecs::components::UIColorRole;
 using ecs::components::UIDropdown;
 using ecs::components::UIPanel;
 using ecs::components::UIProgressBar;
 using ecs::components::UIScrollList;
+using ecs::components::UIShape;
+using ecs::components::UIShapeKind;
 using ecs::components::UISlider;
 using ecs::components::UITextAlign;
 using ecs::components::UITextInput;
+using ecs::components::UITheme;
 using ecs::components::UIToggle;
 using ecs::components::UIWidgetStyle;
 namespace widgets = ecs::systems::widgets;
 
-constexpr float FOCUS_THICKNESS = 2.0f;
+constexpr float PLATE_PADDING = 3.0f;
+constexpr float CROSS_THICKNESS = 0.3f;
+constexpr UIColor GAUGE_OUTLINE_COLOR{255, 255, 255, 255};
+constexpr UIColor PLATE_COLOR{0, 0, 0, 255};
 constexpr float TEXT_PADDING = 6.0f;
 constexpr float CARET_WIDTH = 2.0f;
 
@@ -68,17 +77,20 @@ float alignFactor(UITextAlign align) noexcept
     }
 }
 
-ecs::components::UIColor buttonColor(const UIButton &button) noexcept
+UIColor buttonColor(const UITheme &theme, const UIButton &button) noexcept
 {
     switch (button.state) {
         case ecs::components::UIButtonState::HOVERED:
-            return button.hoveredColor;
+            return theme.resolve(UIColorRole::BUTTON_HOVERED,
+                                 button.hoveredColor);
         case ecs::components::UIButtonState::PRESSED:
-            return button.pressedColor;
+            return theme.resolve(UIColorRole::BUTTON_PRESSED,
+                                 button.pressedColor);
         case ecs::components::UIButtonState::DISABLED:
-            return button.disabledColor;
+            return theme.resolve(UIColorRole::BUTTON_DISABLED,
+                                 button.disabledColor);
         default:
-            return button.normalColor;
+            return theme.resolve(UIColorRole::BUTTON, button.normalColor);
     }
 }
 
@@ -91,14 +103,89 @@ void drawRect(sf::RenderTarget &target, const Rect &bounds, sf::Color color)
     target.draw(shape);
 }
 
+void drawFrame(sf::RenderTarget &target, const Rect &bounds,
+               const UIColor &color, float thickness)
+{
+    sf::RectangleShape outline({bounds.width, bounds.height});
+
+    outline.setPosition({bounds.x, bounds.y});
+    outline.setFillColor(sf::Color::Transparent);
+    outline.setOutlineThickness(thickness);
+    outline.setOutlineColor(toSfColor(color));
+    target.draw(outline);
+}
+
 void drawProgressBar(sf::RenderTarget &target, const UIProgressBar &bar,
-                     const Rect &bounds)
+                     const Rect &bounds, const UITheme &theme)
 {
     const Rect fill = UIRenderSystem::fillBounds(bar, bounds);
 
-    drawRect(target, bounds, toSfColor(bar.backgroundColor));
+    drawRect(target, bounds,
+             toSfColor(theme.resolve(bar.backgroundRole, bar.backgroundColor)));
     if (fill.width > 0.0f && fill.height > 0.0f)
-        drawRect(target, fill, toSfColor(bar.fillColor));
+        drawRect(target, fill,
+                 toSfColor(theme.resolve(bar.fillRole, bar.fillColor)));
+    if (theme.options().gaugeOutline > 0.0f)
+        drawFrame(target, bounds,
+                  theme.resolve(UIColorRole::TEXT, GAUGE_OUTLINE_COLOR),
+                  theme.options().gaugeOutline);
+}
+
+void drawCross(sf::RenderTarget &target, const Rect &bounds, sf::Color color)
+{
+    const float barWidth = bounds.width * CROSS_THICKNESS;
+    const float barHeight = bounds.height * CROSS_THICKNESS;
+
+    drawRect(target,
+             {bounds.x, bounds.y + (bounds.height - barHeight) / 2.0f,
+              bounds.width, barHeight},
+             color);
+    drawRect(target,
+             {bounds.x + (bounds.width - barWidth) / 2.0f, bounds.y, barWidth,
+              bounds.height},
+             color);
+}
+
+void drawTriangle(sf::RenderTarget &target, const Rect &bounds, sf::Color color)
+{
+    sf::ConvexShape triangle(3);
+
+    triangle.setPoint(0, {bounds.x + bounds.width / 2.0f, bounds.y});
+    triangle.setPoint(1, {bounds.x + bounds.width, bounds.y + bounds.height});
+    triangle.setPoint(2, {bounds.x, bounds.y + bounds.height});
+    triangle.setFillColor(color);
+    target.draw(triangle);
+}
+
+void drawCircle(sf::RenderTarget &target, const Rect &bounds, sf::Color color)
+{
+    sf::CircleShape circle(std::min(bounds.width, bounds.height) / 2.0f);
+
+    circle.setPosition({bounds.x, bounds.y});
+    circle.setFillColor(color);
+    target.draw(circle);
+}
+
+void drawShape(sf::RenderTarget &target, const UIShape &shape,
+               const Rect &bounds, const UITheme &theme)
+{
+    const sf::Color color =
+        toSfColor(theme.resolve(shape.colorRole, shape.color));
+
+    switch (shape.kind) {
+        case UIShapeKind::CIRCLE:
+            drawCircle(target, bounds, color);
+            break;
+        case UIShapeKind::TRIANGLE:
+            drawTriangle(target, bounds, color);
+            break;
+        case UIShapeKind::CROSS:
+            drawCross(target, bounds, color);
+            break;
+        default:
+            drawRect(target, bounds, color);
+            break;
+    }
 }
 
 Rect textureSource(const Rect &textureRect, sf::Vector2u textureSize) noexcept
@@ -176,8 +263,8 @@ bool hasAny(const Registry &registry, Entity entity)
 bool isDrawable(const Registry &registry, Entity entity)
 {
     return hasAny<UIPanel, UIProgressBar, ecs::components::UIText, UIButton,
-                  UITextInput, UISlider, UIToggle, UIDropdown, UIScrollList>(
-        registry, entity);
+                  UITextInput, UISlider, UIToggle, UIDropdown, UIScrollList,
+                  UIShape>(registry, entity);
 }
 
 sf::Color dimmed(const UIColor &color) noexcept
@@ -185,20 +272,8 @@ sf::Color dimmed(const UIColor &color) noexcept
     return {color.r, color.g, color.b, static_cast<std::uint8_t>(color.a / 2)};
 }
 
-void drawFocusOutline(sf::RenderTarget &target, const Rect &bounds,
-                      const UIColor &color)
-{
-    sf::RectangleShape outline({bounds.width, bounds.height});
-
-    outline.setPosition({bounds.x, bounds.y});
-    outline.setFillColor(sf::Color::Transparent);
-    outline.setOutlineThickness(FOCUS_THICKNESS);
-    outline.setOutlineColor(toSfColor(color));
-    target.draw(outline);
-}
-
 void drawSlider(sf::RenderTarget &target, const UISlider &slider,
-                const Rect &bounds)
+                const UIWidgetStyle &style, const Rect &bounds)
 {
     const float ratio = widgets::sliderRatio(slider);
     const Rect track{bounds.x, bounds.y + bounds.height / 2.0f - 2.0f,
@@ -207,12 +282,10 @@ void drawSlider(sf::RenderTarget &target, const UISlider &slider,
                       bounds.y + bounds.height * 0.2f, 8.0f,
                       bounds.height * 0.6f};
 
-    drawRect(target, track, toSfColor(slider.style.background));
+    drawRect(target, track, toSfColor(style.background));
     drawRect(target, {track.x, track.y, track.width * ratio, track.height},
-             toSfColor(slider.style.accent));
-    drawRect(target, handle, toSfColor(slider.style.foreground));
-    if (slider.isFocused)
-        drawFocusOutline(target, bounds, slider.style.focusOutline);
+             toSfColor(style.accent));
+    drawRect(target, handle, toSfColor(style.foreground));
 }
 
 Rect toggleBox(const Rect &bounds) noexcept
@@ -223,19 +296,17 @@ Rect toggleBox(const Rect &bounds) noexcept
 }
 
 void drawToggle(sf::RenderTarget &target, const UIToggle &toggle,
-                const Rect &bounds)
+                const UIWidgetStyle &style, const Rect &bounds)
 {
     const Rect box = toggleBox(bounds);
     const float inset = box.width * 0.25f;
 
-    drawRect(target, box, toSfColor(toggle.style.background));
+    drawRect(target, box, toSfColor(style.background));
     if (toggle.checked)
         drawRect(target,
                  {box.x + inset, box.y + inset, box.width - 2 * inset,
                   box.height - 2 * inset},
-                 toSfColor(toggle.style.accent));
-    if (toggle.isFocused)
-        drawFocusOutline(target, box, toggle.style.focusOutline);
+                 toSfColor(style.accent));
 }
 
 void drawArrow(sf::RenderTarget &target, const Rect &bounds, sf::Color color)
@@ -263,6 +334,16 @@ Rect padded(const Rect &bounds) noexcept
 UIRenderSystem::UIRenderSystem(resources::ResourceManager &resources) noexcept
     : _resources(resources)
 {}
+
+void UIRenderSystem::setTheme(const UITheme &theme) noexcept
+{
+    _theme = &theme;
+}
+
+const UITheme &UIRenderSystem::theme() const noexcept
+{
+    return _theme != nullptr ? *_theme : _noTheme;
+}
 
 void UIRenderSystem::render(sf::RenderTarget &target,
                             const ecs::Registry &registry)
@@ -358,17 +439,26 @@ void UIRenderSystem::drawEntity(sf::RenderTarget &target,
     _textScale = registry.getComponents<ecs::components::UITransform>()
                      .get(entity)
                      ->resolvedScale;
-    if (const auto *panel = registry.getComponents<UIPanel>().get(entity))
-        drawPanel(target, *panel, bounds);
-    else if (const auto *button =
-                 registry.getComponents<UIButton>().get(entity))
-        drawRect(target, bounds, toSfColor(buttonColor(*button)));
+    drawBackground(target, registry, entity, bounds);
     if (const auto *bar = registry.getComponents<UIProgressBar>().get(entity))
-        drawProgressBar(target, *bar, bounds);
+        drawProgressBar(target, *bar, bounds, theme());
+    if (const auto *shape = registry.getComponents<UIShape>().get(entity))
+        drawShape(target, *shape, bounds, theme());
     if (const auto *text =
             registry.getComponents<ecs::components::UIText>().get(entity))
         drawText(target, *text, bounds);
     drawWidgets(target, registry, entity, bounds);
+}
+
+void UIRenderSystem::drawBackground(sf::RenderTarget &target,
+                                    const ecs::Registry &registry,
+                                    ecs::Entity entity, const Rect &bounds)
+{
+    if (const auto *panel = registry.getComponents<UIPanel>().get(entity))
+        drawPanel(target, *panel, bounds);
+    else if (const auto *button =
+                 registry.getComponents<UIButton>().get(entity))
+        drawRect(target, bounds, toSfColor(buttonColor(theme(), *button)));
 }
 
 void UIRenderSystem::drawPanel(sf::RenderTarget &target,
@@ -379,7 +469,8 @@ void UIRenderSystem::drawPanel(sf::RenderTarget &target,
     sf::RenderStates states;
 
     if (texture == nullptr) {
-        drawRect(target, bounds, toSfColor(panel.color));
+        drawRect(target, bounds,
+                 toSfColor(theme().resolve(panel.colorRole, panel.color)));
         return;
     }
     states.texture = texture;
@@ -390,6 +481,17 @@ unsigned int UIRenderSystem::scaledTextSize(unsigned int size) const noexcept
 {
     return static_cast<unsigned int>(
         std::lround(static_cast<float>(size) * _textScale));
+}
+
+void UIRenderSystem::drawPlate(sf::RenderTarget &target,
+                               const sf::Text &label) const
+{
+    const sf::FloatRect area = label.getGlobalBounds();
+
+    drawRect(target,
+             {area.position.x - PLATE_PADDING, area.position.y - PLATE_PADDING,
+              area.size.x + 2 * PLATE_PADDING, area.size.y + 2 * PLATE_PADDING},
+             toSfColor(theme().resolve(UIColorRole::BACKGROUND, PLATE_COLOR)));
 }
 
 void UIRenderSystem::drawText(sf::RenderTarget &target,
@@ -407,7 +509,9 @@ void UIRenderSystem::drawText(sf::RenderTarget &target,
     label.setOrigin({local.position.x + local.size.x * alignFactor(text.align),
                      font->getLineSpacing(size) / 2.0f});
     label.setPosition(textAnchor(text.align, bounds));
-    label.setFillColor(toSfColor(text.color));
+    label.setFillColor(toSfColor(theme().resolve(text.colorRole, text.color)));
+    if (theme().hasPlate(text.colorRole))
+        drawPlate(target, label);
     target.draw(label);
 }
 
@@ -418,16 +522,47 @@ void UIRenderSystem::drawWidgets(sf::RenderTarget &target,
     if (const auto *input = registry.getComponents<UITextInput>().get(entity))
         drawTextInput(target, *input, bounds);
     if (const auto *slider = registry.getComponents<UISlider>().get(entity))
-        drawSlider(target, *slider, bounds);
+        drawSliderWidget(target, *slider, bounds);
     if (const auto *toggle = registry.getComponents<UIToggle>().get(entity))
-        drawToggle(target, *toggle, bounds);
+        drawToggleWidget(target, *toggle, bounds);
     if (const auto *dropdown = registry.getComponents<UIDropdown>().get(entity))
         drawDropdown(target, *dropdown, bounds);
     if (const auto *list = registry.getComponents<UIScrollList>().get(entity))
         drawScrollList(target, *list, bounds);
     const auto *button = registry.getComponents<UIButton>().get(entity);
     if (button != nullptr && button->isFocused)
-        drawFocusOutline(target, bounds, button->focusedOutlineColor);
+        drawFocusOutline(
+            target, bounds,
+            theme().resolve(UIColorRole::FOCUS, button->focusedOutlineColor));
+}
+
+void UIRenderSystem::drawFocusOutline(sf::RenderTarget &target,
+                                      const Rect &bounds,
+                                      const UIColor &color) const
+{
+    drawFrame(target, bounds, color, theme().options().focusThickness);
+}
+
+void UIRenderSystem::drawSliderWidget(sf::RenderTarget &target,
+                                      const UISlider &slider,
+                                      const Rect &bounds) const
+{
+    const UIWidgetStyle style = theme().styled(slider.style);
+
+    drawSlider(target, slider, style, bounds);
+    if (slider.isFocused)
+        drawFocusOutline(target, bounds, style.focusOutline);
+}
+
+void UIRenderSystem::drawToggleWidget(sf::RenderTarget &target,
+                                      const UIToggle &toggle,
+                                      const Rect &bounds) const
+{
+    const UIWidgetStyle style = theme().styled(toggle.style);
+
+    drawToggle(target, toggle, style, bounds);
+    if (toggle.isFocused)
+        drawFocusOutline(target, toggleBox(bounds), style.focusOutline);
 }
 
 void UIRenderSystem::drawOpenDropdowns(sf::RenderTarget &target,
@@ -446,17 +581,17 @@ void UIRenderSystem::drawOpenDropdowns(sf::RenderTarget &target,
 void UIRenderSystem::drawTextInput(sf::RenderTarget &target,
                                    const UITextInput &input, const Rect &bounds)
 {
+    const UIWidgetStyle style = theme().styled(input.style);
     const bool placeholder = input.text.empty() && !input.isFocused;
 
-    drawRect(target, bounds, toSfColor(input.style.background));
-    drawLabel(target, placeholder ? input.placeholder : input.text, input.style,
-              bounds,
-              placeholder ? dimmed(input.style.foreground)
-                          : toSfColor(input.style.foreground));
+    drawRect(target, bounds, toSfColor(style.background));
+    drawLabel(
+        target, placeholder ? input.placeholder : input.text, style, bounds,
+        placeholder ? dimmed(style.foreground) : toSfColor(style.foreground));
     if (!input.isFocused)
         return;
     drawCaret(target, input, bounds);
-    drawFocusOutline(target, bounds, input.style.focusOutline);
+    drawFocusOutline(target, bounds, style.focusOutline);
 }
 
 void UIRenderSystem::drawCaret(sf::RenderTarget &target,
@@ -476,34 +611,35 @@ void UIRenderSystem::drawCaret(sf::RenderTarget &target,
     drawRect(
         target,
         {x, bounds.y + bounds.height * 0.2f, CARET_WIDTH, bounds.height * 0.6f},
-        toSfColor(input.style.foreground));
+        toSfColor(theme().styled(input.style).foreground));
 }
 
 void UIRenderSystem::drawDropdown(sf::RenderTarget &target,
                                   const UIDropdown &dropdown,
                                   const Rect &bounds)
 {
-    drawRect(target, bounds, toSfColor(dropdown.style.background));
+    const UIWidgetStyle style = theme().styled(dropdown.style);
+    drawRect(target, bounds, toSfColor(style.background));
     if (dropdown.selected < dropdown.options.size())
-        drawLabel(target, dropdown.options[dropdown.selected], dropdown.style,
-                  bounds, toSfColor(dropdown.style.foreground));
-    drawArrow(target, bounds, toSfColor(dropdown.style.foreground));
+        drawLabel(target, dropdown.options[dropdown.selected], style, bounds,
+                  toSfColor(style.foreground));
+    drawArrow(target, bounds, toSfColor(style.foreground));
     if (dropdown.isFocused)
-        drawFocusOutline(target, bounds, dropdown.style.focusOutline);
+        drawFocusOutline(target, bounds, style.focusOutline);
 }
 
 void UIRenderSystem::drawDropdownOptions(sf::RenderTarget &target,
                                          const UIDropdown &dropdown,
                                          const Rect &bounds)
 {
+    const UIWidgetStyle style = theme().styled(dropdown.style);
     for (std::size_t i = 0; i < dropdown.options.size(); ++i) {
         const Rect row = widgets::dropdownOptionBounds(bounds, i);
-        const UIColor &fill = i == dropdown.highlighted
-                                  ? dropdown.style.accent
-                                  : dropdown.style.background;
+        const UIColor &fill =
+            i == dropdown.highlighted ? style.accent : style.background;
         drawRect(target, row, toSfColor(fill));
-        drawLabel(target, dropdown.options[i], dropdown.style, row,
-                  toSfColor(dropdown.style.foreground));
+        drawLabel(target, dropdown.options[i], style, row,
+                  toSfColor(style.foreground));
     }
 }
 
@@ -511,7 +647,8 @@ void UIRenderSystem::drawScrollList(sf::RenderTarget &target,
                                     const UIScrollList &list,
                                     const Rect &bounds)
 {
-    drawRect(target, bounds, toSfColor(list.style.background));
+    const UIWidgetStyle style = theme().styled(list.style);
+    drawRect(target, bounds, toSfColor(style.background));
     for (std::size_t visible = 0; visible < widgets::visibleRowCount(list);
          ++visible) {
         const std::size_t row = list.scrollOffset + visible;
@@ -519,12 +656,12 @@ void UIRenderSystem::drawScrollList(sf::RenderTarget &target,
             break;
         const Rect rect = widgets::scrollRowBounds(list, bounds, visible);
         if (list.selected == row)
-            drawRect(target, rect, toSfColor(list.style.accent));
-        drawLabel(target, list.rows[row], list.style, rect,
-                  toSfColor(list.style.foreground));
+            drawRect(target, rect, toSfColor(style.accent));
+        drawLabel(target, list.rows[row], style, rect,
+                  toSfColor(style.foreground));
     }
     if (list.isFocused)
-        drawFocusOutline(target, bounds, list.style.focusOutline);
+        drawFocusOutline(target, bounds, style.focusOutline);
 }
 
 void UIRenderSystem::drawLabel(sf::RenderTarget &target,

@@ -277,6 +277,9 @@ void ConnectScene::setStatus(const std::string &text, UIColor color)
     _message = text;
     status.text = text;
     status.color = color;
+    status.colorRole = color == ERROR_COLOR
+                           ? engine::ecs::UIColorRole::ERROR_TEXT
+                           : engine::ecs::UIColorRole::TEXT;
 }
 
 void ConnectScene::setEditable(bool editable)

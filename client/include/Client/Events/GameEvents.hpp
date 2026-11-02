@@ -94,6 +94,28 @@ struct GameStateChanged {
     std::uint8_t level = 1;
 };
 
+/** @brief What a visual cue stands for. */
+enum class CueIcon : std::uint8_t {
+    EXPLOSION,
+    ENEMY,
+    SHOT,
+    ALERT
+};
+
+/** @brief Side of the screen the cue comes from. */
+enum class CueDirection : std::uint8_t {
+    LEFT,
+    RIGHT,
+    TOP,
+    BOTTOM
+};
+
+/** @brief Shows a sound on screen. Published by the audio / gameplay code. */
+struct VisualCueRequested {
+    CueIcon icon = CueIcon::ALERT;
+    CueDirection direction = CueDirection::LEFT;
+};
+
 } // namespace client::events
 
 #endif /* !GAMEEVENTS_HPP_ */

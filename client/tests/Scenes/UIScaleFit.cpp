@@ -106,7 +106,7 @@ TEST_CASE("every screen fits a 720p window at the largest UI scale",
         SceneFixture fixture;
         const TempDirectory directory;
         client::settings::SettingsStore store(directory.path() / "s.cfg");
-        requireSceneFits<client::scenes::SettingsScene>(fixture, store,
-                                                        fixture.layout);
+        requireSceneFits<client::scenes::SettingsScene>(
+            fixture, store, fixture.layout, fixture.theme);
     }
 }

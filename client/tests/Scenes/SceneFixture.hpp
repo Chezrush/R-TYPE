@@ -42,7 +42,7 @@ struct SceneFixture {
     engine::ecs::UISceneContext context()
     {
         return client::scenes::makeMenuContext(registry, bus, interaction,
-                                               "font.ttf");
+                                               "font.ttf", &theme);
     }
 
     void frame()
@@ -79,6 +79,7 @@ struct SceneFixture {
         frame();
     }
 
+    engine::ecs::UITheme theme;
     engine::ecs::Registry registry;
     engine::core::EventBus bus;
     engine::ecs::UIInteractionSystem interaction{bus};

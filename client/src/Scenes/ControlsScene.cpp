@@ -214,6 +214,7 @@ void ControlsScene::buildButtons()
         addLabel("", WARNING_OFFSET, WARNING_SIZE, ROW_TEXT_SIZE);
 
     widget<UIText>(warning).color = WARNING_COLOR;
+    widget<UIText>(warning).colorRole = engine::ecs::UIColorRole::WARNING;
     _parts.push_back(warning);
     _parts.push_back(addButton("Reset to defaults", RESET_ACTION,
                                {-BUTTON_X, BUTTON_Y}, BUTTON_SIZE));

@@ -47,6 +47,11 @@ struct VideoSettingsChanged {
     bool vsync = true;
 };
 
+/** @brief The player changed "reduced motion", for the rest of the game. */
+struct ReducedMotionChanged {
+    bool reduced = false;
+};
+
 /** @brief The controls changed: the input code reloads them. */
 struct BindingsChanged {
     settings::KeyBindings bindings;

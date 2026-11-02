@@ -98,6 +98,21 @@ void readVideo(const std::string &key, const std::string &value,
         readUIScale(value, settings);
 }
 
+void readAccessibility(const std::string &key, const std::string &value,
+                       ClientSettings &settings)
+{
+    if (key == "high_contrast")
+        readBool(value, settings.highContrast);
+    else if (key == "reduced_motion")
+        readBool(value, settings.reducedMotion);
+    else if (key != "palette")
+        return;
+    for (const ColorPalette palette : COLOR_PALETTES) {
+        if (key == "palette" && value == paletteId(palette))
+            settings.palette = palette;
+    }
+}
+
 const char *boolText(bool flag) noexcept
 {
     return flag ? "true" : "false";
@@ -118,7 +133,10 @@ std::string formatSettings(const ClientSettings &settings)
         << settings.resolution.height << '\n'
         << "vsync=" << boolText(settings.vsync) << '\n'
         << "ui_scale=" << settings.uiScalePercent << '\n';
-    out << formatBindings(settings.bindings);
+    out << "palette=" << paletteId(settings.palette) << '\n'
+        << "high_contrast=" << boolText(settings.highContrast) << '\n'
+        << "reduced_motion=" << boolText(settings.reducedMotion) << '\n'
+        << formatBindings(settings.bindings);
     return out.str();
 }
 
@@ -137,6 +155,7 @@ ClientSettings parseSettings(const std::string &content)
         const std::string value = trimmed(line.substr(equal + 1));
         readAudio(key, value, settings);
         readVideo(key, value, settings);
+        readAccessibility(key, value, settings);
         readBinding(key, value, settings.bindings);
     }
     return settings;

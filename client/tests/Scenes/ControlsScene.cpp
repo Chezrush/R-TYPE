@@ -261,7 +261,7 @@ TEST_CASE("the settings reset keeps the bindings", "[client][scenes][controls]")
     client::settings::setKey(store.settings().bindings, GameAction::SHOOT,
                              KEY_Z);
     client::scenes::SettingsScene settings(fixture.context(), store,
-                                           fixture.layout);
+                                           fixture.layout, fixture.theme);
     settings.onEnter();
     fixture.click(settings.control(client::scenes::SettingsControl::RESET));
 

@@ -36,6 +36,7 @@ struct HudState {
     events::GamePhase phase = events::GamePhase::WAITING;
     float beamCharge = 0.0f;
     std::array<bool, MAX_PLAYERS> connected{};
+    bool reducedMotion = false;
 
     friend bool operator==(const HudState &, const HudState &) = default;
 };

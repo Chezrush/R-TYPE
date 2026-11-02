@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "Client/Events/GameEvents.hpp"
+#include "Client/Events/SettingsEvents.hpp"
 #include "Client/Hud/BeamGauge.hpp"
 #include "Client/Hud/HudState.hpp"
 #include "Engine/Core/EventBus.hpp"
@@ -54,6 +55,7 @@ private:
     void onPlayerLeft(const events::PlayerLeft &event);
     void onScoreChanged(const events::ScoreChanged &event);
     void onGameStateChanged(const events::GameStateChanged &event);
+    void onReducedMotion(const events::ReducedMotionChanged &event);
     void setConnected(std::uint8_t player, bool connected) noexcept;
 
     engine::core::EventBus &_bus;

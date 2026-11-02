@@ -11,6 +11,7 @@ add_library(rtype_client_core STATIC
     src/Hud/BeamGauge.cpp
     src/Hud/HudController.cpp
     src/Hud/HudView.cpp
+    src/Hud/VisualCueIndicator.cpp
     src/Scenes/ConnectForm.cpp
     src/Scenes/ConnectScene.cpp
     src/Scenes/ControlsScene.cpp
@@ -25,6 +26,7 @@ add_library(rtype_client_core STATIC
     src/Scenes/Starfield.cpp
     src/Settings/ClientSettings.cpp
     src/Settings/KeyBindings.cpp
+    src/Settings/Palette.cpp
     src/Settings/SettingsStore.cpp)
 target_include_directories(rtype_client_core PUBLIC include)
 target_link_libraries(rtype_client_core
@@ -39,6 +41,7 @@ rtype_add_catch_test(rtype_client_tests
     tests/Hud/BeamGauge.cpp
     tests/Hud/HudController.cpp
     tests/Hud/HudView.cpp
+    tests/Hud/VisualCueIndicator.cpp
     tests/Scenes/ConnectForm.cpp
     tests/Scenes/ConnectScene.cpp
     tests/Scenes/ControlsScene.cpp
@@ -49,6 +52,7 @@ rtype_add_catch_test(rtype_client_tests
     tests/Scenes/UIScaleFit.cpp
     tests/Settings/ClientSettings.cpp
     tests/Settings/KeyBindings.cpp
+    tests/Settings/Palette.cpp
     tests/Settings/SettingsStore.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_client_tests PRIVATE rtype_client_core)

@@ -13,6 +13,7 @@
 
 #include "Client/Events/SettingsEvents.hpp"
 #include "Client/Settings/KeyBindings.hpp"
+#include "Client/Settings/Palette.hpp"
 
 namespace client::settings {
 
@@ -37,6 +38,9 @@ struct ClientSettings {
     events::Resolution resolution;
     bool vsync = true;
     int uiScalePercent = 100;
+    ColorPalette palette = ColorPalette::NORMAL;
+    bool highContrast = false;
+    bool reducedMotion = false;
     KeyBindings bindings;
 
     friend bool operator==(const ClientSettings &,

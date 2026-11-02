@@ -47,6 +47,9 @@ constexpr const char *FULLSCREEN_ACTION = "settings.fullscreen";
 constexpr const char *RESOLUTION_ACTION = "settings.resolution";
 constexpr const char *VSYNC_ACTION = "settings.vsync";
 constexpr const char *UI_SCALE_ACTION = "settings.ui-scale";
+constexpr const char *PALETTE_ACTION = "settings.palette";
+constexpr const char *HIGH_CONTRAST_ACTION = "settings.high-contrast";
+constexpr const char *REDUCED_MOTION_ACTION = "settings.reduced-motion";
 constexpr const char *RESET_ACTION = "settings.reset";
 constexpr const char *BACK_ACTION = "settings.back";
 
@@ -54,22 +57,22 @@ constexpr UIColor BACKDROP_COLOR{5, 8, 24, 245};
 constexpr unsigned int TITLE_TEXT_SIZE = 40;
 constexpr unsigned int HEADER_TEXT_SIZE = 24;
 constexpr unsigned int ROW_TEXT_SIZE = 18;
-constexpr Vec2 TITLE_OFFSET{0.0f, -212.0f};
-constexpr Vec2 TITLE_SIZE{600.0f, 50.0f};
-constexpr Vec2 HEADER_SIZE{400.0f, 30.0f};
-constexpr Vec2 LABEL_SIZE{190.0f, 36.0f};
-constexpr Vec2 CONTROL_SIZE{190.0f, 32.0f};
+constexpr Vec2 TITLE_OFFSET{0.0f, -218.0f};
+constexpr Vec2 TITLE_SIZE{600.0f, 44.0f};
+constexpr Vec2 HEADER_SIZE{400.0f, 26.0f};
+constexpr Vec2 LABEL_SIZE{190.0f, 32.0f};
+constexpr Vec2 CONTROL_SIZE{190.0f, 30.0f};
 constexpr Vec2 BUTTON_SIZE{260.0f, 48.0f};
 constexpr float LEFT_COLUMN = -215.0f;
 constexpr float RIGHT_COLUMN = 215.0f;
 constexpr float CELL_SHIFT = 100.0f;
-constexpr float HEADER_Y = -165.0f;
-constexpr float INTERFACE_HEADER_Y = 25.0f;
-constexpr float FIRST_ROW_Y = -120.0f;
-constexpr float ROW_SPACING = 50.0f;
-constexpr float UI_SCALE_ROW_Y = 70.0f;
+constexpr float HEADER_Y = -180.0f;
+constexpr float ACCESSIBILITY_HEADER_Y = 16.0f;
+constexpr float FIRST_ROW_Y = -146.0f;
+constexpr float ROW_SPACING = 40.0f;
+constexpr float ACCESSIBILITY_ROW_Y = 54.0f;
 constexpr float BUTTON_X = 140.0f;
-constexpr float BUTTON_Y = 150.0f;
+constexpr float BUTTON_Y = 178.0f;
 constexpr float VOLUME_MAX = 100.0f;
 constexpr float VOLUME_STEP = 5.0f;
 
@@ -114,6 +117,16 @@ std::size_t indexOf(const Container &container, const Value &value)
                                           container.begin(), found));
 }
 
+std::vector<std::string> paletteOptions()
+{
+    std::vector<std::string> options;
+
+    options.reserve(settings::COLOR_PALETTES.size());
+    for (const settings::ColorPalette palette : settings::COLOR_PALETTES)
+        options.push_back(settings::paletteName(palette));
+    return options;
+}
+
 std::string volumeText(const char *name, int value)
 {
     return std::string(name) + " " + std::to_string(value) + " %";
@@ -123,10 +136,12 @@ std::string volumeText(const char *name, int value)
 
 SettingsScene::SettingsScene(engine::ecs::UISceneContext context,
                              settings::SettingsStore &store,
-                             engine::ecs::UILayoutSystem &layout)
+                             engine::ecs::UILayoutSystem &layout,
+                             engine::ecs::UITheme &theme)
     : UIOverlay(std::move(context)),
       _store(store),
-      _layout(layout)
+      _layout(layout),
+      _theme(theme)
 {}
 
 void SettingsScene::onExit()
@@ -148,6 +163,7 @@ void SettingsScene::activate()
     buildTitles();
     buildAudio();
     buildVideo();
+    buildAccessibility();
     buildButtons();
     syncWidgets();
     widget<UISlider>(_controls.front()).isFocused = true;
@@ -158,8 +174,9 @@ void SettingsScene::buildTitles()
 {
     addLabel("Settings", TITLE_OFFSET, TITLE_SIZE, TITLE_TEXT_SIZE);
     addLabel("Audio", {LEFT_COLUMN, HEADER_Y}, HEADER_SIZE, HEADER_TEXT_SIZE);
-    addLabel("Video", {RIGHT_COLUMN, HEADER_Y}, HEADER_SIZE, HEADER_TEXT_SIZE);
-    addLabel("Interface", {RIGHT_COLUMN, INTERFACE_HEADER_Y}, HEADER_SIZE,
+    addLabel("Video and interface", {RIGHT_COLUMN, HEADER_Y}, HEADER_SIZE,
+             HEADER_TEXT_SIZE);
+    addLabel("Accessibility", {0.0f, ACCESSIBILITY_HEADER_Y}, HEADER_SIZE,
              HEADER_TEXT_SIZE);
 }
 
@@ -174,11 +191,21 @@ void SettingsScene::buildAudio()
 void SettingsScene::buildVideo()
 {
     addToggleRow("Fullscreen", FULLSCREEN_ACTION, RIGHT_COLUMN, rowAt(0));
-    addDropdownRow("Resolution", RESOLUTION_ACTION, rowAt(1),
+    addDropdownRow("Resolution", RESOLUTION_ACTION, RIGHT_COLUMN, rowAt(1),
                    resolutionOptions());
     addToggleRow("VSync", VSYNC_ACTION, RIGHT_COLUMN, rowAt(2));
-    addDropdownRow("UI scale", UI_SCALE_ACTION, UI_SCALE_ROW_Y,
+    addDropdownRow("UI scale", UI_SCALE_ACTION, RIGHT_COLUMN, rowAt(3),
                    uiScaleOptions());
+}
+
+void SettingsScene::buildAccessibility()
+{
+    addDropdownRow("Colors", PALETTE_ACTION, LEFT_COLUMN, ACCESSIBILITY_ROW_Y,
+                   paletteOptions());
+    addToggleRow("High contrast", HIGH_CONTRAST_ACTION, RIGHT_COLUMN,
+                 ACCESSIBILITY_ROW_Y);
+    addToggleRow("Reduced motion", REDUCED_MOTION_ACTION, RIGHT_COLUMN,
+                 ACCESSIBILITY_ROW_Y + ROW_SPACING);
 }
 
 void SettingsScene::buildButtons()
@@ -228,17 +255,18 @@ void SettingsScene::addToggleRow(const char *text, const char *action,
 }
 
 void SettingsScene::addDropdownRow(const char *text, const char *action,
-                                   float row, std::vector<std::string> options)
+                                   float column, float row,
+                                   std::vector<std::string> options)
 {
     const Entity entity =
-        spawn(UIAnchor::CENTER, {RIGHT_COLUMN + CELL_SHIFT, row}, CONTROL_SIZE);
+        spawn(UIAnchor::CENTER, {column + CELL_SHIFT, row}, CONTROL_SIZE);
     UIDropdown dropdown;
 
     dropdown.options = std::move(options);
     dropdown.action = action;
     dropdown.style.fontId = fontId();
     registry().addComponent(entity, std::move(dropdown));
-    addRowLabel(text, RIGHT_COLUMN, row);
+    addRowLabel(text, column, row);
     _controls.push_back(entity);
 }
 
@@ -282,6 +310,13 @@ void SettingsScene::onToggle(const std::string &action, bool checked)
     } else if (action == VSYNC_ACTION) {
         settings.vsync = checked;
         publishVideo();
+    } else if (action == HIGH_CONTRAST_ACTION) {
+        settings.highContrast = checked;
+        applyTheme();
+    } else if (action == REDUCED_MOTION_ACTION) {
+        settings.reducedMotion = checked;
+        applyTheme();
+        bus().publish(events::ReducedMotionChanged{checked});
     }
 }
 
@@ -309,6 +344,9 @@ void SettingsScene::onSelection(const UISelectionChangedEvent &event)
     } else if (event.action == UI_SCALE_ACTION) {
         settings.uiScalePercent = settings::UI_SCALE_PERCENTS.at(event.index);
         applyUIScale();
+    } else if (event.action == PALETTE_ACTION) {
+        settings.palette = settings::COLOR_PALETTES.at(event.index);
+        applyTheme();
     }
 }
 
@@ -331,12 +369,16 @@ void SettingsScene::reset()
     bus().publish(events::MuteChanged{_store.settings().muted});
     publishVideo();
     applyUIScale();
+    applyTheme();
+    bus().publish(
+        events::ReducedMotionChanged{_store.settings().reducedMotion});
 }
 
 void SettingsScene::syncWidgets()
 {
     syncVolumes();
     syncVideo();
+    syncAccessibility();
     syncVolumeLabels();
 }
 
@@ -364,6 +406,18 @@ void SettingsScene::syncVideo()
         indexOf(settings::RESOLUTIONS, settings.resolution);
     widget<UIDropdown>(control(SettingsControl::UI_SCALE)).selected =
         indexOf(settings::UI_SCALE_PERCENTS, settings.uiScalePercent);
+}
+
+void SettingsScene::syncAccessibility()
+{
+    const auto &settings = _store.settings();
+
+    widget<UIDropdown>(control(SettingsControl::PALETTE)).selected =
+        indexOf(settings::COLOR_PALETTES, settings.palette);
+    widget<UIToggle>(control(SettingsControl::HIGH_CONTRAST)).checked =
+        settings.highContrast;
+    widget<UIToggle>(control(SettingsControl::REDUCED_MOTION)).checked =
+        settings.reducedMotion;
 }
 
 void SettingsScene::syncVolumeLabels()
@@ -404,13 +458,22 @@ void SettingsScene::applyUIScale()
                      100.0f);
 }
 
+void SettingsScene::applyTheme()
+{
+    const auto &settings = _store.settings();
+
+    _theme = settings::makeTheme(settings.palette, settings.highContrast,
+                                 settings.reducedMotion);
+}
+
 void addSettingsRoute(SceneRouter &router,
                       const engine::ecs::UISceneContext &context,
                       settings::SettingsStore &store,
-                      engine::ecs::UILayoutSystem &layout)
+                      engine::ecs::UILayoutSystem &layout,
+                      engine::ecs::UITheme &theme)
 {
-    router.setRoute(SceneRoute::SETTINGS, [context, &store, &layout] {
-        return std::make_unique<SettingsScene>(context, store, layout);
+    router.setRoute(SceneRoute::SETTINGS, [context, &store, &layout, &theme] {
+        return std::make_unique<SettingsScene>(context, store, layout, theme);
     });
 }
 

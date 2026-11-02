@@ -82,6 +82,18 @@ TEST_CASE("a menu below another scene can still be updated",
     REQUIRE(fixture.registry.aliveCount() == 0);
 }
 
+TEST_CASE("reduced motion stops the stars", "[client][scenes][menu]")
+{
+    SceneFixture fixture;
+    const MainMenuScene &menu = enterMenu(fixture);
+    const float x = menu.starfield().stars()[0].position.x;
+
+    fixture.theme.options().reducedMotion = true;
+    fixture.scenes.update(0.5f);
+
+    REQUIRE(menu.starfield().stars()[0].position.x == x);
+}
+
 TEST_CASE("Quit asks to quit", "[client][scenes][menu]")
 {
     SceneFixture fixture;
