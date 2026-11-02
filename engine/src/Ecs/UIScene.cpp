@@ -78,7 +78,7 @@ Entity UIScene::spawn(UIAnchor anchor, Vec2 offset, Vec2 size, int zIndex)
     transform.anchor = anchor;
     transform.offset = offset;
     transform.size = size;
-    transform.zIndex = zIndex;
+    transform.zIndex = _context.baseZIndex + zIndex;
     _context.registry.addComponent(entity, transform);
     _entities.push_back(entity);
     return entity;

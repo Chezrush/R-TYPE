@@ -11,7 +11,7 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <optional>
+#include <vector>
 
 #include "Engine/Core/EventBus.hpp"
 #include "Engine/Core/IScene.hpp"
@@ -25,6 +25,15 @@ struct NavigationRequested {
     Route route{};
 };
 
+/** @brief A scene asks to show an overlay above the current scene. */
+template <typename Route>
+struct OverlayRequested {
+    Route route{};
+};
+
+/** @brief A scene asks to close the overlay on top of the stack. */
+struct OverlayCloseRequested {};
+
 /** @brief The player asked to quit the game. */
 struct QuitRequested {};
 
@@ -35,8 +44,10 @@ struct QuitRequested {};
  * scene publishes NavigationRequested<Route> from its own listeners, so
  * switching right away would destroy it while it runs. The request is kept
  * until apply(), which the main loop calls after SceneManager::handleInput()
- * and update(). The last request of a frame wins, and a route without a scene
- * is ignored.
+ * and update(). OverlayRequested and OverlayCloseRequested are kept the same
+ * way and applied in order. A navigation drops the requests made before it,
+ * since it replaces the whole stack: the last navigation of a frame wins. A
+ * route without a scene is ignored, and closing only ever removes an overlay.
  */
 template <typename Route>
 class SceneRouter {
@@ -54,19 +65,23 @@ public:
     /** @brief Sets the scene a route leads to. */
     void setRoute(Route route, SceneFactory factory);
 
-    /** @brief Performs the pending request, if any. */
+    /** @brief Performs the pending requests, if any. */
     void apply();
 
     /** @brief Whether QuitRequested was published. */
     [[nodiscard]] bool quitRequested() const noexcept;
 
 private:
+    [[nodiscard]] std::unique_ptr<IScene> create(const Route &route) const;
+    void requestNavigation(const Route &route);
+    void requestOverlay(const Route &route);
+    void closeOverlay();
+
     SceneManager &_scenes;
     EventBus &_bus;
-    EventBus::ListenerId _navigationListener;
-    EventBus::ListenerId _quitListener;
+    std::vector<EventBus::ListenerId> _listeners;
     std::map<Route, SceneFactory> _routes;
-    std::optional<Route> _pending;
+    std::vector<std::function<void()>> _pending;
     bool _quit = false;
 };
 

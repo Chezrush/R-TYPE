@@ -16,6 +16,8 @@
 using engine::core::EventBus;
 using engine::core::IScene;
 using engine::core::NavigationRequested;
+using engine::core::OverlayCloseRequested;
+using engine::core::OverlayRequested;
 using engine::core::QuitRequested;
 using engine::core::SceneManager;
 using engine::core::SceneRouter;
@@ -25,13 +27,15 @@ namespace {
 enum class Screen : std::uint8_t {
     TITLE,
     SHOP,
+    POPUP,
     UNKNOWN
 };
 
 class NamedScene : public IScene {
 public:
-    explicit NamedScene(std::string name)
-        : name(std::move(name))
+    explicit NamedScene(std::string sceneName, bool isOverlayScene = false)
+        : name(std::move(sceneName)),
+          overlay(isOverlayScene)
     {}
 
     void onEnter() override {}
@@ -50,10 +54,11 @@ public:
 
     [[nodiscard]] bool isOverlay() const noexcept override
     {
-        return false;
+        return overlay;
     }
 
     std::string name;
+    bool overlay;
 };
 
 struct RouterFixture {
@@ -63,6 +68,9 @@ struct RouterFixture {
                         [] { return std::make_unique<NamedScene>("title"); });
         router.setRoute(Screen::SHOP,
                         [] { return std::make_unique<NamedScene>("shop"); });
+        router.setRoute(Screen::POPUP, [] {
+            return std::make_unique<NamedScene>("popup", true);
+        });
     }
 
     void go(Screen screen)
@@ -165,4 +173,82 @@ TEST_CASE("a destroyed router stops listening", "[core][scene][router]")
     bus.publish(QuitRequested{});
 
     REQUIRE(scenes.empty());
+}
+
+TEST_CASE("overlays are pushed and closed when applied",
+          "[core][scene][router]")
+{
+    RouterFixture fixture;
+    fixture.go(Screen::TITLE);
+    fixture.router.apply();
+
+    fixture.bus.publish(OverlayRequested<Screen>{Screen::POPUP});
+    REQUIRE(fixture.scenes.size() == 1);
+    fixture.router.apply();
+    REQUIRE(fixture.current() == "popup");
+
+    fixture.bus.publish(OverlayCloseRequested{});
+    REQUIRE(fixture.scenes.size() == 2);
+    fixture.router.apply();
+    REQUIRE(fixture.current() == "title");
+}
+
+TEST_CASE("closing never removes a scene that is not an overlay",
+          "[core][scene][router]")
+{
+    RouterFixture fixture;
+
+    fixture.bus.publish(OverlayCloseRequested{});
+    fixture.router.apply();
+    fixture.go(Screen::TITLE);
+    fixture.router.apply();
+    fixture.bus.publish(OverlayCloseRequested{});
+    fixture.router.apply();
+
+    REQUIRE(fixture.current() == "title");
+}
+
+TEST_CASE("an overlay replacing another one keeps the order",
+          "[core][scene][router]")
+{
+    RouterFixture fixture;
+    fixture.go(Screen::TITLE);
+    fixture.router.apply();
+    fixture.bus.publish(OverlayRequested<Screen>{Screen::POPUP});
+    fixture.router.apply();
+
+    fixture.bus.publish(OverlayCloseRequested{});
+    fixture.bus.publish(OverlayRequested<Screen>{Screen::POPUP});
+    fixture.router.apply();
+
+    REQUIRE(fixture.scenes.size() == 2);
+}
+
+TEST_CASE("a navigation replaces the requests before it",
+          "[core][scene][router]")
+{
+    RouterFixture fixture;
+    fixture.go(Screen::TITLE);
+    fixture.router.apply();
+
+    fixture.bus.publish(OverlayRequested<Screen>{Screen::POPUP});
+    fixture.go(Screen::SHOP);
+    fixture.router.apply();
+
+    REQUIRE(fixture.current() == "shop");
+    REQUIRE(fixture.scenes.size() == 1);
+}
+
+TEST_CASE("an unknown route neither pushes nor clears the stack",
+          "[core][scene][router]")
+{
+    RouterFixture fixture;
+    fixture.go(Screen::TITLE);
+    fixture.router.apply();
+
+    fixture.bus.publish(OverlayRequested<Screen>{Screen::UNKNOWN});
+    fixture.router.apply();
+
+    REQUIRE(fixture.current() == "title");
+    REQUIRE(fixture.scenes.size() == 1);
 }

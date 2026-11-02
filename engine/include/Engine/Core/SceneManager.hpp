@@ -56,7 +56,12 @@ public:
     /** @brief Clears all scenes, calling onExit() on each. */
     void clear() noexcept;
 
-    /** @brief Updates the active top scene. */
+    /**
+     * @brief Updates the active top scene.
+     *
+     * The scenes below it are updated first, in order, as long as the scene
+     * above them says so (see IScene::updatesSceneBelow()).
+     */
     void update(float dt);
 
     /**

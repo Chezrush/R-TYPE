@@ -21,10 +21,14 @@ enum class SceneRoute : std::uint8_t {
     GAME,
     SETTINGS,
     CONTROLS,
-    HOW_TO_PLAY
+    HOW_TO_PLAY,
+    IN_GAME_MENU,
+    RESPAWN,
+    GAME_OVER
 };
 
 using NavigationRequested = engine::core::NavigationRequested<SceneRoute>;
+using OverlayRequested = engine::core::OverlayRequested<SceneRoute>;
 using SceneRouter = engine::core::SceneRouter<SceneRoute>;
 
 } // namespace client::scenes

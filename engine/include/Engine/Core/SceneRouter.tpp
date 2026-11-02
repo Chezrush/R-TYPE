@@ -17,20 +17,29 @@ namespace engine::core {
 template <typename Route>
 SceneRouter<Route>::SceneRouter(SceneManager &scenes, EventBus &bus)
     : _scenes(scenes),
-      _bus(bus),
-      _navigationListener(_bus.subscribe<NavigationRequested<Route>>(
-          [this](const NavigationRequested<Route> &request) {
-              _pending = request.route;
-          })),
-      _quitListener(_bus.subscribe<QuitRequested>(
-          [this](const QuitRequested &) { _quit = true; }))
-{}
+      _bus(bus)
+{
+    _listeners.push_back(_bus.subscribe<NavigationRequested<Route>>(
+        [this](const NavigationRequested<Route> &request) {
+            requestNavigation(request.route);
+        }));
+    _listeners.push_back(_bus.subscribe<OverlayRequested<Route>>(
+        [this](const OverlayRequested<Route> &request) {
+            requestOverlay(request.route);
+        }));
+    _listeners.push_back(_bus.subscribe<OverlayCloseRequested>(
+        [this](const OverlayCloseRequested &) {
+            _pending.emplace_back([this] { closeOverlay(); });
+        }));
+    _listeners.push_back(_bus.subscribe<QuitRequested>(
+        [this](const QuitRequested &) { _quit = true; }));
+}
 
 template <typename Route>
 SceneRouter<Route>::~SceneRouter()
 {
-    _bus.unsubscribe(_navigationListener);
-    _bus.unsubscribe(_quitListener);
+    for (const auto listener : _listeners)
+        _bus.unsubscribe(listener);
 }
 
 template <typename Route>
@@ -42,13 +51,42 @@ void SceneRouter<Route>::setRoute(Route route, SceneFactory factory)
 template <typename Route>
 void SceneRouter<Route>::apply()
 {
-    if (!_pending.has_value())
-        return;
-    const auto found = _routes.find(*_pending);
+    const std::vector<std::function<void()>> pending = std::move(_pending);
 
-    _pending.reset();
-    if (found != _routes.end())
-        _scenes.switchScene(found->second());
+    _pending.clear();
+    for (const auto &request : pending)
+        request();
+}
+
+template <typename Route>
+void SceneRouter<Route>::requestNavigation(const Route &route)
+{
+    _pending.clear();
+    _pending.emplace_back([this, route] {
+        if (auto scene = create(route))
+            _scenes.switchScene(std::move(scene));
+    });
+}
+
+template <typename Route>
+void SceneRouter<Route>::requestOverlay(const Route &route)
+{
+    _pending.emplace_back([this, route] { _scenes.pushScene(create(route)); });
+}
+
+template <typename Route>
+std::unique_ptr<IScene> SceneRouter<Route>::create(const Route &route) const
+{
+    const auto found = _routes.find(route);
+
+    return found != _routes.end() ? found->second() : nullptr;
+}
+
+template <typename Route>
+void SceneRouter<Route>::closeOverlay()
+{
+    if (!_scenes.empty() && _scenes.currentScene().isOverlay())
+        _scenes.popScene();
 }
 
 template <typename Route>

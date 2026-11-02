@@ -60,9 +60,10 @@ flowchart TD
     DrawGame --> DrawPause["2. Draw PauseOverlay (semi-transparent backdrop & buttons)"]
 ```
 
-While both scenes are rendered, **only the top scene (`PauseOverlay`) receives `update()`
-and `handleInput()`**, ensuring that game simulation is halted and player keystrokes do not
-fire missiles while navigating the pause menu.
+While both scenes are rendered, **only the top scene receives `handleInput()`**, so player
+keystrokes do not fire missiles while navigating a menu. By default only the top scene receives
+`update()` too. An overlay whose `updatesSceneBelow()` returns `true` also keeps the scene below
+it updating, first, as a server-authoritative game does behind its menu.
 
 ## UI scenes and navigation
 
@@ -76,7 +77,10 @@ Two generic helpers build screens for any game. They know nothing about R-Type:
 - **`engine::core::SceneRouter<Route>`** changes screen. A scene publishes
   `NavigationRequested<Route>`, and `apply()` switches between two frames: switching at once would
   destroy the scene while its own listener runs. `Route` is chosen by the game, usually an enum. A
-  route with no scene yet is ignored. `QuitRequested` sets `quitRequested()`.
+  route with no scene yet is ignored. `OverlayRequested<Route>` and `OverlayCloseRequested` push
+  and close overlays the same way. `QuitRequested` sets `quitRequested()`.
+- **`engine::ecs::UIOverlay`** is a `UIScene` drawn above the others: its widgets get a higher
+  z-index, `addBackdrop()` covers the window, and the scene below keeps updating unless told not to.
 
 The main loop runs, in order:
 
@@ -93,6 +97,20 @@ if (router.quitRequested())
 `MainMenuScene` and `ConnectScene` live in `client/` and derive from `UIScene`.
 `client::scenes::SceneRoute` lists the screens of the game, and `makeMenuContext()` gives the
 scenes the R-Type button colors.
+
+### Overlays above the game
+
+`GameOverlays` decides what is above the game, from events only (`client/`). There is at most one
+overlay. Game over wins over the in-game menu, which wins over the respawn countdown:
+
+| Overlay | Opens on | Closes on |
+| --- | --- | --- |
+| `InGameMenuOverlay` | `Escape` (`UICancelEvent`) | `Escape`, "Resume"; "Disconnect" leaves the game |
+| `RespawnOverlay` | our ship in `EntityDestroyed` with reason `KILLED` | our ship in `EntitySpawned` |
+| `GameOverOverlay` | `GameStateChanged` with phase `GAME_OVER` | "Back to menu" leaves the game |
+
+The menu publishes `InGameMenuOpened` / `InGameMenuClosed`; leaving publishes
+`DisconnectRequested`. The countdown keeps running under the menu. The server is never paused.
 
 ### Talking to the network layer
 

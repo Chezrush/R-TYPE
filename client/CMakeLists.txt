@@ -13,8 +13,12 @@ add_library(rtype_client_core STATIC
     src/Hud/HudView.cpp
     src/Scenes/ConnectForm.cpp
     src/Scenes/ConnectScene.cpp
+    src/Scenes/GameOverOverlay.cpp
+    src/Scenes/GameOverlays.cpp
+    src/Scenes/InGameMenuOverlay.cpp
     src/Scenes/MainMenuScene.cpp
     src/Scenes/MenuContext.cpp
+    src/Scenes/RespawnOverlay.cpp
     src/Scenes/Starfield.cpp)
 target_include_directories(rtype_client_core PUBLIC include)
 target_link_libraries(rtype_client_core
@@ -31,6 +35,7 @@ rtype_add_catch_test(rtype_client_tests
     tests/Hud/HudView.cpp
     tests/Scenes/ConnectForm.cpp
     tests/Scenes/ConnectScene.cpp
+    tests/Scenes/GameOverlays.cpp
     tests/Scenes/MainMenuScene.cpp
     tests/Scenes/SceneRouter.cpp)
 if(RTYPE_BUILD_TESTS)

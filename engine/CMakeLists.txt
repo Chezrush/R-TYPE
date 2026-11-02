@@ -21,6 +21,7 @@ add_library(rtype_engine STATIC
     src/Ecs/Registry.cpp
     src/Ecs/Components/UITransform.cpp
     src/Ecs/Components/UIComponents.cpp
+    src/Ecs/UIOverlay.cpp
     src/Ecs/UIScene.cpp
     src/Ecs/Systems/UIInteractionSystem.cpp
     src/Ecs/Systems/UIWidgetInput.cpp
@@ -52,6 +53,7 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/SparseArray.cpp
     tests/Ecs/Zipper.cpp
     tests/Ecs/ZipperConcepts.cpp
+    tests/Ecs/UIOverlay.cpp
     tests/Ecs/UIScene.cpp
     tests/Ecs/Systems/UIInteractionSystem.cpp
     tests/Ecs/Systems/UIWidgetLogic.cpp

@@ -41,6 +41,7 @@ struct UISceneContext {
     engine::core::Vec2 viewport{1280.0f, 720.0f};
     engine::ecs::components::UIButton buttonStyle{};
     unsigned int buttonTextSize = 24;
+    int baseZIndex = 0;
 };
 
 /**
