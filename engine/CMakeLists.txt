@@ -21,6 +21,7 @@ add_library(rtype_engine STATIC
     src/Ecs/Registry.cpp
     src/Ecs/Components/UITransform.cpp
     src/Ecs/Components/UIComponents.cpp
+    src/Ecs/UIScene.cpp
     src/Ecs/Systems/UIInteractionSystem.cpp
     src/Ecs/Systems/UIWidgetInput.cpp
     src/Ecs/Systems/UIWidgetLogic.cpp
@@ -33,6 +34,7 @@ target_link_libraries(rtype_engine PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_engine_tests
     tests/Core/SceneManager.cpp
+    tests/Core/SceneRouter.cpp
     tests/Version.cpp
     tests/Core/EventBus.cpp
     tests/Core/FixedTimestep.cpp
@@ -50,6 +52,7 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/SparseArray.cpp
     tests/Ecs/Zipper.cpp
     tests/Ecs/ZipperConcepts.cpp
+    tests/Ecs/UIScene.cpp
     tests/Ecs/Systems/UIInteractionSystem.cpp
     tests/Ecs/Systems/UIWidgetLogic.cpp
     tests/Ecs/Systems/UIWidgets.cpp

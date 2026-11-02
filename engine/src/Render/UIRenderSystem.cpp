@@ -67,6 +67,20 @@ float alignFactor(UITextAlign align) noexcept
     }
 }
 
+ecs::components::UIColor buttonColor(const UIButton &button) noexcept
+{
+    switch (button.state) {
+        case ecs::components::UIButtonState::HOVERED:
+            return button.hoveredColor;
+        case ecs::components::UIButtonState::PRESSED:
+            return button.pressedColor;
+        case ecs::components::UIButtonState::DISABLED:
+            return button.disabledColor;
+        default:
+            return button.normalColor;
+    }
+}
+
 void drawRect(sf::RenderTarget &target, const Rect &bounds, sf::Color color)
 {
     sf::RectangleShape shape({bounds.width, bounds.height});
@@ -342,6 +356,9 @@ void UIRenderSystem::drawEntity(sf::RenderTarget &target,
 
     if (const auto *panel = registry.getComponents<UIPanel>().get(entity))
         drawPanel(target, *panel, bounds);
+    else if (const auto *button =
+                 registry.getComponents<UIButton>().get(entity))
+        drawRect(target, bounds, toSfColor(buttonColor(*button)));
     if (const auto *bar = registry.getComponents<UIProgressBar>().get(entity))
         drawProgressBar(target, *bar, bounds);
     if (const auto *text =

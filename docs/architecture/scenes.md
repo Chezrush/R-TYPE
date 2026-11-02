@@ -64,3 +64,49 @@ While both scenes are rendered, **only the top scene (`PauseOverlay`) receives `
 and `handleInput()`**, ensuring that game simulation is halted and player keystrokes do not
 fire missiles while navigating the pause menu.
 
+## UI scenes and navigation
+
+Two generic helpers build screens for any game. They know nothing about R-Type:
+
+- **`engine::ecs::UIScene`** (no SFML) is the base of a screen made only of UI components. It
+  creates the widgets and listeners on `onEnter()` / `onResume()` (the `activate()` you write)
+  and removes them on `onExit()` / `onPause()`. `handleInput()` applies the input the window code
+  gave to the shared `UIInteractionSystem`. `render()` does nothing, the game's `UIRenderSystem`
+  draws the registry. The look of the buttons comes from `UISceneContext::buttonStyle`.
+- **`engine::core::SceneRouter<Route>`** changes screen. A scene publishes
+  `NavigationRequested<Route>`, and `apply()` switches between two frames: switching at once would
+  destroy the scene while its own listener runs. `Route` is chosen by the game, usually an enum. A
+  route with no scene yet is ignored. `QuitRequested` sets `quitRequested()`.
+
+The main loop runs, in order:
+
+```cpp
+scenes.handleInput();
+scenes.update(dt);
+router.apply();
+if (router.quitRequested())
+    stop();
+```
+
+## R-Type menu scenes
+
+`MainMenuScene` and `ConnectScene` live in `client/` and derive from `UIScene`.
+`client::scenes::SceneRoute` lists the screens of the game, and `makeMenuContext()` gives the
+scenes the R-Type button colors.
+
+### Talking to the network layer
+
+`ConnectScene` never calls network code. All the messages are `EventBus` events, declared in
+`Client/Events/ConnectionEvents.hpp` and `GameEvents.hpp`:
+
+| Event | Direction | Effect |
+| --- | --- | --- |
+| `ConnectRequested { host, port, nickname }` | scene → network | The form was valid; it is locked. |
+| `ConnectCancelled` | scene → network | The player left during a connection. |
+| `ConnectionStarted { host, port }` | network → scene | Shows "Connecting to host:port...". |
+| `WelcomeReceived` | network → scene | Asks for the game scene. |
+| `ConnectionFailed { reason }` | network → scene | Shows a message and unlocks the form. |
+
+`ConnectionFailure` uses the protocol `reject` values, plus `TIMEOUT` and `INVALID_ADDRESS`
+found by the client. An unknown reason still shows a generic message. The checks and the texts
+are pure functions in `Client/Scenes/ConnectForm.hpp`.

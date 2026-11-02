@@ -23,6 +23,22 @@ struct UITextChangedEvent {
                            const UITextChangedEvent &) = default;
 };
 
+/** @brief Enter was pressed in a focused UITextInput. */
+struct UITextSubmittedEvent {
+    std::size_t entityIndex = 0;
+    std::string action;
+    std::string text;
+
+    friend bool operator==(const UITextSubmittedEvent &,
+                           const UITextSubmittedEvent &) = default;
+};
+
+/** @brief Escape was pressed and no focused widget used it. */
+struct UICancelEvent {
+    friend bool operator==(const UICancelEvent &,
+                           const UICancelEvent &) = default;
+};
+
 /**
  * @brief The value of a UISlider or a UIToggle changed.
  *
@@ -52,8 +68,10 @@ struct UISelectionChangedEvent {
 
 namespace engine::ecs {
 
+using components::UICancelEvent;
 using components::UISelectionChangedEvent;
 using components::UITextChangedEvent;
+using components::UITextSubmittedEvent;
 using components::UIValueChangedEvent;
 
 } // namespace engine::ecs

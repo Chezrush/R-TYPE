@@ -106,6 +106,10 @@ A `UIButton` cycles through 4 states:
 - **`PRESSED`**: Mouse button is currently held down over the button.
 - **`DISABLED`**: Non-interactive; ignores mouse clicks and keyboard focus.
 
+`UIRenderSystem` fills the button with the color of its state (`normalColor`, `hoveredColor`,
+`pressedColor`, `disabledColor`). An entity that also has a `UIPanel` is drawn with the panel
+instead.
+
 ### Accessibility: Keyboard and Gamepad navigation
 
 For accessibility compliance, menus can be fully navigated without a mouse. The window code
@@ -117,6 +121,8 @@ Tab / RB to `TAB`, Shift+Tab / LB to `BACK_TAB`, the D-pad to the arrows, A to `
 - The focused widget gets the other keys first (see [Widgets](#widgets)). The keys it does not
   use navigate: `Down` / `Right` next, `Up` / `Left` previous.
 - `Enter` / `Space` on a focused button emits `UIButtonClickedEvent`.
+- `Enter` in a text input emits `UITextSubmittedEvent`.
+- `Escape`, when the focused widget does not use it, emits `UICancelEvent`.
 
 Focus rules: at most one widget is focused at a time, and clicking a widget gives it the focus.
 A disabled widget (a `DISABLED` button, or `enabled = false`) is never focused: one disabled by
