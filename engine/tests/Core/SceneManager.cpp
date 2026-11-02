@@ -221,3 +221,30 @@ TEST_CASE("clear exits all scenes", "[core][scenemanager]")
     const std::vector<std::string> expected = {"exit:pause", "exit:game"};
     REQUIRE(events == expected);
 }
+
+TEST_CASE("an overlay can keep the scene below updating", "[core][scene]")
+{
+    class RunningOverlay : public MockScene {
+    public:
+        using MockScene::MockScene;
+
+        [[nodiscard]] bool updatesSceneBelow() const noexcept override
+        {
+            return true;
+        }
+    };
+
+    std::vector<std::string> events;
+    SceneManager manager;
+    manager.pushScene(std::make_unique<MockScene>("base", &events));
+    manager.pushScene(std::make_unique<MockScene>("game", &events));
+    manager.pushScene(std::make_unique<RunningOverlay>("menu", &events, true));
+    events.clear();
+
+    manager.update(0.016f);
+    manager.handleInput();
+
+    const std::vector<std::string> expected = {"update:game", "update:menu",
+                                               "input:menu"};
+    REQUIRE(events == expected);
+}

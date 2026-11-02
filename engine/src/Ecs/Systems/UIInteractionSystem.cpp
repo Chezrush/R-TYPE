@@ -331,6 +331,9 @@ void UIInteractionSystem::navigate(UIKey key, Registry &registry)
         case UIKey::SPACE:
             activateFocused(registry);
             break;
+        case UIKey::ESCAPE:
+            _eventBus.publish(components::UICancelEvent{});
+            break;
         default:
             break;
     }

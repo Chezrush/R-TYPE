@@ -243,3 +243,65 @@ TEST_CASE("UILayoutSystem runs as a scheduler system", "[ecs][ui][layout]")
     REQUIRE(registry.getComponents<UITransform>().get(entity)->actualBounds ==
             Rect{400.0f, 250.0f, 200.0f, 100.0f});
 }
+
+TEST_CASE("the UI scale multiplies sizes and offsets", "[ecs][ui][layout]")
+{
+    engine::ecs::UITransform box;
+    box.anchor = engine::ecs::UIAnchor::CENTER;
+    box.offset = {10.0f, -20.0f};
+    box.size = {100.0f, 40.0f};
+
+    REQUIRE(UILayoutSystem::computeBounds(box, 1280.0f, 720.0f, 1.0f) ==
+            Rect{600.0f, 320.0f, 100.0f, 40.0f});
+    REQUIRE(UILayoutSystem::computeBounds(box, 1280.0f, 720.0f, 1.5f) ==
+            Rect{580.0f, 300.0f, 150.0f, 60.0f});
+}
+
+TEST_CASE("the UI scale leaves window-relative things alone",
+          "[ecs][ui][layout]")
+{
+    engine::ecs::UITransform backdrop;
+    backdrop.size = {1.0f, 1.0f};
+    backdrop.normalizedSize = true;
+    engine::ecs::UITransform marker;
+    marker.offset = {400.0f, 300.0f};
+    marker.size = {30.0f, 20.0f};
+    marker.followsUIScale = false;
+
+    REQUIRE(UILayoutSystem::computeBounds(backdrop, 1280.0f, 720.0f, 1.5f) ==
+            Rect{0.0f, 0.0f, 1280.0f, 720.0f});
+    REQUIRE(UILayoutSystem::computeBounds(marker, 1280.0f, 720.0f, 1.5f) ==
+            Rect{400.0f, 300.0f, 30.0f, 20.0f});
+}
+
+TEST_CASE("the layout tells each entity its scale", "[ecs][ui][layout]")
+{
+    Registry registry;
+    engine::ecs::registerUIComponents(registry);
+    const auto scaled = registry.spawnEntity();
+    const auto fixed = registry.spawnEntity();
+    engine::ecs::UITransform transform;
+    registry.addComponent(scaled, transform);
+    transform.followsUIScale = false;
+    registry.addComponent(fixed, transform);
+    UILayoutSystem layout;
+
+    layout.setScale(1.25f);
+    layout.update(registry);
+
+    const auto &transforms = registry.getComponents<engine::ecs::UITransform>();
+    REQUIRE(layout.scale() == 1.25f);
+    REQUIRE(transforms.get(scaled)->resolvedScale == 1.25f);
+    REQUIRE(transforms.get(fixed)->resolvedScale == 1.0f);
+}
+
+TEST_CASE("an invalid UI scale is ignored", "[ecs][ui][layout]")
+{
+    UILayoutSystem layout;
+
+    layout.setScale(1.5f);
+    layout.setScale(0.0f);
+    layout.setScale(-1.0f);
+
+    REQUIRE(layout.scale() == 1.5f);
+}

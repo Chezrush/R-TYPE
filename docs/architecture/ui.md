@@ -98,6 +98,14 @@ flowchart LR
     Bus --> Sub["Subscribers (e.g. GameScene, MenuScene)"]
 ```
 
+### UI scale
+
+`UILayoutSystem::setScale()` multiplies offsets, sizes and text sizes, for players who need a larger
+interface. Normalized sizes are left alone, since they are already relative to the window, and so is
+an entity with `followsUIScale = false`, whose offset is a real screen position (a tag above a ship).
+The layout writes the value used in `UITransform::resolvedScale`, and `UIRenderSystem` applies it to
+the text of that entity.
+
 ### Button states
 
 A `UIButton` cycles through 4 states:
@@ -105,6 +113,10 @@ A `UIButton` cycles through 4 states:
 - **`HOVERED`**: Mouse is currently over the button's `actualBounds`.
 - **`PRESSED`**: Mouse button is currently held down over the button.
 - **`DISABLED`**: Non-interactive; ignores mouse clicks and keyboard focus.
+
+`UIRenderSystem` fills the button with the color of its state (`normalColor`, `hoveredColor`,
+`pressedColor`, `disabledColor`). An entity that also has a `UIPanel` is drawn with the panel
+instead.
 
 ### Accessibility: Keyboard and Gamepad navigation
 
@@ -117,6 +129,8 @@ Tab / RB to `TAB`, Shift+Tab / LB to `BACK_TAB`, the D-pad to the arrows, A to `
 - The focused widget gets the other keys first (see [Widgets](#widgets)). The keys it does not
   use navigate: `Down` / `Right` next, `Up` / `Left` previous.
 - `Enter` / `Space` on a focused button emits `UIButtonClickedEvent`.
+- `Enter` in a text input emits `UITextSubmittedEvent`.
+- `Escape`, when the focused widget does not use it, emits `UICancelEvent`.
 
 Focus rules: at most one widget is focused at a time, and clicking a widget gives it the focus.
 A disabled widget (a `DISABLED` button, or `enabled = false`) is never focused: one disabled by

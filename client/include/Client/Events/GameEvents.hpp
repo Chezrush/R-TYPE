@@ -16,6 +16,9 @@ namespace client::events {
 /** @brief `owner` / `killer` value meaning "no player". */
 inline constexpr std::uint8_t NO_PLAYER = 0xFF;
 
+/** @brief Delay before a destroyed ship comes back (protocol section 8.4). */
+inline constexpr float RESPAWN_DELAY_SECONDS = 2.0f;
+
 /**
  * @brief Entity kinds of the protocol (`spawn.kind`).
  *

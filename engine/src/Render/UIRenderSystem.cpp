@@ -15,6 +15,7 @@
 #include <SFML/System/String.hpp>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -64,6 +65,20 @@ float alignFactor(UITextAlign align) noexcept
             return 1.0f;
         default:
             return 0.0f;
+    }
+}
+
+ecs::components::UIColor buttonColor(const UIButton &button) noexcept
+{
+    switch (button.state) {
+        case ecs::components::UIButtonState::HOVERED:
+            return button.hoveredColor;
+        case ecs::components::UIButtonState::PRESSED:
+            return button.pressedColor;
+        case ecs::components::UIButtonState::DISABLED:
+            return button.disabledColor;
+        default:
+            return button.normalColor;
     }
 }
 
@@ -340,8 +355,14 @@ void UIRenderSystem::drawEntity(sf::RenderTarget &target,
                              .get(entity)
                              ->actualBounds;
 
+    _textScale = registry.getComponents<ecs::components::UITransform>()
+                     .get(entity)
+                     ->resolvedScale;
     if (const auto *panel = registry.getComponents<UIPanel>().get(entity))
         drawPanel(target, *panel, bounds);
+    else if (const auto *button =
+                 registry.getComponents<UIButton>().get(entity))
+        drawRect(target, bounds, toSfColor(buttonColor(*button)));
     if (const auto *bar = registry.getComponents<UIProgressBar>().get(entity))
         drawProgressBar(target, *bar, bounds);
     if (const auto *text =
@@ -365,20 +386,26 @@ void UIRenderSystem::drawPanel(sf::RenderTarget &target,
     target.draw(panelVertices(panel, bounds, texture->getSize()), states);
 }
 
+unsigned int UIRenderSystem::scaledTextSize(unsigned int size) const noexcept
+{
+    return static_cast<unsigned int>(
+        std::lround(static_cast<float>(size) * _textScale));
+}
+
 void UIRenderSystem::drawText(sf::RenderTarget &target,
                               const ecs::components::UIText &text,
                               const ecs::components::Rect &bounds)
 {
     const sf::Font *font = _resources.font(text.fontId);
+    const unsigned int size = scaledTextSize(text.characterSize);
 
     if (font == nullptr || text.text.empty())
         return;
-    sf::Text label(*font,
-                   sf::String::fromUtf8(text.text.begin(), text.text.end()),
-                   text.characterSize);
+    sf::Text label(
+        *font, sf::String::fromUtf8(text.text.begin(), text.text.end()), size);
     const sf::FloatRect local = label.getLocalBounds();
     label.setOrigin({local.position.x + local.size.x * alignFactor(text.align),
-                     font->getLineSpacing(text.characterSize) / 2.0f});
+                     font->getLineSpacing(size) / 2.0f});
     label.setPosition(textAnchor(text.align, bounds));
     label.setFillColor(toSfColor(text.color));
     target.draw(label);
@@ -409,8 +436,10 @@ void UIRenderSystem::drawOpenDropdowns(sf::RenderTarget &target,
     for (auto [transform, dropdown] :
          ecs::makeZipper(registry.getComponents<ecs::components::UITransform>(),
                          registry.getComponents<UIDropdown>())) {
-        if (dropdown.open)
-            drawDropdownOptions(target, dropdown, transform.actualBounds);
+        if (!dropdown.open)
+            continue;
+        _textScale = transform.resolvedScale;
+        drawDropdownOptions(target, dropdown, transform.actualBounds);
     }
 }
 
@@ -439,7 +468,7 @@ void UIRenderSystem::drawCaret(sf::RenderTarget &target,
     if (font != nullptr) {
         const sf::Text text(
             *font, sf::String::fromUtf8(input.text.begin(), input.text.end()),
-            input.style.characterSize);
+            scaledTextSize(input.style.characterSize));
         x += text.findCharacterPos(
                      widgets::characterIndex(input.text, input.caret))
                  .x;

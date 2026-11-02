@@ -86,6 +86,7 @@ private:
                    const ecs::components::UIPanel &panel,
                    const ecs::components::Rect &bounds);
 
+    [[nodiscard]] unsigned int scaledTextSize(unsigned int size) const noexcept;
     void drawText(sf::RenderTarget &target, const ecs::components::UIText &text,
                   const ecs::components::Rect &bounds);
 
@@ -113,6 +114,7 @@ private:
                    const ecs::components::Rect &bounds, sf::Color color);
 
     resources::ResourceManager &_resources;
+    float _textScale = 1.0f;
 };
 
 } // namespace engine::render

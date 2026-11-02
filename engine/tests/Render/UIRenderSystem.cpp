@@ -441,6 +441,29 @@ TEST_CASE("a slider shows its fill and handle", "[render][ui][gl][widgets]")
     REQUIRE(image.getPixel({50, 6}) == sf::Color::White);
 }
 
+TEST_CASE("a button shows the color of its state", "[render][ui][gl][widgets]")
+{
+    if (!hasDisplay())
+        SKIP("no display to create an OpenGL context");
+    UIWorld world;
+    engine::ecs::UIButton button;
+    button.normalColor = {255, 0, 0, 255};
+    button.hoveredColor = {0, 255, 0, 255};
+    const Entity entity = world.spawn({10.0f, 10.0f, 40.0f, 20.0f});
+    world.add(entity, button);
+    const Entity panelled = world.spawn({10.0f, 40.0f, 40.0f, 20.0f});
+    world.add(panelled, button);
+    world.add(panelled, colorPanel({0, 0, 255, 255}));
+
+    REQUIRE(renderWorld(world, {60, 70}).getPixel({30, 20}) == sf::Color::Red);
+    world.registry.getComponents<engine::ecs::UIButton>().get(entity)->state =
+        engine::ecs::UIButtonState::HOVERED;
+    const sf::Image image = renderWorld(world, {60, 70});
+
+    REQUIRE(image.getPixel({30, 20}) == sf::Color::Green);
+    REQUIRE(image.getPixel({30, 50}) == sf::Color::Blue);
+}
+
 TEST_CASE("the focused widget gets an outline", "[render][ui][gl][widgets]")
 {
     if (!hasDisplay())

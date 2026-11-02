@@ -68,7 +68,9 @@ enum class UIKey : std::uint8_t {
  * disabled by game code loses its focus at the next processed input.
  *
  * Every change is published on the event bus: UIButtonClickedEvent,
- * UITextChangedEvent, UIValueChangedEvent, UISelectionChangedEvent.
+ * UITextChangedEvent, UIValueChangedEvent, UISelectionChangedEvent. Enter in
+ * a text input publishes UITextSubmittedEvent; Escape, when the focused widget
+ * does not use it, publishes UICancelEvent.
  */
 class UIInteractionSystem {
 public:
@@ -158,6 +160,7 @@ private:
     void releaseToggle(Entity entity, bool inside, Registry &registry);
     bool handleWidgetKey(Entity entity, UIKey key, Registry &registry);
     bool textInputKey(Entity entity, components::UITextInput &input, UIKey key);
+    void eraseText(Entity entity, components::UITextInput &input, UIKey key);
     bool sliderKey(Entity entity, components::UISlider &slider, UIKey key);
     bool toggleKey(Entity entity, components::UIToggle &toggle, UIKey key);
     bool dropdownKey(Entity entity, components::UIDropdown &dropdown,

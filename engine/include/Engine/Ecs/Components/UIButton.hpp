@@ -28,6 +28,9 @@ enum class UIButtonState : std::uint8_t {
 
 /**
  * @brief Interactive button component for UI entities.
+ *
+ * The button is filled with the color of its state. An entity that also has a
+ * UIPanel is drawn with the panel instead.
  */
 struct UIButton {
     UIButtonState state = UIButtonState::NORMAL;

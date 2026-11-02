@@ -193,14 +193,24 @@ bool UIInteractionSystem::textInputKey(Entity entity, UITextInput &input,
         return true;
     }
     if (key == UIKey::BACKSPACE || key == UIKey::DEL) {
-        const bool erased = key == UIKey::BACKSPACE
-                                ? widgets::eraseBeforeCaret(input)
-                                : widgets::eraseAfterCaret(input);
-        if (erased)
-            publishText(entity, input);
+        eraseText(entity, input, key);
         return true;
     }
-    return key == UIKey::SPACE;
+    if (key == UIKey::ENTER)
+        _eventBus.publish(
+            UITextSubmittedEvent{entity.index(), input.action, input.text});
+    return key == UIKey::ENTER || key == UIKey::SPACE;
+}
+
+void UIInteractionSystem::eraseText(Entity entity, UITextInput &input,
+                                    UIKey key)
+{
+    const bool erased = key == UIKey::BACKSPACE
+                            ? widgets::eraseBeforeCaret(input)
+                            : widgets::eraseAfterCaret(input);
+
+    if (erased)
+        publishText(entity, input);
 }
 
 bool UIInteractionSystem::sliderKey(Entity entity, UISlider &slider, UIKey key)

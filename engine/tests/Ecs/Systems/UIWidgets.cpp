@@ -104,6 +104,11 @@ public:
         return _system;
     }
 
+    EventBus &bus()
+    {
+        return _bus;
+    }
+
     Registry &registry()
     {
         return _registry;
@@ -400,6 +405,45 @@ TEST_CASE("Enter on a text input does not click buttons",
     ui.key(UIKey::SPACE);
 
     REQUIRE(ui.clicks.empty());
+}
+
+TEST_CASE("Enter on a text input submits its text", "[ecs][ui][widgets][text]")
+{
+    WidgetScreen ui;
+    std::vector<engine::ecs::UITextSubmittedEvent> submitted;
+    ui.bus().subscribe<engine::ecs::UITextSubmittedEvent>(
+        [&submitted](const auto &event) { submitted.push_back(event); });
+    const Entity entity =
+        ui.add(FIELD, textInput("name", UITextFilter::PRINTABLE, 8));
+    ui.click(10.0f, 10.0f);
+    ui.type(U"Bob");
+
+    ui.key(UIKey::ENTER);
+
+    REQUIRE(submitted.size() == 1);
+    REQUIRE(submitted[0].entityIndex == entity.index());
+    REQUIRE(submitted[0].action == "name");
+    REQUIRE(submitted[0].text == "Bob");
+}
+
+TEST_CASE("Escape is a cancel event unless a widget uses it",
+          "[ecs][ui][widgets][focus]")
+{
+    WidgetScreen ui;
+    int cancels = 0;
+    ui.bus().subscribe<engine::ecs::UICancelEvent>(
+        [&cancels](const auto &) { ++cancels; });
+    UIDropdown dropdown;
+    dropdown.options = {"a", "b"};
+    const Entity entity = ui.add(FIELD, dropdown);
+    ui.click(10.0f, 10.0f);
+    REQUIRE(ui.get<UIDropdown>(entity).open);
+
+    ui.key(UIKey::ESCAPE);
+    REQUIRE(cancels == 0);
+
+    ui.key(UIKey::ESCAPE);
+    REQUIRE(cancels == 1);
 }
 
 TEST_CASE("a disabled widget ignores input", "[ecs][ui][widgets][focus]")
