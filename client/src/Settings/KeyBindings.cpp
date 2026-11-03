@@ -166,6 +166,8 @@ std::string keyName(ScanCode key)
         return std::string(1, static_cast<char>('1' + (key - FIRST_DIGIT)));
     if (key == ZERO_DIGIT)
         return "0";
+    if (key >= KEY_F1 && key <= KEY_F12)
+        return "F" + std::to_string(key - KEY_F1 + 1);
     for (const NamedKey &named : KEYS) {
         if (named.key == key)
             return named.name;

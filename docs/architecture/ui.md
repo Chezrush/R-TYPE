@@ -110,6 +110,9 @@ keeps the one stored in the component, so an empty theme changes nothing.
 `focusThickness`, `gaugeOutline`, and `reducedMotion`, which UI code reads through
 `UIScene::reducedMotion()`.
 
+`UIGraph` draws rolling bars (frame time, latency...), newest on the right, scaled to `maxValue`
+or to its largest sample.
+
 `UIShape` draws a circle, triangle, square or cross in its bounds, so that nothing has to be told apart
 by color alone.
 

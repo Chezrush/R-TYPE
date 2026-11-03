@@ -69,6 +69,8 @@ TEST_CASE("keys and buttons have readable names", "[client][bindings]")
     REQUIRE(keyName(KEY_SPACE) == "Space");
     REQUIRE(keyName(KEY_UP) == "Up");
     REQUIRE(keyName(200) == "Key 200");
+    REQUIRE(keyName(KEY_F3) == "F3");
+    REQUIRE(keyName(KEY_F12) == "F12");
     REQUIRE(buttonName(GamepadButton::START) == "Start");
     REQUIRE(bindingText(KeyBindings{}, GameAction::MOVE_UP) == "Up / D-pad up");
 }

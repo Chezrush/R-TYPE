@@ -64,6 +64,9 @@ inline constexpr ScanCode KEY_DOWN = 0x51;
 inline constexpr ScanCode KEY_UP = 0x52;
 /** @brief The key above Tab, left of 1 (grave accent on QWERTY). */
 inline constexpr ScanCode KEY_GRAVE = 0x35;
+inline constexpr ScanCode KEY_F1 = 0x3A;
+inline constexpr ScanCode KEY_F3 = 0x3C;
+inline constexpr ScanCode KEY_F12 = 0x45;
 
 /** @brief The key and the gamepad button of one action. */
 struct ActionBinding {

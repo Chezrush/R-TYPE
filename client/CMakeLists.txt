@@ -13,6 +13,7 @@ add_library(rtype_client_core STATIC
     src/Hud/BeamGauge.cpp
     src/Hud/HudController.cpp
     src/Hud/HudView.cpp
+    src/Hud/StatsOverlay.cpp
     src/Hud/VisualCueIndicator.cpp
     src/Scenes/ConnectForm.cpp
     src/Scenes/ConnectScene.cpp
@@ -30,7 +31,8 @@ add_library(rtype_client_core STATIC
     src/Settings/ClientSettings.cpp
     src/Settings/KeyBindings.cpp
     src/Settings/Palette.cpp
-    src/Settings/SettingsStore.cpp)
+    src/Settings/SettingsStore.cpp
+    src/Stats/StatsModel.cpp)
 target_include_directories(rtype_client_core PUBLIC include)
 target_link_libraries(rtype_client_core
     PUBLIC rtype::engine
@@ -45,6 +47,7 @@ rtype_add_catch_test(rtype_client_tests
     tests/Hud/BeamGauge.cpp
     tests/Hud/HudController.cpp
     tests/Hud/HudView.cpp
+    tests/Hud/StatsOverlay.cpp
     tests/Hud/VisualCueIndicator.cpp
     tests/Scenes/ConnectForm.cpp
     tests/Scenes/ConnectScene.cpp
@@ -58,7 +61,8 @@ rtype_add_catch_test(rtype_client_tests
     tests/Settings/ClientSettings.cpp
     tests/Settings/KeyBindings.cpp
     tests/Settings/Palette.cpp
-    tests/Settings/SettingsStore.cpp)
+    tests/Settings/SettingsStore.cpp
+    tests/Stats/StatsModel.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_client_tests PRIVATE rtype_client_core)
     target_include_directories(rtype_client_tests PRIVATE tests/Scenes

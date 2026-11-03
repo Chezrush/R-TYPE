@@ -170,6 +170,25 @@ Up / Down browse the history and Tab completes the command name; this logic is i
 with no UI. Escape and the key above Tab close the console. The game keeps updating behind it and
 does not receive the input meanwhile.
 
+### Stats overlay
+
+`StatsOverlay` shows performance and network values at the top right. It is not a scene, so it
+never takes the input. F3 (`RawKeyPressed` with `KEY_F3`) shows or hides it. The render loop calls
+`update(dt)` with the real frame time, also while it is hidden, so the graphs are already full
+when it opens.
+
+- FPS and frame time are measured by the overlay itself from `dt` (`StatsModel`, no UI).
+- RTT, loss, traffic and dropped datagrams come from `NetStatsUpdated`, published by the network
+  layer. Until the first one, the lines say "no data".
+- Any code can add a line with `StatsLine { name, value }`, up to 8 lines.
+
+The texts refresh 4 times per second and the graphs (`UIGraph`, 120 samples) every frame.
+Measured cost per frame on a release build (AMD Radeon 610M laptop, shown, 8 extra lines, a network
+event every frame): about 0.002 ms for `update()` and the layout, and 0.045 ms of CPU time for
+`UIRenderSystem::render()` to draw it, about 0.05 ms in total against a budget of 0.2 ms. GPU time
+was not isolated. The first figure is checked by a hidden test, run with
+`rtype_client_tests "[benchmark]"`; the drawing time was measured by hand.
+
 ### Talking to the network layer
 
 `ConnectScene` never calls network code. All the messages are `EventBus` events, declared in

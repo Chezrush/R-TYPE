@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "Engine/Ecs/Components/UIComponents.hpp"
+#include "Engine/Ecs/Components/UIGraph.hpp"
 #include "Engine/Ecs/Components/UIShape.hpp"
 #include "Engine/Ecs/Registry.hpp"
 
@@ -594,4 +595,52 @@ TEST_CASE("a high-contrast theme thickens outlines", "[render][ui][gl][theme]")
     const sf::Image image = target.getTexture().copyToImage();
     REQUIRE(image.getPixel({7, 20}) == sf::Color::Yellow);
     REQUIRE(image.getPixel({49, 20}) == sf::Color::White);
+}
+
+TEST_CASE("a graph draws its newest samples on the right",
+          "[render][ui][gl][graph]")
+{
+    if (!hasDisplay())
+        SKIP("no display to create an OpenGL context");
+    UIWorld world;
+    engine::ecs::UIGraph graph;
+    graph.capacity = 4;
+    graph.maxValue = 10.0f;
+    graph.samples = {10.0f, 5.0f};
+    graph.barColor = {255, 0, 0, 255};
+    graph.backgroundColor = {0, 0, 255, 255};
+    world.add(world.spawn({0.0f, 0.0f, 40.0f, 20.0f}), graph);
+
+    const sf::Image image = renderWorld(world, {40, 20});
+
+    REQUIRE(image.getPixel({5, 10}) == sf::Color::Blue);
+    REQUIRE(image.getPixel({25, 1}) == sf::Color::Red);
+    REQUIRE(image.getPixel({35, 5}) == sf::Color::Blue);
+    REQUIRE(image.getPixel({35, 15}) == sf::Color::Red);
+}
+
+TEST_CASE("a graph scales to its largest sample and clamps",
+          "[render][ui][gl][graph]")
+{
+    if (!hasDisplay())
+        SKIP("no display to create an OpenGL context");
+    UIWorld world;
+    engine::ecs::UIGraph automatic;
+    automatic.capacity = 2;
+    automatic.samples = {4.0f, 2.0f};
+    automatic.barColor = {255, 0, 0, 255};
+    automatic.backgroundColor = {0, 0, 0, 255};
+    engine::ecs::UIGraph clamped = automatic;
+    clamped.maxValue = 1.0f;
+    clamped.samples = {-3.0f, 50.0f};
+    world.add(world.spawn({0.0f, 0.0f, 20.0f, 20.0f}), automatic);
+    world.add(world.spawn({20.0f, 0.0f, 20.0f, 20.0f}), clamped);
+
+    const sf::Image image = renderWorld(world, {40, 20});
+
+    REQUIRE(image.getPixel({5, 1}) == sf::Color::Red);
+    REQUIRE(image.getPixel({15, 5}) == sf::Color::Black);
+    REQUIRE(image.getPixel({15, 15}) == sf::Color::Red);
+    REQUIRE(image.getPixel({25, 15}) == sf::Color::Black);
+    REQUIRE(image.getPixel({35, 1}) == sf::Color::Red);
 }
