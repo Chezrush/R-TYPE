@@ -9,6 +9,7 @@
 #define UIRENDERSYSTEM_HPP_
 
 #include <SFML/Graphics/RenderTarget.hpp>
+#include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/VertexArray.hpp>
 #include <SFML/Graphics/View.hpp>
 #include <SFML/System/Vector2.hpp>
@@ -20,8 +21,11 @@
 #include "Engine/Ecs/Components/UIPanel.hpp"
 #include "Engine/Ecs/Components/UIProgressBar.hpp"
 #include "Engine/Ecs/Components/UIScrollList.hpp"
+#include "Engine/Ecs/Components/UISlider.hpp"
 #include "Engine/Ecs/Components/UIText.hpp"
 #include "Engine/Ecs/Components/UITextInput.hpp"
+#include "Engine/Ecs/Components/UITheme.hpp"
+#include "Engine/Ecs/Components/UIToggle.hpp"
 #include "Engine/Ecs/Components/UITransform.hpp"
 #include "Engine/Ecs/Components/UIWidgetStyle.hpp"
 #include "Engine/Ecs/Entity.hpp"
@@ -43,6 +47,14 @@ namespace engine::render {
 class UIRenderSystem {
 public:
     explicit UIRenderSystem(resources::ResourceManager &resources) noexcept;
+
+    /**
+     * @brief Uses a theme; it must outlive this object, and may change.
+     *
+     * Without one, the components keep their own colors.
+     */
+    void setTheme(const ecs::components::UITheme &theme) noexcept;
+    void setTheme(const ecs::components::UITheme &&theme) = delete;
 
     /**
      * @brief Draws every UI entity of the registry on the target.
@@ -79,19 +91,34 @@ public:
                const ecs::components::Rect &bounds) noexcept;
 
 private:
+    [[nodiscard]] const ecs::components::UITheme &theme() const noexcept;
+
     void drawEntity(sf::RenderTarget &target, const ecs::Registry &registry,
                     ecs::Entity entity);
 
+    void drawBackground(sf::RenderTarget &target, const ecs::Registry &registry,
+                        ecs::Entity entity,
+                        const ecs::components::Rect &bounds);
     void drawPanel(sf::RenderTarget &target,
                    const ecs::components::UIPanel &panel,
                    const ecs::components::Rect &bounds);
 
     [[nodiscard]] unsigned int scaledTextSize(unsigned int size) const noexcept;
+    void drawPlate(sf::RenderTarget &target, const sf::Text &label) const;
     void drawText(sf::RenderTarget &target, const ecs::components::UIText &text,
                   const ecs::components::Rect &bounds);
 
     void drawWidgets(sf::RenderTarget &target, const ecs::Registry &registry,
                      ecs::Entity entity, const ecs::components::Rect &bounds);
+    void drawFocusOutline(sf::RenderTarget &target,
+                          const ecs::components::Rect &bounds,
+                          const ecs::components::UIColor &color) const;
+    void drawSliderWidget(sf::RenderTarget &target,
+                          const ecs::components::UISlider &slider,
+                          const ecs::components::Rect &bounds) const;
+    void drawToggleWidget(sf::RenderTarget &target,
+                          const ecs::components::UIToggle &toggle,
+                          const ecs::components::Rect &bounds) const;
     void drawOpenDropdowns(sf::RenderTarget &target,
                            const ecs::Registry &registry);
     void drawTextInput(sf::RenderTarget &target,
@@ -115,6 +142,8 @@ private:
 
     resources::ResourceManager &_resources;
     float _textScale = 1.0f;
+    ecs::components::UITheme _noTheme;
+    const ecs::components::UITheme *_theme = nullptr;
 };
 
 } // namespace engine::render

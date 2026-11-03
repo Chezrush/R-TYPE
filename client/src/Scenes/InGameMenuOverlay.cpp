@@ -30,17 +30,18 @@ using engine::ecs::components::UIColor;
 constexpr const char *RESUME = "Resume";
 constexpr const char *SETTINGS = "Settings";
 constexpr const char *CONTROLS = "Controls";
+constexpr const char *HOW_TO_PLAY = "How to play";
 constexpr const char *DISCONNECT = "Disconnect";
-constexpr std::array<const char *, 4> LABELS{RESUME, SETTINGS, CONTROLS,
-                                             DISCONNECT};
+constexpr std::array<const char *, 5> LABELS{RESUME, SETTINGS, CONTROLS,
+                                             HOW_TO_PLAY, DISCONNECT};
 
 constexpr UIColor BACKDROP_COLOR{0, 0, 0, 170};
 constexpr unsigned int TITLE_TEXT_SIZE = 48;
-constexpr Vec2 TITLE_OFFSET{0.0f, -180.0f};
+constexpr Vec2 TITLE_OFFSET{0.0f, -170.0f};
 constexpr Vec2 TITLE_SIZE{600.0f, 60.0f};
 constexpr Vec2 BUTTON_SIZE{320.0f, 52.0f};
 constexpr float FIRST_BUTTON_Y = -90.0f;
-constexpr float BUTTON_SPACING = 66.0f;
+constexpr float BUTTON_SPACING = 62.0f;
 
 } // namespace
 
@@ -84,6 +85,8 @@ void InGameMenuOverlay::onButton(const UIButtonClickedEvent &event)
         bus().publish(OverlayRequested{SceneRoute::SETTINGS});
     } else if (event.action == CONTROLS) {
         bus().publish(OverlayRequested{SceneRoute::CONTROLS});
+    } else if (event.action == HOW_TO_PLAY) {
+        bus().publish(OverlayRequested{SceneRoute::HOW_TO_PLAY});
     } else if (event.action == DISCONNECT) {
         bus().publish(events::DisconnectRequested{});
         bus().publish(NavigationRequested{SceneRoute::MAIN_MENU});

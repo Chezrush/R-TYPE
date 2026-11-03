@@ -10,6 +10,8 @@
 
 #include <cstdint>
 
+#include "Client/Settings/KeyBindings.hpp"
+
 namespace client::events {
 
 /** @brief Volume channels. */
@@ -43,6 +45,26 @@ struct VideoSettingsChanged {
     bool fullscreen = false;
     Resolution resolution;
     bool vsync = true;
+};
+
+/** @brief The player changed "reduced motion", for the rest of the game. */
+struct ReducedMotionChanged {
+    bool reduced = false;
+};
+
+/** @brief The controls changed: the input code reloads them. */
+struct BindingsChanged {
+    settings::KeyBindings bindings;
+};
+
+/** @brief A key went down. Published by the window code, for key capture. */
+struct RawKeyPressed {
+    settings::ScanCode key = 0;
+};
+
+/** @brief A gamepad button went down. Published by the window code. */
+struct RawGamepadButtonPressed {
+    settings::GamepadButton button = settings::GamepadButton::SOUTH;
 };
 
 } // namespace client::events

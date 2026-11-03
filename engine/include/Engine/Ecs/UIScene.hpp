@@ -18,6 +18,7 @@
 #include "Engine/Ecs/Components/UIButton.hpp"
 #include "Engine/Ecs/Components/UIColor.hpp"
 #include "Engine/Ecs/Components/UIText.hpp"
+#include "Engine/Ecs/Components/UITheme.hpp"
 #include "Engine/Ecs/Components/UITransform.hpp"
 #include "Engine/Ecs/Entity.hpp"
 #include "Engine/Ecs/Registry.hpp"
@@ -42,6 +43,7 @@ struct UISceneContext {
     engine::ecs::components::UIButton buttonStyle{};
     unsigned int buttonTextSize = 24;
     int baseZIndex = 0;
+    const engine::ecs::components::UITheme *theme = nullptr;
 };
 
 /**
@@ -100,11 +102,15 @@ protected:
 
     [[nodiscard]] engine::core::EventBus &bus() noexcept;
     [[nodiscard]] engine::ecs::Registry &registry() noexcept;
+    [[nodiscard]] engine::ecs::UIInteractionSystem &interaction() noexcept;
     [[nodiscard]] const std::string &fontId() const noexcept;
     [[nodiscard]] engine::core::Vec2 viewport() const noexcept;
 
     /** @brief Whether the widgets exist (false under another scene). */
     [[nodiscard]] bool isActive() const noexcept;
+
+    /** @brief Whether the theme asks for no animation. */
+    [[nodiscard]] bool reducedMotion() const noexcept;
 
 private:
     void deactivate();

@@ -20,6 +20,7 @@
 #include "Engine/Ecs/Components/UIColor.hpp"
 #include "Engine/Ecs/Components/UIPanel.hpp"
 #include "Engine/Ecs/Components/UIProgressBar.hpp"
+#include "Engine/Ecs/Components/UIShape.hpp"
 #include "Engine/Ecs/Components/UIText.hpp"
 #include "Engine/Ecs/Components/UITransform.hpp"
 #include "Engine/Ecs/Entity.hpp"
@@ -46,11 +47,11 @@ enum class HudWidget : std::uint8_t {
 /**
  * @brief Arcade R-Type HUD, built from the engine UI components.
  *
- * Bottom bar: player tags P1-P4 (the local one outlined in white), ship icon
- * and lives, stage (level), BEAM gauge, 7 digit score. Each player also gets a
- * tag that follows its ship. The widgets are entities of the game registry
- * (the UI components must be registered, see registerUIComponents()); the
- * game's UILayoutSystem resolves them and engine::render::UIRenderSystem
+ * Bottom bar: player tags P1-P4 with a shape (the local one outlined), ship
+ * icon and lives, stage (level), BEAM gauge, 7 digit score. Each player also
+ * gets a tag that follows its ship. The widgets are entities of the game
+ * registry (the UI components must be registered, see registerUIComponents());
+ * the game's UILayoutSystem resolves them and engine::render::UIRenderSystem
  * draws them in screen space, so the HUD stays pinned while the world
  * scrolls. The entities are killed when the view is destroyed, so the
  * registry must outlive it. This class needs no SFML.
@@ -83,6 +84,8 @@ public:
     [[nodiscard]] engine::ecs::Entity widget(HudWidget widget) const;
     [[nodiscard]] engine::ecs::Entity tag(std::size_t player) const;
     [[nodiscard]] engine::ecs::Entity tagOutline(std::size_t player) const;
+    [[nodiscard]] engine::ecs::Entity tagShape(std::size_t player) const;
+    [[nodiscard]] engine::ecs::Entity markerShape(std::size_t player) const;
     [[nodiscard]] engine::ecs::Entity marker(std::size_t player) const;
     [[nodiscard]] engine::ecs::Entity markerOutline(std::size_t player) const;
 
@@ -95,6 +98,14 @@ public:
     /** @brief Color of a player, matching its ship in the sprite sheet. */
     [[nodiscard]] static engine::ecs::components::UIColor
     playerColor(std::size_t player);
+
+    /** @brief Role of a player's color in the theme. */
+    [[nodiscard]] static engine::ecs::components::UIColorRole
+    playerRole(std::size_t player);
+
+    /** @brief Shape of a player, so that color is never the only clue. */
+    [[nodiscard]] static engine::ecs::components::UIShapeKind
+    playerShape(std::size_t player);
 
 private:
     template <typename Component>
@@ -114,9 +125,14 @@ private:
     void syncCounters(const HudState &state);
     void syncMarkers(const HudState &state);
     void setPanelColor(engine::ecs::Entity entity,
-                       engine::ecs::components::UIColor color);
+                       engine::ecs::components::UIColor color,
+                       engine::ecs::components::UIColorRole role);
+    void setShape(engine::ecs::Entity entity,
+                  engine::ecs::components::UIColor color,
+                  engine::ecs::components::UIColorRole role);
     void setText(engine::ecs::Entity entity, std::string text,
-                 engine::ecs::components::UIColor color);
+                 engine::ecs::components::UIColor color,
+                 engine::ecs::components::UIColorRole role);
 
     engine::ecs::Registry &_registry;
     std::string _fontId;
@@ -124,6 +140,8 @@ private:
     std::vector<engine::ecs::Entity> _widgets;
     std::vector<engine::ecs::Entity> _tags;
     std::vector<engine::ecs::Entity> _tagOutlines;
+    std::vector<engine::ecs::Entity> _tagShapes;
+    std::vector<engine::ecs::Entity> _markerShapes;
     std::vector<engine::ecs::Entity> _markers;
     std::vector<engine::ecs::Entity> _markerOutlines;
     std::array<std::optional<engine::core::Vec2>, MAX_PLAYERS>

@@ -18,8 +18,11 @@ using engine::core::Vec2;
 using engine::ecs::Entity;
 using engine::ecs::components::UIAnchor;
 using engine::ecs::components::UIColor;
+using engine::ecs::components::UIColorRole;
 using engine::ecs::components::UIPanel;
 using engine::ecs::components::UIProgressBar;
+using engine::ecs::components::UIShape;
+using engine::ecs::components::UIShapeKind;
 using engine::ecs::components::UIText;
 using engine::ecs::components::UITextAlign;
 using engine::ecs::components::UITransform;
@@ -40,7 +43,10 @@ constexpr float SHIP_FRAME_WIDTH = 33.0f;
 constexpr float SHIP_FRAME_HEIGHT = 17.0f;
 constexpr float SHIP_FRAME_COLUMN = 2.0f;
 constexpr Vec2 TAG_SIZE{38.0f, 28.0f};
-constexpr float TAG_SPACING = 44.0f;
+constexpr float TAG_SPACING = 58.0f;
+constexpr float SHAPE_GAP = 3.0f;
+constexpr Vec2 TAG_SHAPE_SIZE{14.0f, 14.0f};
+constexpr Vec2 MARKER_SHAPE_SIZE{12.0f, 12.0f};
 constexpr Vec2 MARKER_SIZE{34.0f, 20.0f};
 constexpr float MARKER_GAP = 6.0f;
 constexpr float OUTLINE = 2.0f;
@@ -54,6 +60,7 @@ constexpr UIColor BEAM_FILL_COLOR{110, 190, 255, 255};
 constexpr UIColor BEAM_FULL_COLOR{255, 255, 255, 255};
 constexpr UIColor OUTLINE_COLOR{255, 255, 255, 255};
 constexpr UIColor HIDDEN{0, 0, 0, 0};
+constexpr UIColor BLACK_TEXT{0, 0, 0, 255};
 constexpr UIColor OFFLINE_TAG_COLOR{45, 45, 55, 255};
 constexpr UIColor OFFLINE_TEXT_COLOR{110, 110, 120, 255};
 
@@ -74,40 +81,49 @@ constexpr std::array<WidgetLayout, static_cast<std::size_t>(HudWidget::COUNT)>
         {UIAnchor::BOTTOM_LEFT, {0.0f, 0.0f}, {1280.0f, BAR_HEIGHT}, 0},
         {UIAnchor::BOTTOM_LEFT, {0.0f, -BAR_HEIGHT}, {1280.0f, OUTLINE}, 1},
         {UIAnchor::BOTTOM_LEFT,
-         {200.0f, centeredInBar(24.0f)},
+         {254.0f, centeredInBar(24.0f)},
          {46.0f, 24.0f},
          1},
         {UIAnchor::BOTTOM_LEFT,
-         {252.0f, centeredInBar(28.0f)},
+         {306.0f, centeredInBar(28.0f)},
          {40.0f, 28.0f},
          1},
         {UIAnchor::BOTTOM_LEFT,
-         {300.0f, centeredInBar(28.0f)},
-         {120.0f, 28.0f},
+         {354.0f, centeredInBar(28.0f)},
+         {100.0f, 28.0f},
          1},
-        {UIAnchor::BOTTOM_CENTER,
-         {-170.0f, centeredInBar(28.0f)},
-         {80.0f, 28.0f},
+        {UIAnchor::BOTTOM_RIGHT,
+         {-326.0f, centeredInBar(28.0f)},
+         {60.0f, 28.0f},
          1},
-        {UIAnchor::BOTTOM_CENTER,
-         {30.0f, centeredInBar(20.0f)},
-         {304.0f, 20.0f},
+        {UIAnchor::BOTTOM_RIGHT,
+         {-136.0f, centeredInBar(20.0f)},
+         {184.0f, 20.0f},
          1},
-        {UIAnchor::BOTTOM_CENTER,
-         {30.0f, centeredInBar(16.0f)},
-         {300.0f, 16.0f},
+        {UIAnchor::BOTTOM_RIGHT,
+         {-138.0f, centeredInBar(16.0f)},
+         {180.0f, 16.0f},
          2},
         {UIAnchor::BOTTOM_RIGHT,
          {-16.0f, centeredInBar(28.0f)},
-         {200.0f, 28.0f},
+         {110.0f, 28.0f},
          1},
     }};
 
-UIPanel colorPanel(UIColor color)
+constexpr std::array<UIColorRole, MAX_PLAYERS> PLAYER_ROLES{
+    UIColorRole::PLAYER_1, UIColorRole::PLAYER_2, UIColorRole::PLAYER_3,
+    UIColorRole::PLAYER_4};
+
+constexpr std::array<UIShapeKind, MAX_PLAYERS> PLAYER_SHAPES{
+    UIShapeKind::CIRCLE, UIShapeKind::TRIANGLE, UIShapeKind::SQUARE,
+    UIShapeKind::CROSS};
+
+UIPanel colorPanel(UIColor color, UIColorRole role = UIColorRole::NONE)
 {
     UIPanel panel;
 
     panel.color = color;
+    panel.colorRole = role;
     return panel;
 }
 
@@ -134,8 +150,8 @@ HudView::HudView(engine::ecs::Registry &registry, std::string fontId,
 
 HudView::~HudView()
 {
-    for (const auto *group :
-         {&_widgets, &_tags, &_tagOutlines, &_markers, &_markerOutlines}) {
+    for (const auto *group : {&_widgets, &_tags, &_tagOutlines, &_tagShapes,
+                              &_markers, &_markerOutlines, &_markerShapes}) {
         for (const Entity entity : *group)
             _registry.killEntity(entity);
     }
@@ -166,6 +182,9 @@ void HudView::setMarker(std::size_t player, std::optional<Vec2> shipTop)
     component<UITransform>(_markers.at(player)).offset = offset;
     component<UITransform>(_markerOutlines.at(player)).offset = {
         offset.x - OUTLINE, offset.y - OUTLINE};
+    component<UITransform>(_markerShapes.at(player)).offset = {
+        offset.x + MARKER_SIZE.x + OUTLINE + SHAPE_GAP,
+        offset.y + (MARKER_SIZE.y - MARKER_SHAPE_SIZE.y) / 2.0f};
 }
 
 Entity HudView::widget(HudWidget widget) const
@@ -181,6 +200,16 @@ Entity HudView::tag(std::size_t player) const
 Entity HudView::tagOutline(std::size_t player) const
 {
     return _tagOutlines.at(player);
+}
+
+Entity HudView::tagShape(std::size_t player) const
+{
+    return _tagShapes.at(player);
+}
+
+Entity HudView::markerShape(std::size_t player) const
+{
+    return _markerShapes.at(player);
 }
 
 Entity HudView::marker(std::size_t player) const
@@ -205,6 +234,16 @@ std::string HudView::playerTag(std::size_t player)
     return "P" + std::to_string(player + 1);
 }
 
+UIColorRole HudView::playerRole(std::size_t player)
+{
+    return PLAYER_ROLES.at(player % MAX_PLAYERS);
+}
+
+UIShapeKind HudView::playerShape(std::size_t player)
+{
+    return PLAYER_SHAPES.at(player % MAX_PLAYERS);
+}
+
 UIColor HudView::playerColor(std::size_t player)
 {
     return PLAYER_COLORS.at(player % MAX_PLAYERS);
@@ -226,7 +265,8 @@ Entity HudView::spawn(UIAnchor anchor, Vec2 offset, Vec2 size, int zIndex)
 UIText HudView::label(std::string text, UITextAlign align,
                       unsigned int characterSize) const
 {
-    return UIText{std::move(text), _fontId, characterSize, TEXT_COLOR, align};
+    return UIText{std::move(text), _fontId, characterSize,
+                  TEXT_COLOR,      align,   UIColorRole::TEXT};
 }
 
 void HudView::buildBar()
@@ -234,10 +274,12 @@ void HudView::buildBar()
     for (const WidgetLayout &layout : LAYOUT)
         _widgets.push_back(
             spawn(layout.anchor, layout.offset, layout.size, layout.zIndex));
-    _registry.addComponent(widget(HudWidget::BAR), colorPanel(BAR_COLOR));
-    _registry.addComponent(widget(HudWidget::BAR_EDGE), colorPanel(EDGE_COLOR));
+    _registry.addComponent(widget(HudWidget::BAR),
+                           colorPanel(BAR_COLOR, UIColorRole::BACKGROUND));
+    _registry.addComponent(widget(HudWidget::BAR_EDGE),
+                           colorPanel(EDGE_COLOR, UIColorRole::ACCENT));
     _registry.addComponent(widget(HudWidget::BEAM_FRAME),
-                           colorPanel(BEAM_FRAME_COLOR));
+                           colorPanel(BEAM_FRAME_COLOR, UIColorRole::ACCENT));
     UIPanel icon = colorPanel(OUTLINE_COLOR);
     icon.textureId = _shipTextureId;
     _registry.addComponent(widget(HudWidget::LIVES_ICON), icon);
@@ -252,9 +294,15 @@ void HudView::buildBarTexts()
                            label("", UITextAlign::LEFT, BAR_TEXT_SIZE));
     _registry.addComponent(widget(HudWidget::BEAM_LABEL),
                            label("BEAM", UITextAlign::RIGHT, BAR_TEXT_SIZE));
-    _registry.addComponent(
-        widget(HudWidget::BEAM_GAUGE),
-        UIProgressBar{0.0f, 1.0f, 0.0f, {}, BAR_COLOR, BEAM_FILL_COLOR});
+    _registry.addComponent(widget(HudWidget::BEAM_GAUGE),
+                           UIProgressBar{0.0f,
+                                         1.0f,
+                                         0.0f,
+                                         {},
+                                         BAR_COLOR,
+                                         BEAM_FILL_COLOR,
+                                         UIColorRole::BACKGROUND,
+                                         UIColorRole::GAUGE});
     _registry.addComponent(widget(HudWidget::SCORE),
                            label("", UITextAlign::RIGHT, BAR_TEXT_SIZE));
 }
@@ -268,6 +316,12 @@ void HudView::buildPlayerTags()
             spawn(UIAnchor::BOTTOM_LEFT, {x - OUTLINE, y + OUTLINE},
                   {TAG_SIZE.x + 2 * OUTLINE, TAG_SIZE.y + 2 * OUTLINE}, 2));
         _tags.push_back(spawn(UIAnchor::BOTTOM_LEFT, {x, y}, TAG_SIZE, 3));
+        _tagShapes.push_back(spawn(UIAnchor::BOTTOM_LEFT,
+                                   {x + TAG_SIZE.x + OUTLINE + SHAPE_GAP,
+                                    centeredInBar(TAG_SHAPE_SIZE.y)},
+                                   TAG_SHAPE_SIZE, 3));
+        _registry.addComponent(_tagShapes.back(),
+                               UIShape{playerShape(i), OFFLINE_TEXT_COLOR});
         _registry.addComponent(_tagOutlines.back(), colorPanel(HIDDEN));
         _registry.addComponent(_tags.back(), colorPanel(OFFLINE_TAG_COLOR));
         _registry.addComponent(
@@ -285,6 +339,11 @@ void HudView::buildMarkers()
         _markerOutlines.push_back(
             spawn(UIAnchor::TOP_LEFT, {}, outlineSize, 10));
         _markers.push_back(spawn(UIAnchor::TOP_LEFT, {}, MARKER_SIZE, 11));
+        _markerShapes.push_back(
+            spawn(UIAnchor::TOP_LEFT, {}, MARKER_SHAPE_SIZE, 11));
+        component<UITransform>(_markerShapes.back()).followsUIScale = false;
+        _registry.addComponent(_markerShapes.back(),
+                               UIShape{playerShape(i), HIDDEN});
         component<UITransform>(_markerOutlines.back()).followsUIScale = false;
         component<UITransform>(_markers.back()).followsUIScale = false;
         _registry.addComponent(_markerOutlines.back(), colorPanel(HIDDEN));
@@ -299,29 +358,37 @@ void HudView::syncTags(const HudState &state)
     for (std::size_t i = 0; i < MAX_PLAYERS; ++i) {
         const bool online = state.connected.at(i);
         const bool local = state.localPlayer == i;
-        setPanelColor(_tags.at(i), online ? playerColor(i) : OFFLINE_TAG_COLOR);
+        setPanelColor(_tags.at(i), online ? playerColor(i) : OFFLINE_TAG_COLOR,
+                      online ? playerRole(i) : UIColorRole::NONE);
         setText(_tags.at(i), playerTag(i),
-                online ? TEXT_COLOR : OFFLINE_TEXT_COLOR);
-        setPanelColor(_tagOutlines.at(i), local ? OUTLINE_COLOR : HIDDEN);
+                online ? BLACK_TEXT : OFFLINE_TEXT_COLOR,
+                online ? UIColorRole::TEXT_ON_PLAYER : UIColorRole::TEXT_MUTED);
+        setShape(_tagShapes.at(i), online ? playerColor(i) : OFFLINE_TEXT_COLOR,
+                 online ? playerRole(i) : UIColorRole::TEXT_MUTED);
+        setPanelColor(_tagOutlines.at(i), local ? OUTLINE_COLOR : HIDDEN,
+                      local ? UIColorRole::TEXT : UIColorRole::NONE);
     }
 }
 
 void HudView::syncCounters(const HudState &state)
 {
     const float row = static_cast<float>(state.localPlayer.value_or(0));
+    const bool full = state.beamCharge >= 1.0f && !state.reducedMotion;
     auto &icon = component<UIPanel>(widget(HudWidget::LIVES_ICON));
     auto &beam = component<UIProgressBar>(widget(HudWidget::BEAM_GAUGE));
 
     icon.textureRect = {SHIP_FRAME_COLUMN * SHIP_FRAME_WIDTH,
                         row * SHIP_FRAME_HEIGHT, SHIP_FRAME_WIDTH,
                         SHIP_FRAME_HEIGHT};
-    setText(widget(HudWidget::LIVES), std::to_string(state.lives), TEXT_COLOR);
+    setText(widget(HudWidget::LIVES), std::to_string(state.lives), TEXT_COLOR,
+            UIColorRole::TEXT);
     setText(widget(HudWidget::STAGE), "STAGE " + std::to_string(state.level),
-            TEXT_COLOR);
-    setText(widget(HudWidget::SCORE), formatScore(state.score), SCORE_COLOR);
+            TEXT_COLOR, UIColorRole::TEXT);
+    setText(widget(HudWidget::SCORE), formatScore(state.score), SCORE_COLOR,
+            UIColorRole::ACCENT);
     beam.value = state.beamCharge;
-    beam.fillColor =
-        state.beamCharge >= 1.0f ? BEAM_FULL_COLOR : BEAM_FILL_COLOR;
+    beam.fillColor = full ? BEAM_FULL_COLOR : BEAM_FILL_COLOR;
+    beam.fillRole = full ? UIColorRole::GAUGE_FULL : UIColorRole::GAUGE;
 }
 
 void HudView::syncMarkers(const HudState &state)
@@ -330,23 +397,40 @@ void HudView::syncMarkers(const HudState &state)
         const bool shown =
             state.connected.at(i) && _markerPositions.at(i).has_value();
         const bool local = shown && state.localPlayer == i;
-        setPanelColor(_markers.at(i), shown ? playerColor(i) : HIDDEN);
-        setText(_markers.at(i), shown ? playerTag(i) : "", TEXT_COLOR);
-        setPanelColor(_markerOutlines.at(i), local ? OUTLINE_COLOR : HIDDEN);
+        const UIColorRole role = shown ? playerRole(i) : UIColorRole::NONE;
+        setPanelColor(_markers.at(i), shown ? playerColor(i) : HIDDEN, role);
+        setShape(_markerShapes.at(i), shown ? playerColor(i) : HIDDEN, role);
+        setText(_markers.at(i), shown ? playerTag(i) : "", BLACK_TEXT,
+                UIColorRole::TEXT_ON_PLAYER);
+        setPanelColor(_markerOutlines.at(i), local ? OUTLINE_COLOR : HIDDEN,
+                      local ? UIColorRole::TEXT : UIColorRole::NONE);
     }
 }
 
-void HudView::setPanelColor(Entity entity, UIColor color)
+void HudView::setPanelColor(Entity entity, UIColor color, UIColorRole role)
 {
-    component<UIPanel>(entity).color = color;
+    auto &panel = component<UIPanel>(entity);
+
+    panel.color = color;
+    panel.colorRole = role;
 }
 
-void HudView::setText(Entity entity, std::string text, UIColor color)
+void HudView::setShape(Entity entity, UIColor color, UIColorRole role)
+{
+    auto &shape = component<UIShape>(entity);
+
+    shape.color = color;
+    shape.colorRole = role;
+}
+
+void HudView::setText(Entity entity, std::string text, UIColor color,
+                      UIColorRole role)
 {
     auto &widgetText = component<UIText>(entity);
 
     widgetText.text = std::move(text);
     widgetText.color = color;
+    widgetText.colorRole = role;
 }
 
 } // namespace client::hud

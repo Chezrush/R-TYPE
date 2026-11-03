@@ -7,6 +7,8 @@
 
 #include "Engine/Ecs/Components/UIComponents.hpp"
 
+#include "Engine/Ecs/Components/UIShape.hpp"
+
 namespace engine::ecs {
 
 void registerUIComponents(Registry &registry)
@@ -21,6 +23,7 @@ void registerUIComponents(Registry &registry)
     registry.registerComponent<components::UIToggle>();
     registry.registerComponent<components::UIDropdown>();
     registry.registerComponent<components::UIScrollList>();
+    registry.registerComponent<components::UIShape>();
 }
 
 } // namespace engine::ecs

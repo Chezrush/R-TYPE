@@ -127,6 +127,31 @@ ignored and the default stays. At startup the client calls `store.load()` and ap
 layout.setScale(static_cast<float>(store.settings().uiScalePercent) / 100.0f);
 ```
 
+### Controls and how to play
+
+`KeyBindings` holds a key and a gamepad button per action, plus the auto-fire and beam charge
+options. Keys are USB HID codes: they name a position on the keyboard, so they work on QWERTY and
+AZERTY, and depend on no window library. The window code converts its own scancodes to them. The
+bindings are saved with `ClientSettings`, and the "Reset to defaults" of each screen only touches its
+own values.
+
+`ControlsScene` changes them. Activating a row waits for a key or a button: meanwhile the UI input
+is discarded, and the scene reads `RawKeyPressed` and `RawGamepadButtonPressed`. The window code must
+publish those before calling `handleInput()`. A conflict shows a warning without refusing the change.
+Every change publishes `BindingsChanged`. `HowToPlayScene` explains the game with the current
+bindings.
+
+### Accessibility options
+
+The palette, high contrast and reduced motion are in the settings screen and in `ClientSettings`.
+`makeTheme()` turns them into a `UITheme`, which the client owns: `SettingsScene` updates it, and
+`UIRenderSystem` and the scenes read it, so a change shows at once. At startup the client builds it
+from the loaded settings, gives it to `setTheme()` and `makeMenuContext()`, and publishes
+`ReducedMotionChanged` for `HudController` and the rest of the game.
+
+`VisualCueIndicator` shows `VisualCueRequested { icon, direction }` as a label on that side of the
+screen. The audio and gameplay code publish those events.
+
 ### Talking to the network layer
 
 `ConnectScene` never calls network code. All the messages are `EventBus` events, declared in

@@ -47,7 +47,8 @@ struct SettingsFixture : SceneFixture {
             [this](const VideoSettingsChanged &event) {
                 videos.push_back(event);
             });
-        auto owned = std::make_unique<SettingsScene>(context(), store, layout);
+        auto owned =
+            std::make_unique<SettingsScene>(context(), store, layout, theme);
         scene = owned.get();
         scenes.pushScene(std::move(owned));
         frame();
@@ -101,7 +102,7 @@ TEST_CASE("the widgets start from the stored settings",
     store.settings().masterVolume = 35;
     store.settings().muted = true;
     store.settings().resolution = Resolution{1920, 1080};
-    SettingsScene scene(base.context(), store, base.layout);
+    SettingsScene scene(base.context(), store, base.layout, base.theme);
 
     scene.onEnter();
 
@@ -257,7 +258,7 @@ TEST_CASE("the screen opens from the main menu and returns to it",
     SettingsStore store(directory.path() / "settings.cfg");
     SceneRouter router(fixture.scenes, fixture.bus);
     client::scenes::addSettingsRoute(router, fixture.context(), store,
-                                     fixture.layout);
+                                     fixture.layout, fixture.theme);
     auto owned =
         std::make_unique<client::scenes::MainMenuScene>(fixture.context());
     auto *menu = owned.get();
@@ -284,7 +285,7 @@ TEST_CASE("the screen opens from the in-game menu and returns to it",
     SettingsStore store(directory.path() / "settings.cfg");
     SceneRouter router(fixture.scenes, fixture.bus);
     client::scenes::addSettingsRoute(router, fixture.context(), store,
-                                     fixture.layout);
+                                     fixture.layout, fixture.theme);
     auto owned =
         std::make_unique<client::scenes::InGameMenuOverlay>(fixture.context());
     auto *menu = owned.get();
@@ -298,4 +299,69 @@ TEST_CASE("the screen opens from the in-game menu and returns to it",
     router.apply();
     REQUIRE(&fixture.scenes.currentScene() == menu);
     REQUIRE(fixture.scenes.size() == 1);
+}
+
+TEST_CASE("the palette applies at once and persists",
+          "[client][scenes][settings][accessibility]")
+{
+    SettingsFixture fixture;
+    const auto path = fixture.directory.path() / "settings.cfg";
+
+    fixture.chooseOption(SettingsControl::PALETTE, 2);
+
+    using client::settings::ColorPalette;
+    REQUIRE(fixture.store.settings().palette == ColorPalette::DEUTERANOPIA);
+    const auto expected =
+        client::settings::makeTheme(ColorPalette::DEUTERANOPIA, false, false);
+    const engine::ecs::components::UIColor unused{};
+    REQUIRE(fixture.theme.resolve(engine::ecs::UIColorRole::PLAYER_1, unused) ==
+            expected.resolve(engine::ecs::UIColorRole::PLAYER_1, unused));
+
+    fixture.scenes.popScene();
+    SettingsStore restarted(path);
+    restarted.load();
+    REQUIRE(restarted.settings().palette == ColorPalette::DEUTERANOPIA);
+}
+
+TEST_CASE("high contrast and reduced motion apply and persist",
+          "[client][scenes][settings][accessibility]")
+{
+    SettingsFixture fixture;
+    const auto path = fixture.directory.path() / "settings.cfg";
+    std::vector<bool> motions;
+    fixture.bus.subscribe<client::events::ReducedMotionChanged>(
+        [&motions](const auto &event) { motions.push_back(event.reduced); });
+
+    fixture.click(fixture.at(SettingsControl::HIGH_CONTRAST));
+    fixture.click(fixture.at(SettingsControl::REDUCED_MOTION));
+
+    REQUIRE(fixture.theme.options().textPlates);
+    REQUIRE(fixture.theme.options().focusThickness > 2.0f);
+    REQUIRE(fixture.theme.options().reducedMotion);
+    REQUIRE(motions == std::vector<bool>{true});
+
+    fixture.scenes.popScene();
+    SettingsStore restarted(path);
+    restarted.load();
+    REQUIRE(restarted.settings().highContrast);
+    REQUIRE(restarted.settings().reducedMotion);
+}
+
+TEST_CASE("reset also restores the accessibility options",
+          "[client][scenes][settings][accessibility]")
+{
+    SettingsFixture fixture;
+    std::vector<bool> motions;
+    fixture.bus.subscribe<client::events::ReducedMotionChanged>(
+        [&motions](const auto &event) { motions.push_back(event.reduced); });
+    fixture.click(fixture.at(SettingsControl::HIGH_CONTRAST));
+    fixture.click(fixture.at(SettingsControl::REDUCED_MOTION));
+
+    fixture.click(fixture.at(SettingsControl::RESET));
+
+    REQUIRE_FALSE(fixture.theme.options().textPlates);
+    REQUIRE_FALSE(fixture.theme.options().reducedMotion);
+    REQUIRE(motions.back() == false);
+    REQUIRE_FALSE(
+        get<UIToggle>(fixture, SettingsControl::HIGH_CONTRAST).checked);
 }

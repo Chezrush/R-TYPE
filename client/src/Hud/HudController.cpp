@@ -30,6 +30,7 @@ HudController::HudController(engine::core::EventBus &bus,
     listen(&HudController::onPlayerLeft);
     listen(&HudController::onScoreChanged);
     listen(&HudController::onGameStateChanged);
+    listen(&HudController::onReducedMotion);
 }
 
 HudController::~HudController()
@@ -101,6 +102,11 @@ void HudController::onGameStateChanged(const events::GameStateChanged &event)
 {
     _state.phase = event.phase;
     _state.level = event.level;
+}
+
+void HudController::onReducedMotion(const events::ReducedMotionChanged &event)
+{
+    _state.reducedMotion = event.reduced;
 }
 
 void HudController::setConnected(std::uint8_t player, bool connected) noexcept

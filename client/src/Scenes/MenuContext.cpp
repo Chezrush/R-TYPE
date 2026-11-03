@@ -25,7 +25,7 @@ constexpr UIColor BUTTON_DISABLED_COLOR{40, 40, 50, 180};
 engine::ecs::UISceneContext
 makeMenuContext(engine::ecs::Registry &registry, engine::core::EventBus &bus,
                 engine::ecs::UIInteractionSystem &interaction,
-                std::string fontId)
+                std::string fontId, const engine::ecs::UITheme *theme)
 {
     engine::ecs::UISceneContext context{registry, bus, interaction,
                                         std::move(fontId)};
@@ -34,6 +34,7 @@ makeMenuContext(engine::ecs::Registry &registry, engine::core::EventBus &bus,
     context.buttonStyle.hoveredColor = BUTTON_HOVERED_COLOR;
     context.buttonStyle.pressedColor = BUTTON_PRESSED_COLOR;
     context.buttonStyle.disabledColor = BUTTON_DISABLED_COLOR;
+    context.theme = theme;
     return context;
 }
 

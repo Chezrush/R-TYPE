@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "Engine/Ecs/Components/UIComponents.hpp"
+#include "Engine/Ecs/Components/UIShape.hpp"
 #include "Engine/Ecs/Registry.hpp"
 
 using engine::ecs::Entity;
@@ -501,4 +502,96 @@ TEST_CASE("an open dropdown is drawn over everything",
 
     REQUIRE(image.getPixel({30, 30}) == sf::Color::Green);
     REQUIRE(image.getPixel({30, 50}) == sf::Color::Blue);
+}
+
+TEST_CASE("the theme recolors without touching the components",
+          "[render][ui][gl][theme]")
+{
+    if (!hasDisplay())
+        SKIP("no display to create an OpenGL context");
+    UIWorld world;
+    UIPanel themed = colorPanel({255, 0, 0, 255});
+    themed.colorRole = engine::ecs::UIColorRole::ACCENT;
+    world.add(world.spawn({0.0f, 0.0f, 20.0f, 20.0f}), themed);
+    world.add(world.spawn({20.0f, 0.0f, 20.0f, 20.0f}),
+              colorPanel({255, 0, 0, 255}));
+    engine::ecs::UIButton button;
+    button.normalColor = {255, 0, 0, 255};
+    world.add(world.spawn({40.0f, 0.0f, 20.0f, 20.0f}), button);
+    engine::ecs::UITheme theme;
+    theme.setColor(engine::ecs::UIColorRole::ACCENT, {0, 255, 0, 255});
+    theme.setColor(engine::ecs::UIColorRole::BUTTON, {0, 0, 255, 255});
+    sf::RenderTexture target;
+    REQUIRE(target.resize({60, 20}));
+    ResourceManager resources("does/not/exist");
+    UIRenderSystem system(resources);
+    system.setTheme(theme);
+
+    target.clear(sf::Color::Black);
+    system.render(target, world.registry);
+    target.display();
+
+    const sf::Image image = target.getTexture().copyToImage();
+    REQUIRE(image.getPixel({10, 10}) == sf::Color::Green);
+    REQUIRE(image.getPixel({30, 10}) == sf::Color::Red);
+    REQUIRE(image.getPixel({50, 10}) == sf::Color::Blue);
+}
+
+TEST_CASE("each shape is drawn with its own figure", "[render][ui][gl][theme]")
+{
+    if (!hasDisplay())
+        SKIP("no display to create an OpenGL context");
+    UIWorld world;
+    const auto shape = [](engine::ecs::UIShapeKind kind) {
+        engine::ecs::UIShape result;
+        result.kind = kind;
+        return result;
+    };
+    world.add(world.spawn({0.0f, 0.0f, 20.0f, 20.0f}),
+              shape(engine::ecs::UIShapeKind::SQUARE));
+    world.add(world.spawn({20.0f, 0.0f, 20.0f, 20.0f}),
+              shape(engine::ecs::UIShapeKind::CIRCLE));
+    world.add(world.spawn({40.0f, 0.0f, 20.0f, 20.0f}),
+              shape(engine::ecs::UIShapeKind::TRIANGLE));
+    world.add(world.spawn({60.0f, 0.0f, 20.0f, 20.0f}),
+              shape(engine::ecs::UIShapeKind::CROSS));
+
+    const sf::Image image = renderWorld(world, {80, 20});
+
+    REQUIRE(image.getPixel({1, 1}) == sf::Color::White);
+    REQUIRE(image.getPixel({21, 1}) == sf::Color::Black);
+    REQUIRE(image.getPixel({30, 10}) == sf::Color::White);
+    REQUIRE(image.getPixel({41, 1}) == sf::Color::Black);
+    REQUIRE(image.getPixel({50, 15}) == sf::Color::White);
+    REQUIRE(image.getPixel({61, 1}) == sf::Color::Black);
+    REQUIRE(image.getPixel({70, 1}) == sf::Color::White);
+}
+
+TEST_CASE("a high-contrast theme thickens outlines", "[render][ui][gl][theme]")
+{
+    if (!hasDisplay())
+        SKIP("no display to create an OpenGL context");
+    UIWorld world;
+    engine::ecs::UIButton button;
+    button.isFocused = true;
+    button.focusedOutlineColor = {255, 255, 0, 255};
+    world.add(world.spawn({10.0f, 10.0f, 20.0f, 20.0f}), button);
+    UIProgressBar bar;
+    world.add(world.spawn({50.0f, 10.0f, 20.0f, 20.0f}), bar);
+    engine::ecs::UITheme theme;
+    theme.options().focusThickness = 4.0f;
+    theme.options().gaugeOutline = 2.0f;
+    sf::RenderTexture target;
+    REQUIRE(target.resize({80, 40}));
+    ResourceManager resources("does/not/exist");
+    UIRenderSystem system(resources);
+    system.setTheme(theme);
+
+    target.clear(sf::Color::Black);
+    system.render(target, world.registry);
+    target.display();
+
+    const sf::Image image = target.getTexture().copyToImage();
+    REQUIRE(image.getPixel({7, 20}) == sf::Color::Yellow);
+    REQUIRE(image.getPixel({49, 20}) == sf::Color::White);
 }

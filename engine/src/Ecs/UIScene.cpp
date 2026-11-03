@@ -96,6 +96,7 @@ Entity UIScene::addLabel(const std::string &text, Vec2 offset, Vec2 size,
     label.fontId = _context.fontId;
     label.characterSize = characterSize;
     label.align = UITextAlign::CENTER;
+    label.colorRole = components::UIColorRole::TEXT;
     _context.registry.addComponent(entity, std::move(label));
     return entity;
 }
@@ -121,9 +122,19 @@ engine::ecs::Registry &UIScene::registry() noexcept
     return _context.registry;
 }
 
+UIInteractionSystem &UIScene::interaction() noexcept
+{
+    return _context.interaction;
+}
+
 const std::string &UIScene::fontId() const noexcept
 {
     return _context.fontId;
+}
+
+bool UIScene::reducedMotion() const noexcept
+{
+    return _context.theme != nullptr && _context.theme->options().reducedMotion;
 }
 
 bool UIScene::isActive() const noexcept

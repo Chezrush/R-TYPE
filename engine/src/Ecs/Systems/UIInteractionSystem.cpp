@@ -182,6 +182,11 @@ void UIInteractionSystem::onTextEntered(char32_t character)
         {Input::Type::TEXT, 0.0f, 0.0f, 0.0f, UIKey::TAB, character});
 }
 
+void UIInteractionSystem::discardInput() noexcept
+{
+    _pending.clear();
+}
+
 void UIInteractionSystem::process(Registry &registry)
 {
     const std::vector<Input> pending = std::exchange(_pending, {});

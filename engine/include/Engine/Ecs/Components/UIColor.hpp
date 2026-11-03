@@ -24,9 +24,40 @@ struct UIColor {
     friend bool operator==(const UIColor &, const UIColor &) = default;
 };
 
+/**
+ * @brief Named use of a color, resolved by the UITheme when drawing.
+ *
+ * NONE keeps the color stored in the component.
+ */
+enum class UIColorRole : std::uint8_t {
+    NONE,
+    TEXT,
+    TEXT_MUTED,
+    TEXT_ON_PLAYER,
+    BACKGROUND,
+    SURFACE,
+    BUTTON,
+    BUTTON_HOVERED,
+    BUTTON_PRESSED,
+    BUTTON_DISABLED,
+    ACCENT,
+    FOCUS,
+    WARNING,
+    ERROR_TEXT,
+    GAUGE,
+    GAUGE_FULL,
+    PLAYER_1,
+    PLAYER_2,
+    PLAYER_3,
+    PLAYER_4,
+    COUNT
+};
+
 } // namespace engine::ecs::components
 
 namespace engine::ecs {
+
+using components::UIColorRole;
 
 using components::UIColor;
 

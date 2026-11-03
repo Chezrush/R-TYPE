@@ -19,6 +19,7 @@ add_library(rtype_engine STATIC
     src/Ecs/Phase.cpp
     src/Ecs/Scheduler.cpp
     src/Ecs/Registry.cpp
+    src/Ecs/Components/UITheme.cpp
     src/Ecs/Components/UITransform.cpp
     src/Ecs/Components/UIComponents.cpp
     src/Ecs/UIOverlay.cpp
@@ -54,6 +55,7 @@ rtype_add_catch_test(rtype_engine_tests
     tests/Ecs/Zipper.cpp
     tests/Ecs/ZipperConcepts.cpp
     tests/Ecs/UIOverlay.cpp
+    tests/Ecs/Components/UITheme.cpp
     tests/Ecs/UIScene.cpp
     tests/Ecs/Systems/UIInteractionSystem.cpp
     tests/Ecs/Systems/UIWidgetLogic.cpp

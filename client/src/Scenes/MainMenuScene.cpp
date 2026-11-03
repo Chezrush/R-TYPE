@@ -63,7 +63,8 @@ MainMenuScene::MainMenuScene(engine::ecs::UISceneContext context)
 
 void MainMenuScene::update(float dt)
 {
-    _starfield.advance(dt);
+    if (!reducedMotion())
+        _starfield.advance(dt);
     if (isActive())
         placeStars();
 }

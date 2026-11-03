@@ -14,11 +14,16 @@
 
 namespace client::scenes {
 
-/** @brief Scene context with the look of the R-Type menus. */
+/**
+ * @brief Scene context with the look of the R-Type menus.
+ *
+ * The theme, if any, must outlive the scenes.
+ */
 [[nodiscard]] engine::ecs::UISceneContext
 makeMenuContext(engine::ecs::Registry &registry, engine::core::EventBus &bus,
                 engine::ecs::UIInteractionSystem &interaction,
-                std::string fontId);
+                std::string fontId,
+                const engine::ecs::UITheme *theme = nullptr);
 
 } // namespace client::scenes
 

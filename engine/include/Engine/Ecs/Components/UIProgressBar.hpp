@@ -37,6 +37,8 @@ struct UIProgressBar {
     UIFillDirection direction = UIFillDirection::HORIZONTAL;
     UIColor backgroundColor{40, 40, 40, 200};
     UIColor fillColor{80, 200, 120, 255};
+    UIColorRole backgroundRole = UIColorRole::NONE;
+    UIColorRole fillRole = UIColorRole::NONE;
 
     friend bool operator==(const UIProgressBar &,
                            const UIProgressBar &) = default;

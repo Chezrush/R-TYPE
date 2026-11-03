@@ -31,6 +31,9 @@ enum class SettingsControl : std::uint8_t {
     RESOLUTION,
     VSYNC,
     UI_SCALE,
+    PALETTE,
+    HIGH_CONTRAST,
+    REDUCED_MOTION,
     RESET,
     BACK
 };
@@ -39,16 +42,17 @@ enum class SettingsControl : std::uint8_t {
  * @brief Settings screen, shown above the main menu or the in-game menu.
  *
  * It edits the values and publishes the changes (VolumeChanged, MuteChanged,
- * VideoSettingsChanged): the audio and window code apply them. Only the UI
- * scale is applied here, directly on the layout. Back or Escape return to the
- * scene below. The file is written when the scene exits, so the
- * store must outlive the scene.
+ * VideoSettingsChanged): the audio and window code apply them. The UI scale and
+ * the theme are applied here, directly. Back or Escape return to the scene
+ * below. The file is written when the scene exits, so the store must outlive
+ * the scene.
  */
 class SettingsScene : public engine::ecs::UIOverlay {
 public:
     SettingsScene(engine::ecs::UISceneContext context,
                   settings::SettingsStore &store,
-                  engine::ecs::UILayoutSystem &layout);
+                  engine::ecs::UILayoutSystem &layout,
+                  engine::ecs::UITheme &theme);
 
     void onExit() override;
 
@@ -61,13 +65,14 @@ private:
     void buildTitles();
     void buildAudio();
     void buildVideo();
+    void buildAccessibility();
     void buildButtons();
     engine::ecs::Entity addRowLabel(const char *text, float column, float row);
     void addVolumeRow(const char *action, float row);
     void addToggleRow(const char *text, const char *action, float column,
                       float row);
-    void addDropdownRow(const char *text, const char *action, float row,
-                        std::vector<std::string> options);
+    void addDropdownRow(const char *text, const char *action, float column,
+                        float row, std::vector<std::string> options);
     void listenToWidgets();
     void onValue(const engine::ecs::components::UIValueChangedEvent &event);
     void onVolume(events::VolumeBus bus, int value);
@@ -80,12 +85,15 @@ private:
     void syncVolumes();
     void syncVolumeLabels();
     void syncVideo();
+    void syncAccessibility();
     void publishVolumes();
     void publishVideo();
     void applyUIScale();
+    void applyTheme();
 
     settings::SettingsStore &_store;
     engine::ecs::UILayoutSystem &_layout;
+    engine::ecs::UITheme &_theme;
     std::vector<engine::ecs::Entity> _controls;
     std::vector<engine::ecs::Entity> _volumeLabels;
 };
@@ -94,7 +102,8 @@ private:
 void addSettingsRoute(SceneRouter &router,
                       const engine::ecs::UISceneContext &context,
                       settings::SettingsStore &store,
-                      engine::ecs::UILayoutSystem &layout);
+                      engine::ecs::UILayoutSystem &layout,
+                      engine::ecs::UITheme &theme);
 
 } // namespace client::scenes
 

@@ -98,6 +98,21 @@ flowchart LR
     Bus --> Sub["Subscribers (e.g. GameScene, MenuScene)"]
 ```
 
+### Theme and shapes
+
+`UITheme` gives colors to named roles (`UIColorRole`: text, surface, accent, gauge, player 1 to 4...).
+`UIPanel`, `UIText`, `UIProgressBar` and `UIShape` can name a role, while buttons and widgets always
+follow their usual ones. `UIRenderSystem::setTheme()` resolves them when drawing, so changing the
+theme recolors the UI without touching a widget. The engine defines no color: a role without a color
+keeps the one stored in the component, so an empty theme changes nothing.
+
+`UITheme::options()` holds the accessibility options: `textPlates` (a solid plate behind text, except text already on a player color),
+`focusThickness`, `gaugeOutline`, and `reducedMotion`, which UI code reads through
+`UIScene::reducedMotion()`.
+
+`UIShape` draws a circle, triangle, square or cross in its bounds, so that nothing has to be told apart
+by color alone.
+
 ### UI scale
 
 `UILayoutSystem::setScale()` multiplies offsets, sizes and text sizes, for players who need a larger
@@ -131,6 +146,7 @@ Tab / RB to `TAB`, Shift+Tab / LB to `BACK_TAB`, the D-pad to the arrows, A to `
 - `Enter` / `Space` on a focused button emits `UIButtonClickedEvent`.
 - `Enter` in a text input emits `UITextSubmittedEvent`.
 - `Escape`, when the focused widget does not use it, emits `UICancelEvent`.
+- `discardInput()` drops the queued input, for a modal that reads the devices itself.
 
 Focus rules: at most one widget is focused at a time, and clicking a widget gives it the focus.
 A disabled widget (a `DISABLED` button, or `enabled = false`) is never focused: one disabled by

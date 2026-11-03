@@ -407,6 +407,20 @@ TEST_CASE("Enter on a text input does not click buttons",
     REQUIRE(ui.clicks.empty());
 }
 
+TEST_CASE("discarded input is never applied", "[ecs][ui][widgets]")
+{
+    WidgetScreen ui;
+    const Entity entity =
+        ui.add(FIELD, textInput("name", UITextFilter::PRINTABLE, 8));
+    ui.click(10.0f, 10.0f);
+
+    ui.system().onTextEntered(U'a');
+    ui.system().discardInput();
+    ui.system().process(ui.registry());
+
+    REQUIRE(ui.get<UITextInput>(entity).text.empty());
+}
+
 TEST_CASE("Enter on a text input submits its text", "[ecs][ui][widgets][text]")
 {
     WidgetScreen ui;

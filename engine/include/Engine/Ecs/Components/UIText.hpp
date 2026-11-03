@@ -37,6 +37,7 @@ struct UIText {
     unsigned int characterSize = 24;
     UIColor color{255, 255, 255, 255};
     UITextAlign align = UITextAlign::LEFT;
+    UIColorRole colorRole = UIColorRole::NONE;
 
     friend bool operator==(const UIText &, const UIText &) = default;
 };
