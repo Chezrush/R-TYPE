@@ -308,6 +308,8 @@ void UIInteractionSystem::wheelScrolled(float x, float y, float delta,
 
 void UIInteractionSystem::keyPressed(UIKey key, Registry &registry)
 {
+    if (claimedByTextInput(key, registry))
+        return;
     if (key == UIKey::TAB || key == UIKey::BACK_TAB) {
         if (key == UIKey::TAB)
             focusNext(registry);

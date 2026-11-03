@@ -24,7 +24,8 @@ enum class SceneRoute : std::uint8_t {
     HOW_TO_PLAY,
     IN_GAME_MENU,
     RESPAWN,
-    GAME_OVER
+    GAME_OVER,
+    CONSOLE
 };
 
 using NavigationRequested = engine::core::NavigationRequested<SceneRoute>;

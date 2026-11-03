@@ -8,12 +8,15 @@
 # Client code without SFML (HUD, menu scenes), shared by the executable
 # and the tests.
 add_library(rtype_client_core STATIC
+    src/Console/ConsoleModel.cpp
+    src/Console/ConsoleService.cpp
     src/Hud/BeamGauge.cpp
     src/Hud/HudController.cpp
     src/Hud/HudView.cpp
     src/Hud/VisualCueIndicator.cpp
     src/Scenes/ConnectForm.cpp
     src/Scenes/ConnectScene.cpp
+    src/Scenes/ConsoleOverlay.cpp
     src/Scenes/ControlsScene.cpp
     src/Scenes/GameOverOverlay.cpp
     src/Scenes/GameOverlays.cpp
@@ -38,12 +41,14 @@ target_include_directories(r-type_client PRIVATE include)
 target_link_libraries(r-type_client PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_client_tests
+    tests/Console/ConsoleModel.cpp
     tests/Hud/BeamGauge.cpp
     tests/Hud/HudController.cpp
     tests/Hud/HudView.cpp
     tests/Hud/VisualCueIndicator.cpp
     tests/Scenes/ConnectForm.cpp
     tests/Scenes/ConnectScene.cpp
+    tests/Scenes/ConsoleOverlay.cpp
     tests/Scenes/ControlsScene.cpp
     tests/Scenes/GameOverlays.cpp
     tests/Scenes/MainMenuScene.cpp

@@ -152,6 +152,24 @@ from the loaded settings, gives it to `setTheme()` and `makeMenuContext()`, and 
 `VisualCueIndicator` shows `VisualCueRequested { icon, direction }` as a label on that side of the
 screen. The audio and gameplay code publish those events.
 
+### Developer console
+
+`ConsoleOverlay` is only the screen: it sends lines and shows text, while the code that owns a
+command registers and runs it. `ConsoleService` lives as long as the game, keeps the log and the
+known command names while the console is closed, and opens it on the key above Tab (`KEY_GRAVE`,
+from `RawKeyPressed`).
+
+| Event | Direction | Meaning |
+| --- | --- | --- |
+| `ConsoleCommandSubmitted { line }` | console → game | Enter on a non-empty line |
+| `ConsoleOutput { text, level }` | game → console | A line to show: info, warning or error |
+| `ConsoleCommandsListed { names }` | game → console | The names used by Tab completion |
+| `TextEntryStarted` / `TextEntryEnded` | console → input code | Typing must not move the ship |
+
+Up / Down browse the history and Tab completes the command name; this logic is in `ConsoleModel`,
+with no UI. Escape and the key above Tab close the console. The game keeps updating behind it and
+does not receive the input meanwhile.
+
 ### Talking to the network layer
 
 `ConnectScene` never calls network code. All the messages are `EventBus` events, declared in

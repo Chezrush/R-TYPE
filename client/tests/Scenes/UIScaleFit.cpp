@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "Client/Scenes/ConnectScene.hpp"
+#include "Client/Scenes/ConsoleOverlay.hpp"
 #include "Client/Scenes/ControlsScene.hpp"
 #include "Client/Scenes/GameOverOverlay.hpp"
 #include "Client/Scenes/GameOverlays.hpp"
@@ -87,6 +88,12 @@ TEST_CASE("every screen fits a 720p window at the largest UI scale",
         SceneFixture fixture;
         std::uint32_t score = 0;
         requireSceneFits<client::scenes::GameOverOverlay>(fixture, score);
+    }
+    SECTION("console")
+    {
+        SceneFixture fixture;
+        client::console::ConsoleService service(fixture.bus);
+        requireSceneFits<client::scenes::ConsoleOverlay>(fixture, service);
     }
     SECTION("controls")
     {

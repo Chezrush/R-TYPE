@@ -22,6 +22,13 @@ struct ResumeRequested {};
 /** @brief The player leaves the game: the network layer says goodbye. */
 struct DisconnectRequested {};
 
+/** @brief Typed keys go to a text field: the input code stops moving the ship.
+ */
+struct TextEntryStarted {};
+
+/** @brief Typed keys can drive the game again. */
+struct TextEntryEnded {};
+
 } // namespace client::events
 
 #endif /* !OVERLAYEVENTS_HPP_ */

@@ -54,12 +54,13 @@ constexpr std::array<NamedButton, 12> BUTTONS{{
     {"select", "Select"},
 }};
 
-constexpr std::array<NamedKey, 15> KEYS{{
+constexpr std::array<NamedKey, 16> KEYS{{
     {0x28, "Enter"},
     {KEY_ESCAPE, "Escape"},
     {0x2A, "Backspace"},
     {0x2B, "Tab"},
     {KEY_SPACE, "Space"},
+    {KEY_GRAVE, "Grave"},
     {KEY_RIGHT, "Right"},
     {KEY_LEFT, "Left"},
     {KEY_DOWN, "Down"},

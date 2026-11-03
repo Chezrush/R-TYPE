@@ -147,6 +147,8 @@ Tab / RB to `TAB`, Shift+Tab / LB to `BACK_TAB`, the D-pad to the arrows, A to `
 - `Enter` in a text input emits `UITextSubmittedEvent`.
 - `Escape`, when the focused widget does not use it, emits `UICancelEvent`.
 - `discardInput()` drops the queued input, for a modal that reads the devices itself.
+- A `UITextInput` with `claimsNavigationKeys` keeps `Tab`, `Back-Tab`, `Up`, `Down` and `Escape`
+  while focused, and publishes them as `UITextKeyEvent` (history, completion...).
 
 Focus rules: at most one widget is focused at a time, and clicking a widget gives it the focus.
 A disabled widget (a `DISABLED` button, or `enabled = false`) is never focused: one disabled by
