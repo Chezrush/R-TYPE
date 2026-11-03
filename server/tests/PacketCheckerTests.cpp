@@ -16,8 +16,6 @@ using rtype::server::IncomingMessage;
 using rtype::server::Server;
 using rtype::server::ServerConfig;
 
-namespace {
-
 using Bytes = std::vector<std::uint8_t>;
 
 ServerConfig testConfig()
@@ -48,7 +46,7 @@ Bytes packet(std::initializer_list<std::uint8_t> records)
 bool accepts(Server &server, const Bytes &bytes)
 {
     return server.receivePacket(
-        IncomingMessage{1, std::string(bytes.begin(), bytes.end())});
+        IncomingMessage{1, std::string(bytes.begin(), bytes.end()), {}});
 }
 
 const Bytes HELLO_EXAMPLE = {0x52, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -202,8 +200,6 @@ void testValidPacketAfterInvalidOne()
     CHECK(accepts(server, INPUT_EXAMPLE));
     CHECK(server.rejectedPackets() == 1);
 }
-
-} // namespace
 
 int main()
 {

@@ -16,6 +16,8 @@
 #include <cstdint>
 #include <thread>
 
+#include "ClientActivity.hpp"
+#include "PlayerSessions.hpp"
 #include "ServerMessage.hpp"
 
 namespace rtype::server {
@@ -44,6 +46,11 @@ struct ServerConfig {
      * @brief UDP port of the server, 0 picks a free one.
      */
     std::uint16_t port = 4242;
+
+    /**
+     * @brief A client silent for longer than this is disconnected.
+     */
+    std::chrono::milliseconds inactivityTimeout{5000};
 };
 
 class Server {
@@ -95,6 +102,11 @@ public:
      */
     [[nodiscard]] std::uint64_t rejectedPackets() const noexcept;
 
+    /**
+     * @brief Returns the number of players in the simulation.
+     */
+    [[nodiscard]] std::size_t playerCount() const noexcept;
+
 private:
     void runNetwork(const std::stop_token &stopToken);
     void runSimulation(const std::stop_token &stopToken);
@@ -102,7 +114,12 @@ private:
                               std::chrono::nanoseconds &accumulator,
                               const std::stop_token &stopToken);
     void readIncomingMessage();
+    void applyMessage(const IncomingMessage &message);
+    void removePlayer(std::uint32_t clientId, DisconnectReason reason);
     void sendOutgoingMessages();
+    void disconnectInactiveClients();
+    void requestDisconnect(std::uint32_t clientId, DisconnectReason reason);
+    void handleGoodbye(std::uint32_t clientId);
 
     [[nodiscard]] std::chrono::nanoseconds simulationInterval() const noexcept;
 
@@ -110,6 +127,10 @@ private:
     std::atomic<bool> _running{false};
     std::atomic<std::uint64_t> _tickCount{0};
     std::atomic<std::uint64_t> _rejectedPackets{0};
+    std::atomic<std::size_t> _playerCount{0};
+
+    ClientActivity _activity;
+    PlayerSessions _players;
 
     std::jthread _networkThread;
     std::jthread _simulationThread;

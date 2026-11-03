@@ -33,6 +33,12 @@ public:
     [[nodiscard]] static std::optional<MessageHeader>
     parsHeader(const std::string &payload) noexcept;
 
+    /**
+     * @brief Returns true if a record of the valid packet has this type.
+     */
+    [[nodiscard]] static bool hasRecord(const std::string &payload,
+                                        MessageType type) noexcept;
+
 private:
     struct Record {
         std::uint8_t type = 0;

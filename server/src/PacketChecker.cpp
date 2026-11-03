@@ -11,8 +11,6 @@
 
 namespace rtype::server {
 
-namespace {
-
 /**
  * @brief Returns the byte at offset as an unsigned value.
  */
@@ -121,8 +119,6 @@ bool checkSnapshot(std::string_view body) noexcept
     return count <= MAX_SNAPSHOT_ENTITIES && body.size() == 7 + 6 * count;
 }
 
-} /* namespace */
-
 // clang-format off
 const std::unordered_map<MessageType, PacketChecker::BodyCheck>
     PacketChecker::BODY_CHECKS = {
@@ -181,6 +177,20 @@ PacketChecker::parsHeader(const std::string &payload) noexcept
         return std::nullopt;
     }
     return header;
+}
+
+bool PacketChecker::hasRecord(const std::string &payload,
+                              MessageType type) noexcept
+{
+    std::string_view remaining(payload);
+
+    remaining.remove_prefix(PACKET_HEADER_SIZE);
+    while (const auto record = readRecord(remaining)) {
+        if (record->type == static_cast<std::uint8_t>(type)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 MessageHeader PacketChecker::readHeader(const std::string &payload) noexcept

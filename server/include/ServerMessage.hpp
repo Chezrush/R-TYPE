@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include "MessageQueue.hpp"
@@ -33,14 +34,27 @@ inline constexpr std::uint8_t RELIABLE_BIT = 0x80;
 inline constexpr std::uint8_t KEYS_MASK = 0x1F;
 
 /**
+ * @brief Values of goodbye.reason, also used by player_left.reason.
+ */
+enum class DisconnectReason : std::uint8_t {
+    QUIT = 0,
+    TIMEOUT = 1,
+    SHUTDOWN = 2,
+    PROTOCOL = 3,
+    QUEUE_OVERFLOW = 4
+};
+
+/**
  * @brief Command received from the network and processed by the simulation.
  *
  * The payload owns its data: it contains no reference or pointer to a
- * mutable game entity.
+ * mutable game entity. When disconnect is set, the message carries no
+ * payload and asks the simulation to remove the client.
  */
 struct IncomingMessage {
     std::uint32_t clientId = 0;
     std::string payload;
+    std::optional<DisconnectReason> disconnect;
 };
 
 enum class MessageType : std::uint8_t {

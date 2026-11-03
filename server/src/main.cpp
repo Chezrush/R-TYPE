@@ -12,8 +12,6 @@
 
 #include "Server.hpp"
 
-namespace {
-
 std::atomic<bool> &stopRequestedFlag()
 {
     static std::atomic<bool> flag{false};
@@ -31,8 +29,6 @@ void waitForShutdown()
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 }
-
-} /* namespace */
 
 int main()
 {

@@ -37,3 +37,14 @@ target_link_libraries(packet_validation_tests
 )
 
 set_tests_properties(packet_validation_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(disconnection_tests
+    DisconnectionTests.cpp
+)
+
+target_link_libraries(disconnection_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(disconnection_tests PROPERTIES TIMEOUT 10)
