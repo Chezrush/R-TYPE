@@ -50,12 +50,13 @@ std::vector<OutgoingMessage> PlayerSessions::leave(std::uint32_t clientId,
         return {};
     }
     const std::uint8_t index = player->second;
-
     _players.erase(player);
-
+    const std::string packet = makePlayerLeftPacket(index, reason);
     std::vector<OutgoingMessage> notices;
+
+    notices.reserve(_players.size());
     for (const auto &[otherId, otherIndex] : _players) {
-        notices.push_back({otherId, makePlayerLeftPacket(index, reason)});
+        notices.push_back({otherId, packet});
     }
     return notices;
 }
