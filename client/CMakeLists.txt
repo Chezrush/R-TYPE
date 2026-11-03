@@ -16,6 +16,10 @@ add_library(rtype_client_core STATIC
     src/Hud/StatsOverlay.cpp
     src/Hud/VisualCueIndicator.cpp
     src/Scenes/ConnectForm.cpp
+    src/Lobby/ChatModel.cpp
+    src/Lobby/ChatService.cpp
+    src/Lobby/LobbyText.cpp
+    src/Scenes/ChatOverlay.cpp
     src/Scenes/ConnectScene.cpp
     src/Scenes/ConsoleOverlay.cpp
     src/Scenes/ControlsScene.cpp
@@ -23,9 +27,11 @@ add_library(rtype_client_core STATIC
     src/Scenes/GameOverlays.cpp
     src/Scenes/HowToPlayScene.cpp
     src/Scenes/InGameMenuOverlay.cpp
+    src/Scenes/LobbyScene.cpp
     src/Scenes/MainMenuScene.cpp
     src/Scenes/MenuContext.cpp
     src/Scenes/RespawnOverlay.cpp
+    src/Scenes/RoomBrowserScene.cpp
     src/Scenes/SettingsScene.cpp
     src/Scenes/Starfield.cpp
     src/Settings/ClientSettings.cpp
@@ -49,11 +55,14 @@ rtype_add_catch_test(rtype_client_tests
     tests/Hud/HudView.cpp
     tests/Hud/StatsOverlay.cpp
     tests/Hud/VisualCueIndicator.cpp
+    tests/Lobby/ChatModel.cpp
+    tests/Lobby/LobbyText.cpp
     tests/Scenes/ConnectForm.cpp
     tests/Scenes/ConnectScene.cpp
     tests/Scenes/ConsoleOverlay.cpp
     tests/Scenes/ControlsScene.cpp
     tests/Scenes/GameOverlays.cpp
+    tests/Scenes/LobbyScenes.cpp
     tests/Scenes/MainMenuScene.cpp
     tests/Scenes/SceneRouter.cpp
     tests/Scenes/SettingsScene.cpp

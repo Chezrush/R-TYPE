@@ -189,6 +189,25 @@ event every frame): about 0.002 ms for `update()` and the layout, and 0.045 ms o
 was not isolated. The first figure is checked by a hidden test, run with
 `rtype_client_tests "[benchmark]"`; the drawing time was measured by hand.
 
+### Rooms, lobby and chat
+
+These screens are for a multi-instance server (Track #2). Rooms and chat do not exist yet on the
+server or in the protocol, so the screens only publish requests and show events
+(`Client/Events/LobbyEvents.hpp`), and are tested with fake ones.
+
+| Screen | Publishes | Shows |
+| --- | --- | --- |
+| `RoomBrowserScene` | `RoomListRequested`, `JoinRoomRequested`, `CreateRoomRequested`, `DisconnectRequested` | `RoomListReceived`, `JoinFailed`, then the lobby on `LobbyUpdated` |
+| `LobbyScene` | `ReadyChanged`, `StartGameRequested` (host, everyone ready), `LeaveRoomRequested`, `ChatMessageSent` | `LobbyUpdated` (slots live), `ChatMessageReceived`, the game on `GameStateChanged` PLAYING |
+| `ChatOverlay` | `ChatMessageSent`, `TextEntryStarted` / `TextEntryEnded` | `ChatMessageReceived` |
+
+Each lobby slot shows the player's color, number and shape, as the HUD does. `ChatService` lives as
+long as the client: it keeps the chat for the lobby and the game, stamps each line with the time
+since the start of the client, and handles `/mute 2` and `/unmute 2` locally (the player numbers of
+the HUD). In game, T opens `ChatOverlay` above the game, which keeps running; the game scene calls
+`setGameRunning(true)` to allow it. Enter sends and closes, Escape closes. Our own messages show when
+the server sends them back.
+
 ### Talking to the network layer
 
 `ConnectScene` never calls network code. All the messages are `EventBus` events, declared in

@@ -66,6 +66,7 @@ inline constexpr ScanCode KEY_UP = 0x52;
 inline constexpr ScanCode KEY_GRAVE = 0x35;
 inline constexpr ScanCode KEY_F1 = 0x3A;
 inline constexpr ScanCode KEY_F3 = 0x3C;
+inline constexpr ScanCode KEY_T = 0x17;
 inline constexpr ScanCode KEY_F12 = 0x45;
 
 /** @brief The key and the gamepad button of one action. */
