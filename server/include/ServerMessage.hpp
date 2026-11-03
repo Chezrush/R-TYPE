@@ -41,7 +41,7 @@ enum class DisconnectReason : std::uint8_t {
     TIMEOUT = 1,
     SHUTDOWN = 2,
     PROTOCOL = 3,
-    OVERFLOW = 4
+    QUEUE_OVERFLOW = 4
 };
 
 /**
