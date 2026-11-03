@@ -9,14 +9,19 @@
 #include <cstdint>
 #include <memory>
 
+#include "Client/Lobby/ChatService.hpp"
+#include "Client/Scenes/ChatOverlay.hpp"
 #include "Client/Scenes/ConnectScene.hpp"
+#include "Client/Scenes/ConsoleOverlay.hpp"
 #include "Client/Scenes/ControlsScene.hpp"
 #include "Client/Scenes/GameOverOverlay.hpp"
 #include "Client/Scenes/GameOverlays.hpp"
 #include "Client/Scenes/HowToPlayScene.hpp"
 #include "Client/Scenes/InGameMenuOverlay.hpp"
+#include "Client/Scenes/LobbyScene.hpp"
 #include "Client/Scenes/MainMenuScene.hpp"
 #include "Client/Scenes/RespawnOverlay.hpp"
+#include "Client/Scenes/RoomBrowserScene.hpp"
 #include "Client/Scenes/SettingsScene.hpp"
 #include "SceneFixture.hpp"
 #include "TempFile.hpp"
@@ -87,6 +92,29 @@ TEST_CASE("every screen fits a 720p window at the largest UI scale",
         SceneFixture fixture;
         std::uint32_t score = 0;
         requireSceneFits<client::scenes::GameOverOverlay>(fixture, score);
+    }
+    SECTION("room browser")
+    {
+        SceneFixture fixture;
+        requireSceneFits<client::scenes::RoomBrowserScene>(fixture);
+    }
+    SECTION("lobby")
+    {
+        SceneFixture fixture;
+        client::lobby::ChatService chat(fixture.bus, fixture.scenes);
+        requireSceneFits<client::scenes::LobbyScene>(fixture, chat);
+    }
+    SECTION("chat")
+    {
+        SceneFixture fixture;
+        client::lobby::ChatService chat(fixture.bus, fixture.scenes);
+        requireSceneFits<client::scenes::ChatOverlay>(fixture, chat);
+    }
+    SECTION("console")
+    {
+        SceneFixture fixture;
+        client::console::ConsoleService service(fixture.bus);
+        requireSceneFits<client::scenes::ConsoleOverlay>(fixture, service);
     }
     SECTION("controls")
     {

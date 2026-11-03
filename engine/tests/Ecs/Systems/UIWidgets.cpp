@@ -19,6 +19,7 @@
 using engine::core::EventBus;
 using engine::ecs::Entity;
 using engine::ecs::Registry;
+using engine::ecs::UITextKeyEvent;
 using engine::ecs::components::Rect;
 using engine::ecs::components::UIButton;
 using engine::ecs::components::UIButtonClickedEvent;
@@ -405,6 +406,49 @@ TEST_CASE("Enter on a text input does not click buttons",
     ui.key(UIKey::SPACE);
 
     REQUIRE(ui.clicks.empty());
+}
+
+TEST_CASE("a text input can keep the navigation keys",
+          "[ecs][ui][widgets][text]")
+{
+    WidgetScreen ui;
+    std::vector<UITextKeyEvent> keys;
+    int cancels = 0;
+    ui.bus().subscribe<UITextKeyEvent>(
+        [&keys](const UITextKeyEvent &event) { keys.push_back(event); });
+    ui.bus().subscribe<engine::ecs::UICancelEvent>(
+        [&cancels](const auto &) { ++cancels; });
+    UITextInput input = textInput("console", UITextFilter::PRINTABLE, 8);
+    input.claimsNavigationKeys = true;
+    const Entity field = ui.add(FIELD, input);
+    ui.add(SECOND, UIButton{});
+    ui.click(10.0f, 10.0f);
+
+    for (const UIKey key :
+         {UIKey::TAB, UIKey::BACK_TAB, UIKey::UP, UIKey::DOWN, UIKey::ESCAPE})
+        ui.key(key);
+
+    REQUIRE(keys.size() == 5);
+    REQUIRE(keys[0] == UITextKeyEvent{field.index(), "console", UIKey::TAB});
+    REQUIRE(keys[4].key == UIKey::ESCAPE);
+    REQUIRE(ui.focused() == field);
+    REQUIRE(cancels == 0);
+}
+
+TEST_CASE("a normal text input lets Tab move the focus",
+          "[ecs][ui][widgets][text]")
+{
+    WidgetScreen ui;
+    int keys = 0;
+    ui.bus().subscribe<UITextKeyEvent>([&keys](const auto &) { ++keys; });
+    ui.add(FIELD, textInput("name", UITextFilter::PRINTABLE, 8));
+    const Entity button = ui.add(SECOND, UIButton{});
+    ui.click(10.0f, 10.0f);
+
+    ui.key(UIKey::TAB);
+
+    REQUIRE(keys == 0);
+    REQUIRE(ui.focused() == button);
 }
 
 TEST_CASE("discarded input is never applied", "[ecs][ui][widgets]")

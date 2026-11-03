@@ -53,6 +53,20 @@ enum class UIKey : std::uint8_t {
 };
 
 /**
+ * @brief A navigation key pressed in a text input that claims those keys.
+ *
+ * See UITextInput::claimsNavigationKeys.
+ */
+struct UITextKeyEvent {
+    std::size_t entityIndex = 0;
+    std::string action;
+    UIKey key = UIKey::TAB;
+
+    friend bool operator==(const UITextKeyEvent &,
+                           const UITextKeyEvent &) = default;
+};
+
+/**
  * @brief Turns pointer, key and text input into widget changes and events.
  *
  * The on*() methods only queue the input, in arrival order; process() applies
@@ -151,6 +165,7 @@ private:
     static void wheelScrolled(float x, float y, float delta,
                               Registry &registry);
     void keyPressed(UIKey key, Registry &registry);
+    bool claimedByTextInput(UIKey key, Registry &registry);
     void navigate(UIKey key, Registry &registry);
     void textEntered(char32_t character, Registry &registry);
     void activateFocused(Registry &registry);
@@ -199,6 +214,7 @@ namespace engine::ecs {
 
 using systems::UIInteractionSystem;
 using systems::UIKey;
+using systems::UITextKeyEvent;
 
 } // namespace engine::ecs
 

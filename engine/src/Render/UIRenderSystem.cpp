@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "Engine/Ecs/Components/UIButton.hpp"
+#include "Engine/Ecs/Components/UIGraph.hpp"
 #include "Engine/Ecs/Components/UIShape.hpp"
 #include "Engine/Ecs/Components/UISlider.hpp"
 #include "Engine/Ecs/Components/UIToggle.hpp"
@@ -166,6 +167,63 @@ void drawCircle(sf::RenderTarget &target, const Rect &bounds, sf::Color color)
     target.draw(circle);
 }
 
+void appendBar(sf::VertexArray &vertices, const Rect &bar, sf::Color color)
+{
+    const sf::Vector2f topLeft{bar.x, bar.y};
+    const sf::Vector2f topRight{bar.x + bar.width, bar.y};
+    const sf::Vector2f bottomRight{bar.x + bar.width, bar.y + bar.height};
+    const sf::Vector2f bottomLeft{bar.x, bar.y + bar.height};
+
+    for (const sf::Vector2f &corner :
+         {topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft})
+        vertices.append(sf::Vertex{corner, color});
+}
+
+float graphTop(const ecs::components::UIGraph &graph) noexcept
+{
+    if (graph.maxValue > 0.0f)
+        return graph.maxValue;
+    const auto largest =
+        std::max_element(graph.samples.begin(), graph.samples.end());
+
+    return largest == graph.samples.end() ? 0.0f : *largest;
+}
+
+sf::VertexArray graphBars(const ecs::components::UIGraph &graph,
+                          const Rect &bounds, sf::Color color)
+{
+    const float top = graphTop(graph);
+    const std::size_t slots = std::max(graph.capacity, graph.samples.size());
+    const float barWidth =
+        bounds.width / static_cast<float>(std::max<std::size_t>(slots, 1));
+    const float firstX = bounds.x + bounds.width -
+                         barWidth * static_cast<float>(graph.samples.size());
+    sf::VertexArray bars(sf::PrimitiveType::Triangles);
+
+    if (top <= 0.0f)
+        return bars;
+    for (std::size_t i = 0; i < graph.samples.size(); ++i) {
+        const float ratio = std::clamp(graph.samples[i] / top, 0.0f, 1.0f);
+        const float height = bounds.height * ratio;
+        appendBar(bars,
+                  {firstX + barWidth * static_cast<float>(i),
+                   bounds.y + bounds.height - height, barWidth, height},
+                  color);
+    }
+    return bars;
+}
+
+void drawGraph(sf::RenderTarget &target, const ecs::components::UIGraph &graph,
+               const Rect &bounds, const UITheme &theme)
+{
+    drawRect(
+        target, bounds,
+        toSfColor(theme.resolve(graph.backgroundRole, graph.backgroundColor)));
+    target.draw(
+        graphBars(graph, bounds,
+                  toSfColor(theme.resolve(graph.barRole, graph.barColor))));
+}
+
 void drawShape(sf::RenderTarget &target, const UIShape &shape,
                const Rect &bounds, const UITheme &theme)
 {
@@ -264,7 +322,7 @@ bool isDrawable(const Registry &registry, Entity entity)
 {
     return hasAny<UIPanel, UIProgressBar, ecs::components::UIText, UIButton,
                   UITextInput, UISlider, UIToggle, UIDropdown, UIScrollList,
-                  UIShape>(registry, entity);
+                  UIShape, ecs::components::UIGraph>(registry, entity);
 }
 
 sf::Color dimmed(const UIColor &color) noexcept
@@ -444,6 +502,9 @@ void UIRenderSystem::drawEntity(sf::RenderTarget &target,
         drawProgressBar(target, *bar, bounds, theme());
     if (const auto *shape = registry.getComponents<UIShape>().get(entity))
         drawShape(target, *shape, bounds, theme());
+    if (const auto *graph =
+            registry.getComponents<ecs::components::UIGraph>().get(entity))
+        drawGraph(target, *graph, bounds, theme());
     if (const auto *text =
             registry.getComponents<ecs::components::UIText>().get(entity))
         drawText(target, *text, bounds);

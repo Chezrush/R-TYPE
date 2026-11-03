@@ -152,6 +152,62 @@ from the loaded settings, gives it to `setTheme()` and `makeMenuContext()`, and 
 `VisualCueIndicator` shows `VisualCueRequested { icon, direction }` as a label on that side of the
 screen. The audio and gameplay code publish those events.
 
+### Developer console
+
+`ConsoleOverlay` is only the screen: it sends lines and shows text, while the code that owns a
+command registers and runs it. `ConsoleService` lives as long as the game, keeps the log and the
+known command names while the console is closed, and opens it on the key above Tab (`KEY_GRAVE`,
+from `RawKeyPressed`).
+
+| Event | Direction | Meaning |
+| --- | --- | --- |
+| `ConsoleCommandSubmitted { line }` | console → game | Enter on a non-empty line |
+| `ConsoleOutput { text, level }` | game → console | A line to show: info, warning or error |
+| `ConsoleCommandsListed { names }` | game → console | The names used by Tab completion |
+| `TextEntryStarted` / `TextEntryEnded` | console → input code | Typing must not move the ship |
+
+Up / Down browse the history and Tab completes the command name; this logic is in `ConsoleModel`,
+with no UI. Escape and the key above Tab close the console. The game keeps updating behind it and
+does not receive the input meanwhile.
+
+### Stats overlay
+
+`StatsOverlay` shows performance and network values at the top right. It is not a scene, so it
+never takes the input. F3 (`RawKeyPressed` with `KEY_F3`) shows or hides it. The render loop calls
+`update(dt)` with the real frame time, also while it is hidden, so the graphs are already full
+when it opens.
+
+- FPS and frame time are measured by the overlay itself from `dt` (`StatsModel`, no UI).
+- RTT, loss, traffic and dropped datagrams come from `NetStatsUpdated`, published by the network
+  layer. Until the first one, the lines say "no data".
+- Any code can add a line with `StatsLine { name, value }`, up to 8 lines.
+
+The texts refresh 4 times per second and the graphs (`UIGraph`, 120 samples) every frame.
+Measured cost per frame on a release build (AMD Radeon 610M laptop, shown, 8 extra lines, a network
+event every frame): about 0.002 ms for `update()` and the layout, and 0.045 ms of CPU time for
+`UIRenderSystem::render()` to draw it, about 0.05 ms in total against a budget of 0.2 ms. GPU time
+was not isolated. The first figure is checked by a hidden test, run with
+`rtype_client_tests "[benchmark]"`; the drawing time was measured by hand.
+
+### Rooms, lobby and chat
+
+These screens are for a multi-instance server (Track #2). Rooms and chat do not exist yet on the
+server or in the protocol, so the screens only publish requests and show events
+(`Client/Events/LobbyEvents.hpp`), and are tested with fake ones.
+
+| Screen | Publishes | Shows |
+| --- | --- | --- |
+| `RoomBrowserScene` | `RoomListRequested`, `JoinRoomRequested`, `CreateRoomRequested`, `DisconnectRequested` | `RoomListReceived`, `JoinFailed`, then the lobby on `LobbyUpdated` |
+| `LobbyScene` | `ReadyChanged`, `StartGameRequested` (host, everyone ready), `LeaveRoomRequested`, `ChatMessageSent` | `LobbyUpdated` (slots live), `ChatMessageReceived`, the game on `GameStateChanged` PLAYING |
+| `ChatOverlay` | `ChatMessageSent`, `TextEntryStarted` / `TextEntryEnded` | `ChatMessageReceived` |
+
+Each lobby slot shows the player's color, number and shape, as the HUD does. `ChatService` lives as
+long as the client: it keeps the chat for the lobby and the game, stamps each line with the time
+since the start of the client, and handles `/mute 2` and `/unmute 2` locally (the player numbers of
+the HUD). In game, T opens `ChatOverlay` above the game, which keeps running; the game scene calls
+`setGameRunning(true)` to allow it. Enter sends and closes, Escape closes. Our own messages show when
+the server sends them back.
+
 ### Talking to the network layer
 
 `ConnectScene` never calls network code. All the messages are `EventBus` events, declared in

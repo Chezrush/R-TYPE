@@ -181,6 +181,23 @@ bool UIInteractionSystem::handleWidgetKey(Entity entity, UIKey key,
     return false;
 }
 
+bool UIInteractionSystem::claimedByTextInput(UIKey key, Registry &registry)
+{
+    const auto focused = focusedEntity(registry);
+    const bool claimable = key == UIKey::TAB || key == UIKey::BACK_TAB ||
+                           key == UIKey::UP || key == UIKey::DOWN ||
+                           key == UIKey::ESCAPE;
+
+    if (!focused.has_value() || !claimable)
+        return false;
+    const auto *input = find<UITextInput>(registry, *focused);
+
+    if (input == nullptr || !input->claimsNavigationKeys)
+        return false;
+    _eventBus.publish(UITextKeyEvent{focused->index(), input->action, key});
+    return true;
+}
+
 bool UIInteractionSystem::textInputKey(Entity entity, UITextInput &input,
                                        UIKey key)
 {

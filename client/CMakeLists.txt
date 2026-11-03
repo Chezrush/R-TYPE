@@ -8,26 +8,37 @@
 # Client code without SFML (HUD, menu scenes), shared by the executable
 # and the tests.
 add_library(rtype_client_core STATIC
+    src/Console/ConsoleModel.cpp
+    src/Console/ConsoleService.cpp
     src/Hud/BeamGauge.cpp
     src/Hud/HudController.cpp
     src/Hud/HudView.cpp
+    src/Hud/StatsOverlay.cpp
     src/Hud/VisualCueIndicator.cpp
     src/Scenes/ConnectForm.cpp
+    src/Lobby/ChatModel.cpp
+    src/Lobby/ChatService.cpp
+    src/Lobby/LobbyText.cpp
+    src/Scenes/ChatOverlay.cpp
     src/Scenes/ConnectScene.cpp
+    src/Scenes/ConsoleOverlay.cpp
     src/Scenes/ControlsScene.cpp
     src/Scenes/GameOverOverlay.cpp
     src/Scenes/GameOverlays.cpp
     src/Scenes/HowToPlayScene.cpp
     src/Scenes/InGameMenuOverlay.cpp
+    src/Scenes/LobbyScene.cpp
     src/Scenes/MainMenuScene.cpp
     src/Scenes/MenuContext.cpp
     src/Scenes/RespawnOverlay.cpp
+    src/Scenes/RoomBrowserScene.cpp
     src/Scenes/SettingsScene.cpp
     src/Scenes/Starfield.cpp
     src/Settings/ClientSettings.cpp
     src/Settings/KeyBindings.cpp
     src/Settings/Palette.cpp
-    src/Settings/SettingsStore.cpp)
+    src/Settings/SettingsStore.cpp
+    src/Stats/StatsModel.cpp)
 target_include_directories(rtype_client_core PUBLIC include)
 target_link_libraries(rtype_client_core
     PUBLIC rtype::engine
@@ -38,14 +49,20 @@ target_include_directories(r-type_client PRIVATE include)
 target_link_libraries(r-type_client PRIVATE rtype_warnings)
 
 rtype_add_catch_test(rtype_client_tests
+    tests/Console/ConsoleModel.cpp
     tests/Hud/BeamGauge.cpp
     tests/Hud/HudController.cpp
     tests/Hud/HudView.cpp
+    tests/Hud/StatsOverlay.cpp
     tests/Hud/VisualCueIndicator.cpp
+    tests/Lobby/ChatModel.cpp
+    tests/Lobby/LobbyText.cpp
     tests/Scenes/ConnectForm.cpp
     tests/Scenes/ConnectScene.cpp
+    tests/Scenes/ConsoleOverlay.cpp
     tests/Scenes/ControlsScene.cpp
     tests/Scenes/GameOverlays.cpp
+    tests/Scenes/LobbyScenes.cpp
     tests/Scenes/MainMenuScene.cpp
     tests/Scenes/SceneRouter.cpp
     tests/Scenes/SettingsScene.cpp
@@ -53,7 +70,8 @@ rtype_add_catch_test(rtype_client_tests
     tests/Settings/ClientSettings.cpp
     tests/Settings/KeyBindings.cpp
     tests/Settings/Palette.cpp
-    tests/Settings/SettingsStore.cpp)
+    tests/Settings/SettingsStore.cpp
+    tests/Stats/StatsModel.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_client_tests PRIVATE rtype_client_core)
     target_include_directories(rtype_client_tests PRIVATE tests/Scenes

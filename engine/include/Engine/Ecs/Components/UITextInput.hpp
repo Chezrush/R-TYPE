@@ -33,7 +33,10 @@ enum class UITextFilter : std::uint8_t {
  *
  * text is UTF-8. caret is a byte offset in text, always at the start of a
  * character. maxLength counts characters, not bytes. The placeholder is shown
- * while the text is empty and the field is not focused.
+ * while the text is empty and the field is not focused. With
+ * claimsNavigationKeys, Tab, Back-Tab, Up, Down and Escape stay in the field
+ * when it is focused and are published as UITextKeyEvent (for history,
+ * completion...) instead of moving the focus.
  */
 struct UITextInput {
     std::string text;
@@ -43,6 +46,7 @@ struct UITextInput {
     std::size_t caret = 0;
     bool isFocused = false;
     bool enabled = true;
+    bool claimsNavigationKeys = false;
     std::string action;
     UIWidgetStyle style;
 
