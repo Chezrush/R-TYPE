@@ -85,9 +85,9 @@ struct LobbyFixture : SceneFixture {
     LobbyFixture(LobbyFixture &&) = delete;
     LobbyFixture &operator=(LobbyFixture &&) = delete;
 
-    void go(SceneRoute route)
+    void go(SceneRoute target)
     {
-        bus.publish(client::scenes::NavigationRequested{route});
+        bus.publish(client::scenes::NavigationRequested{target});
         router.apply();
         frame();
     }
@@ -385,7 +385,7 @@ TEST_CASE("the lobby chat sends on Enter and shows the replies",
     REQUIRE(fixture.readies.empty());
 }
 
-TEST_CASE("/mute hides a player without sending anything",
+TEST_CASE("the mute command hides a player without sending anything",
           "[client][scenes][lobby]")
 {
     LobbyFixture fixture;
