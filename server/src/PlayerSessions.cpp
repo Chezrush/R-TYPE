@@ -12,8 +12,6 @@
 
 namespace rtype::server {
 
-namespace {
-
 /**
  * @brief Builds a packet holding one player_left record.
  *
@@ -31,8 +29,6 @@ std::string makePlayerLeftPacket(std::uint8_t index, DisconnectReason reason)
     packet += static_cast<char>(reason);
     return packet;
 }
-
-} /* namespace */
 
 bool PlayerSessions::join(std::uint32_t clientId)
 {

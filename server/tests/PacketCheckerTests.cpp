@@ -16,8 +16,6 @@ using rtype::server::IncomingMessage;
 using rtype::server::Server;
 using rtype::server::ServerConfig;
 
-namespace {
-
 using Bytes = std::vector<std::uint8_t>;
 
 ServerConfig testConfig()
@@ -202,8 +200,6 @@ void testValidPacketAfterInvalidOne()
     CHECK(accepts(server, INPUT_EXAMPLE));
     CHECK(server.rejectedPackets() == 1);
 }
-
-} // namespace
 
 int main()
 {

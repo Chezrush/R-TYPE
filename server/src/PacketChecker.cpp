@@ -11,8 +11,6 @@
 
 namespace rtype::server {
 
-namespace {
-
 /**
  * @brief Returns the byte at offset as an unsigned value.
  */
@@ -120,8 +118,6 @@ bool checkSnapshot(std::string_view body) noexcept
 
     return count <= MAX_SNAPSHOT_ENTITIES && body.size() == 7 + 6 * count;
 }
-
-} /* namespace */
 
 // clang-format off
 const std::unordered_map<MessageType, PacketChecker::BodyCheck>
