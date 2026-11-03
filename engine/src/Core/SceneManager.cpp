@@ -57,8 +57,15 @@ void SceneManager::clear() noexcept
 
 void SceneManager::update(float dt)
 {
-    if (!_scenes.empty()) {
-        _scenes.back()->update(dt);
+    if (_scenes.empty()) {
+        return;
+    }
+    std::size_t start = _scenes.size() - 1;
+    while (start > 0 && _scenes[start]->updatesSceneBelow()) {
+        --start;
+    }
+    for (std::size_t i = start; i < _scenes.size(); ++i) {
+        _scenes[i]->update(dt);
     }
 }
 

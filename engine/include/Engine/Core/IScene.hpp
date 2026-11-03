@@ -54,6 +54,16 @@ public:
      * before this scene is drawn.
      */
     [[nodiscard]] virtual bool isOverlay() const noexcept = 0;
+
+    /**
+     * @brief Whether the scene below keeps updating under this overlay.
+     *
+     * For a game that goes on behind a menu. The input stays for the top scene.
+     */
+    [[nodiscard]] virtual bool updatesSceneBelow() const noexcept
+    {
+        return false;
+    }
 };
 
 } // namespace engine::core

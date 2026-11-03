@@ -60,7 +60,111 @@ flowchart TD
     DrawGame --> DrawPause["2. Draw PauseOverlay (semi-transparent backdrop & buttons)"]
 ```
 
-While both scenes are rendered, **only the top scene (`PauseOverlay`) receives `update()`
-and `handleInput()`**, ensuring that game simulation is halted and player keystrokes do not
-fire missiles while navigating the pause menu.
+While both scenes are rendered, **only the top scene receives `handleInput()`**, so player
+keystrokes do not fire missiles while navigating a menu. By default only the top scene receives
+`update()` too. An overlay whose `updatesSceneBelow()` returns `true` also keeps the scene below
+it updating, first, as a server-authoritative game does behind its menu.
 
+## UI scenes and navigation
+
+Two generic helpers build screens for any game. They know nothing about R-Type:
+
+- **`engine::ecs::UIScene`** (no SFML) is the base of a screen made only of UI components. It
+  creates the widgets and listeners on `onEnter()` / `onResume()` (the `activate()` you write)
+  and removes them on `onExit()` / `onPause()`. `handleInput()` applies the input the window code
+  gave to the shared `UIInteractionSystem`. `render()` does nothing, the game's `UIRenderSystem`
+  draws the registry. The look of the buttons comes from `UISceneContext::buttonStyle`.
+- **`engine::core::SceneRouter<Route>`** changes screen. A scene publishes
+  `NavigationRequested<Route>`, and `apply()` switches between two frames: switching at once would
+  destroy the scene while its own listener runs. `Route` is chosen by the game, usually an enum. A
+  route with no scene yet is ignored. `OverlayRequested<Route>` and `OverlayCloseRequested` push
+  and close overlays the same way, and `OverlaysClearRequested` closes all of them. `QuitRequested` sets `quitRequested()`.
+- **`engine::ecs::UIOverlay`** is a `UIScene` drawn above the others: its widgets get a higher
+  z-index, `addBackdrop()` covers the window, and the scene below keeps updating unless told not to.
+
+The main loop runs, in order:
+
+```cpp
+scenes.handleInput();
+scenes.update(dt);
+router.apply();
+if (router.quitRequested())
+    stop();
+```
+
+## R-Type menu scenes
+
+`MainMenuScene` and `ConnectScene` live in `client/` and derive from `UIScene`.
+`client::scenes::SceneRoute` lists the screens of the game, and `makeMenuContext()` gives the
+scenes the R-Type button colors.
+
+### Overlays above the game
+
+`GameOverlays` decides what is above the game, from events only (`client/`). There is at most one
+overlay. Game over wins over the in-game menu, which wins over the respawn countdown:
+
+| Overlay | Opens on | Closes on |
+| --- | --- | --- |
+| `InGameMenuOverlay` | `Escape` (`UICancelEvent`) | `Escape`, "Resume"; "Disconnect" leaves the game |
+| `RespawnOverlay` | our ship in `EntityDestroyed` with reason `KILLED` | our ship in `EntitySpawned` |
+| `GameOverOverlay` | `GameStateChanged` with phase `GAME_OVER` | "Back to menu" leaves the game |
+
+The menu publishes `InGameMenuOpened` / `InGameMenuClosed`; leaving publishes
+`DisconnectRequested`. The countdown keeps running under the menu. The server is never paused.
+
+### Settings
+
+`SettingsScene` is an overlay opened from the main menu and from the in-game menu. It edits
+`ClientSettings` and publishes the changes, without applying them: `VolumeChanged`, `MuteChanged`
+and `VideoSettingsChanged` are for the audio and window code. Only the UI scale is applied by the
+screen itself, on `UILayoutSystem`.
+
+`SettingsStore` keeps the values in a `key=value` file (`settings.cfg` in the user data directory),
+written when the screen exits. A missing or broken file gives usable settings: each invalid line is
+ignored and the default stays. At startup the client calls `store.load()` and applies the values:
+
+```cpp
+layout.setScale(static_cast<float>(store.settings().uiScalePercent) / 100.0f);
+```
+
+### Controls and how to play
+
+`KeyBindings` holds a key and a gamepad button per action, plus the auto-fire and beam charge
+options. Keys are USB HID codes: they name a position on the keyboard, so they work on QWERTY and
+AZERTY, and depend on no window library. The window code converts its own scancodes to them. The
+bindings are saved with `ClientSettings`, and the "Reset to defaults" of each screen only touches its
+own values.
+
+`ControlsScene` changes them. Activating a row waits for a key or a button: meanwhile the UI input
+is discarded, and the scene reads `RawKeyPressed` and `RawGamepadButtonPressed`. The window code must
+publish those before calling `handleInput()`. A conflict shows a warning without refusing the change.
+Every change publishes `BindingsChanged`. `HowToPlayScene` explains the game with the current
+bindings.
+
+### Accessibility options
+
+The palette, high contrast and reduced motion are in the settings screen and in `ClientSettings`.
+`makeTheme()` turns them into a `UITheme`, which the client owns: `SettingsScene` updates it, and
+`UIRenderSystem` and the scenes read it, so a change shows at once. At startup the client builds it
+from the loaded settings, gives it to `setTheme()` and `makeMenuContext()`, and publishes
+`ReducedMotionChanged` for `HudController` and the rest of the game.
+
+`VisualCueIndicator` shows `VisualCueRequested { icon, direction }` as a label on that side of the
+screen. The audio and gameplay code publish those events.
+
+### Talking to the network layer
+
+`ConnectScene` never calls network code. All the messages are `EventBus` events, declared in
+`Client/Events/ConnectionEvents.hpp` and `GameEvents.hpp`:
+
+| Event | Direction | Effect |
+| --- | --- | --- |
+| `ConnectRequested { host, port, nickname }` | scene → network | The form was valid; it is locked. |
+| `ConnectCancelled` | scene → network | The player left during a connection. |
+| `ConnectionStarted { host, port }` | network → scene | Shows "Connecting to host:port...". |
+| `WelcomeReceived` | network → scene | Asks for the game scene. |
+| `ConnectionFailed { reason }` | network → scene | Shows a message and unlocks the form. |
+
+`ConnectionFailure` uses the protocol `reject` values, plus `TIMEOUT` and `INVALID_ADDRESS`
+found by the client. An unknown reason still shows a generic message. The checks and the texts
+are pure functions in `Client/Scenes/ConnectForm.hpp`.

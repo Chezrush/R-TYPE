@@ -50,6 +50,7 @@ struct UIPanel {
     Rect textureRect{0.0f, 0.0f, 0.0f, 0.0f};
     UIPanelMode mode = UIPanelMode::STRETCH;
     UIBorders borders;
+    UIColorRole colorRole = UIColorRole::NONE;
 
     friend bool operator==(const UIPanel &, const UIPanel &) = default;
 };

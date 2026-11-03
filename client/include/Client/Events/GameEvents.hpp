@@ -16,6 +16,9 @@ namespace client::events {
 /** @brief `owner` / `killer` value meaning "no player". */
 inline constexpr std::uint8_t NO_PLAYER = 0xFF;
 
+/** @brief Delay before a destroyed ship comes back (protocol section 8.4). */
+inline constexpr float RESPAWN_DELAY_SECONDS = 2.0f;
+
 /**
  * @brief Entity kinds of the protocol (`spawn.kind`).
  *
@@ -89,6 +92,28 @@ struct ScoreChanged {
 struct GameStateChanged {
     GamePhase phase = GamePhase::WAITING;
     std::uint8_t level = 1;
+};
+
+/** @brief What a visual cue stands for. */
+enum class CueIcon : std::uint8_t {
+    EXPLOSION,
+    ENEMY,
+    SHOT,
+    ALERT
+};
+
+/** @brief Side of the screen the cue comes from. */
+enum class CueDirection : std::uint8_t {
+    LEFT,
+    RIGHT,
+    TOP,
+    BOTTOM
+};
+
+/** @brief Shows a sound on screen. Published by the audio / gameplay code. */
+struct VisualCueRequested {
+    CueIcon icon = CueIcon::ALERT;
+    CueDirection direction = CueDirection::LEFT;
 };
 
 } // namespace client::events
