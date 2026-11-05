@@ -9,9 +9,9 @@
 #include <string_view>
 #include <vector>
 
-#include "Protocol/ByteOrder.hpp"
-#include "Protocol/PacketBuilder.hpp"
-#include "Protocol/PacketReader.hpp"
+#include "ByteOrder.hpp"
+#include "PacketBuilder.hpp"
+#include "PacketReader.hpp"
 #include "TestSupport.hpp"
 
 using namespace rtype::protocol;

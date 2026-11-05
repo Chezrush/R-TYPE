@@ -14,7 +14,7 @@
 
 #include "ClientActivity.hpp"
 #include "PlayerSessions.hpp"
-#include "Protocol/PacketReader.hpp"
+#include "PacketReader.hpp"
 #include "Server.hpp"
 #include "TestSupport.hpp"
 

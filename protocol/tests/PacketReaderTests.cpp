@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "Protocol/PacketReader.hpp"
+#include "PacketReader.hpp"
 #include "TestSupport.hpp"
 
 using rtype::protocol::PacketReader;
