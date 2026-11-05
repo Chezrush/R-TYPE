@@ -5,9 +5,10 @@
 ** PacketReader.cpp
 */
 
+#include "PacketReader.hpp"
+
 #include <unordered_map>
 
-#include "PacketReader.hpp"
 #include "ByteOrder.hpp"
 
 namespace rtype::protocol {

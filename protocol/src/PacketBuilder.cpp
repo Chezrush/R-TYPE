@@ -6,6 +6,7 @@
 */
 
 #include "PacketBuilder.hpp"
+
 #include "ByteOrder.hpp"
 
 namespace rtype::protocol {
