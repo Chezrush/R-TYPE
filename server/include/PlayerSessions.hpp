@@ -40,8 +40,8 @@ public:
      * @return The player_left messages for the remaining clients, empty if
      * the client was not playing.
      */
-    [[nodiscard]] std::vector<OutgoingMessage> leave(std::uint32_t clientId,
-                                                     DisconnectReason reason);
+    [[nodiscard]] std::vector<OutgoingMessage>
+    leave(std::uint32_t clientId, protocol::DisconnectReason reason);
 
     [[nodiscard]] bool contains(std::uint32_t clientId) const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;

@@ -6,12 +6,16 @@
 */
 
 #include <chrono>
-#include <iostream>
+#include <string>
 #include <thread>
 
+#include "PacketBuilder.hpp"
 #include "Server.hpp"
 #include "TestSupport.hpp"
 
+using rtype::protocol::MessageHeader;
+using rtype::protocol::PacketBuilder;
+using rtype::server::IncomingMessage;
 using rtype::server::Server;
 using rtype::server::ServerConfig;
 
@@ -63,11 +67,27 @@ void testShutdown()
     CHECK(server.isRunning() == false);
 }
 
+void testRejectedPacketsAreCounted()
+{
+    ServerConfig config;
+    std::string valid;
+
+    config.port = 0;
+    Server server(config);
+    PacketBuilder::writeHeader(valid, MessageHeader{});
+    PacketBuilder::appendHello(valid, 0, "Bob");
+
+    CHECK(!server.receivePacket(IncomingMessage{1, std::string(3, 0), {}}));
+    CHECK(server.receivePacket(IncomingMessage{1, valid, {}}));
+    CHECK(server.rejectedPackets() == 1);
+}
+
 int main()
 {
     testServerStartsAndStops();
     testSimulationRun();
     testShutdown();
+    testRejectedPacketsAreCounted();
 
     return TEST_RESULT();
 }
