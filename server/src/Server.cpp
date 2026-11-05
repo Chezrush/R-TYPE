@@ -10,7 +10,7 @@
 #include <iostream>
 #include <utility>
 
-#include "Protocol/PacketReader.hpp"
+#include "PacketReader.hpp"
 
 namespace rtype::server {
 

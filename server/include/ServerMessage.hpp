@@ -13,7 +13,7 @@
 #include <string>
 
 #include "MessageQueue.hpp"
-#include "Protocol/Protocol.hpp"
+#include "Protocol.hpp"
 
 namespace rtype::server {
 

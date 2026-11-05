@@ -10,7 +10,7 @@
 #include <array>
 #include <string>
 
-#include "Protocol/PacketBuilder.hpp"
+#include "PacketBuilder.hpp"
 
 namespace rtype::server {
 

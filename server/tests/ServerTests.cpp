@@ -9,7 +9,7 @@
 #include <string>
 #include <thread>
 
-#include "Protocol/PacketBuilder.hpp"
+#include "PacketBuilder.hpp"
 #include "Server.hpp"
 #include "TestSupport.hpp"
 
