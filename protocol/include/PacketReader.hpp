@@ -20,7 +20,7 @@ struct Record {
     std::uint8_t type = 0;
     std::string_view body;
 
-    bool operator==(const Record &) const = default;
+    friend bool operator==(const Record &, const Record &) = default;
 };
 
 class PacketReader {

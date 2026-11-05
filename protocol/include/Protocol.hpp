@@ -65,7 +65,8 @@ struct MessageHeader {
     std::uint16_t ack = 0;
     std::uint32_t ackBits = 0;
 
-    bool operator==(const MessageHeader &) const = default;
+    friend bool operator==(const MessageHeader &,
+                           const MessageHeader &) = default;
 };
 
 } /* namespace rtype::protocol */
