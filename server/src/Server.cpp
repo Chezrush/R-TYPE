@@ -10,9 +10,13 @@
 #include <iostream>
 #include <utility>
 
-#include "PacketChecker.hpp"
+#include "Protocol/PacketReader.hpp"
 
 namespace rtype::server {
+
+using protocol::DisconnectReason;
+using protocol::MessageType;
+using protocol::PacketReader;
 
 using Nanosecond = std::chrono::nanoseconds;
 
@@ -76,11 +80,10 @@ std::uint64_t Server::tickCount() const noexcept
 
 Nanosecond Server::simulationInterval() const noexcept
 {
-    const double hz = _config.simulationHz > 0 ? _config.simulationHz : 60;
-    const auto castedHz = static_cast<double>(hz);
+    const std::uint32_t hz =
+        _config.simulationHz > 0 ? _config.simulationHz : 60;
 
-    return std::chrono::duration_cast<Nanosecond>(
-        std::chrono::duration<double>(1.0 / castedHz));
+    return Nanosecond(std::chrono::seconds(1)) / hz;
 }
 
 void Server::runNetwork(const std::stop_token &stopToken)
@@ -157,7 +160,7 @@ void Server::applyMessage(const IncomingMessage &message)
         removePlayer(message.clientId, *message.disconnect);
         return;
     }
-    if (PacketChecker::hasRecord(message.payload, MessageType::HELLO)) {
+    if (PacketReader::hasRecord(message.payload, MessageType::HELLO)) {
         _players.join(message.clientId);
     }
     /*
@@ -175,11 +178,11 @@ void Server::removePlayer(std::uint32_t clientId, DisconnectReason reason)
 
 bool Server::receivePacket(IncomingMessage message)
 {
-    if (!PacketChecker::isValid(message.payload)) {
+    if (!PacketReader::isValid(message.payload)) {
         _rejectedPackets.fetch_add(1);
         return false;
     }
-    if (PacketChecker::hasRecord(message.payload, MessageType::GOODBYE)) {
+    if (PacketReader::hasRecord(message.payload, MessageType::GOODBYE)) {
         handleGoodbye(message.clientId);
         return true;
     }

@@ -10,7 +10,13 @@
 #include <array>
 #include <string>
 
+#include "Protocol/PacketBuilder.hpp"
+
 namespace rtype::server {
+
+using protocol::DisconnectReason;
+using protocol::MAX_PLAYERS;
+using protocol::PacketBuilder;
 
 /**
  * @brief Builds a packet holding one player_left record.
@@ -19,14 +25,10 @@ namespace rtype::server {
  */
 std::string makePlayerLeftPacket(std::uint8_t index, DisconnectReason reason)
 {
-    std::string packet(PACKET_HEADER_SIZE, '\0');
+    std::string packet;
 
-    packet[0] = static_cast<char>(PROTOCOL_MAGIC >> 8U);
-    packet[1] = static_cast<char>(PROTOCOL_MAGIC & 0xFFU);
-    packet[2] = static_cast<char>(PROTOCOL_VERSION);
-    packet += {static_cast<char>(MessageType::PLAYERLEFT), 0, 4, 0, 0};
-    packet += static_cast<char>(index);
-    packet += static_cast<char>(reason);
+    PacketBuilder::writeHeader(packet, protocol::MessageHeader{});
+    PacketBuilder::appendPlayerLeft(packet, 0, index, reason);
     return packet;
 }
 

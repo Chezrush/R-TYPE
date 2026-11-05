@@ -5,10 +5,16 @@
 ## CMakeLists.txt
 ##
 
-add_executable(rtype_protocol src/main.cpp)
-target_include_directories(rtype_protocol PRIVATE include)
+add_library(rtype_protocol STATIC
+    src/ByteOrder.cpp
+    src/PacketBuilder.cpp
+    src/PacketReader.cpp
+)
+
+target_include_directories(rtype_protocol PUBLIC include)
+target_compile_features(rtype_protocol PUBLIC cxx_std_20)
 target_link_libraries(rtype_protocol PRIVATE rtype_warnings)
 
 if(RTYPE_BUILD_TESTS)
-    add_test(NAME smoke_protocol COMMAND rtype_protocol)
+    add_subdirectory(tests)
 endif()

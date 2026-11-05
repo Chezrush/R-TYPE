@@ -13,12 +13,13 @@
 #include <vector>
 
 #include "ClientActivity.hpp"
-#include "PacketChecker.hpp"
 #include "PlayerSessions.hpp"
+#include "Protocol/PacketReader.hpp"
 #include "Server.hpp"
 #include "TestSupport.hpp"
 
 using namespace rtype::server;
+using namespace rtype::protocol;
 using namespace std::chrono_literals;
 
 namespace {
@@ -98,8 +99,8 @@ void testLeaveNotifiesOtherPlayers()
     const std::string &payload = notices.front().payload;
 
     CHECK(notices.front().clientId == 2);
-    CHECK(PacketChecker::isValid(payload));
-    CHECK(PacketChecker::hasRecord(payload, MessageType::PLAYERLEFT));
+    CHECK(PacketReader::isValid(payload));
+    CHECK(PacketReader::hasRecord(payload, MessageType::PLAYERLEFT));
     CHECK(payload[21] == 0);
     CHECK(payload[22] == static_cast<char>(DisconnectReason::TIMEOUT));
     CHECK(players.size() == 1);

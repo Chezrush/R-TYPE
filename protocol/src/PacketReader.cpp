@@ -1,15 +1,18 @@
 /*
 ** EPITECH PROJECT, 2026
-** R-TYPE
+** G-ING-500-PAR-5-1-rtype-13
 ** File description:
-** PacketChecker
+** PacketReader.cpp
 */
 
-#include "PacketChecker.hpp"
+#include <unordered_map>
 
-#include "ServerHelpers.hpp"
+#include "PacketReader.hpp"
+#include "ByteOrder.hpp"
 
-namespace rtype::server {
+namespace rtype::protocol {
+
+using BodyCheck = bool (*)(std::string_view body);
 
 /**
  * @brief Returns the byte at offset as an unsigned value.
@@ -75,8 +78,8 @@ bool checkWelcome(std::string_view body) noexcept
     const std::uint8_t maxPlayers = byteAt(body, 1);
     const std::uint8_t tickRate = byteAt(body, 2);
     const std::uint8_t snapshotRate = byteAt(body, 3);
-    const std::uint16_t width = ServerHelpers::readUint16BigEndian(&body[4]);
-    const std::uint16_t height = ServerHelpers::readUint16BigEndian(&body[6]);
+    const std::uint16_t width = readUint16BigEndian(&body[4]);
+    const std::uint16_t height = readUint16BigEndian(&body[6]);
 
     return maxPlayers >= 1 && maxPlayers <= MAX_PLAYERS &&
            playerIndex < maxPlayers && tickRate >= 1 && tickRate <= 240 &&
@@ -97,7 +100,6 @@ bool checkInput(std::string_view body) noexcept
     if (count < 1 || count > MAX_INPUTS || body.size() != 3 + count) {
         return false;
     }
-
     for (const char keys : body.substr(3)) {
         if ((static_cast<std::uint8_t>(keys) & ~KEYS_MASK) != 0) {
             return false;
@@ -120,8 +122,7 @@ bool checkSnapshot(std::string_view body) noexcept
 }
 
 // clang-format off
-const std::unordered_map<MessageType, PacketChecker::BodyCheck>
-    PacketChecker::BODY_CHECKS = {
+const std::unordered_map<MessageType, BodyCheck> BODY_CHECKS = {
     {MessageType::HELLO, [](std::string_view body) {
         return checkName(body, 8);
     }},
@@ -159,19 +160,18 @@ const std::unordered_map<MessageType, PacketChecker::BodyCheck>
 };
 // clang-format on
 
-bool PacketChecker::isValid(const std::string &payload) noexcept
+bool PacketReader::isValid(std::string_view packet) noexcept
 {
-    return parsHeader(payload) && parsRecords(payload);
+    return parseHeader(packet) && areRecordsValid(packet);
 }
 
 std::optional<MessageHeader>
-PacketChecker::parsHeader(const std::string &payload) noexcept
+PacketReader::parseHeader(std::string_view packet) noexcept
 {
-    if (payload.size() < PACKET_HEADER_SIZE ||
-        payload.size() > MAX_PACKET_SIZE) {
+    if (packet.size() < PACKET_HEADER_SIZE || packet.size() > MAX_PACKET_SIZE) {
         return std::nullopt;
     }
-    const MessageHeader header = readHeader(payload);
+    const MessageHeader header = readHeader(packet);
 
     if (!isHeaderValid(header)) {
         return std::nullopt;
@@ -179,12 +179,10 @@ PacketChecker::parsHeader(const std::string &payload) noexcept
     return header;
 }
 
-bool PacketChecker::hasRecord(const std::string &payload,
-                              MessageType type) noexcept
+bool PacketReader::hasRecord(std::string_view packet, MessageType type) noexcept
 {
-    std::string_view remaining(payload);
+    std::string_view remaining = recordsOf(packet);
 
-    remaining.remove_prefix(PACKET_HEADER_SIZE);
     while (const auto record = readRecord(remaining)) {
         if (record->type == static_cast<std::uint8_t>(type)) {
             return true;
@@ -193,22 +191,48 @@ bool PacketChecker::hasRecord(const std::string &payload,
     return false;
 }
 
-MessageHeader PacketChecker::readHeader(const std::string &payload) noexcept
+std::string_view PacketReader::recordsOf(std::string_view packet) noexcept
 {
-    const char *data = payload.data();
+    if (packet.size() < PACKET_HEADER_SIZE) {
+        return {};
+    }
+    return packet.substr(PACKET_HEADER_SIZE);
+}
+
+std::optional<Record>
+PacketReader::readRecord(std::string_view &remaining) noexcept
+{
+    if (remaining.size() < RECORD_PREFIX_SIZE) {
+        return std::nullopt;
+    }
+    const std::size_t length = readUint16BigEndian(remaining.data() + 1);
+
+    if (length > remaining.size() - RECORD_PREFIX_SIZE) {
+        return std::nullopt;
+    }
+    const Record record{byteAt(remaining, 0),
+                        remaining.substr(RECORD_PREFIX_SIZE, length)};
+
+    remaining.remove_prefix(RECORD_PREFIX_SIZE + length);
+    return record;
+}
+
+MessageHeader PacketReader::readHeader(std::string_view packet) noexcept
+{
+    const char *data = packet.data();
     MessageHeader header;
 
-    header.magicNumber = ServerHelpers::readUint16BigEndian(data);
-    header.version = static_cast<std::uint8_t>(data[2]);
-    header.flags = static_cast<std::uint8_t>(data[3]);
-    header.session = ServerHelpers::readUint32BigEndian(data + 4);
-    header.seq = ServerHelpers::readUint16BigEndian(data + 8);
-    header.ack = ServerHelpers::readUint16BigEndian(data + 10);
-    header.ackBits = ServerHelpers::readUint32BigEndian(data + 12);
+    header.magicNumber = readUint16BigEndian(data);
+    header.version = byteAt(packet, 2);
+    header.flags = byteAt(packet, 3);
+    header.session = readUint32BigEndian(data + 4);
+    header.seq = readUint16BigEndian(data + 8);
+    header.ack = readUint16BigEndian(data + 10);
+    header.ackBits = readUint32BigEndian(data + 12);
     return header;
 }
 
-bool PacketChecker::isHeaderValid(const MessageHeader &header) noexcept
+bool PacketReader::isHeaderValid(const MessageHeader &header) noexcept
 {
     const bool ackValid = (header.flags & FLAG_ACK_VALID) != 0;
     const bool unknownFlags = (header.flags & ~FLAG_ACK_VALID) != 0;
@@ -219,12 +243,11 @@ bool PacketChecker::isHeaderValid(const MessageHeader &header) noexcept
            (ackValid || !ackWithoutFlag);
 }
 
-bool PacketChecker::parsRecords(const std::string &payload) noexcept
+bool PacketReader::areRecordsValid(std::string_view packet) noexcept
 {
-    std::string_view remaining(payload);
+    std::string_view remaining = recordsOf(packet);
     std::size_t count = 0;
 
-    remaining.remove_prefix(PACKET_HEADER_SIZE);
     while (!remaining.empty()) {
         const auto record = readRecord(remaining);
 
@@ -235,26 +258,7 @@ bool PacketChecker::parsRecords(const std::string &payload) noexcept
     return true;
 }
 
-std::optional<PacketChecker::Record>
-PacketChecker::readRecord(std::string_view &remaining) noexcept
-{
-    if (remaining.size() < RECORD_PREFIX_SIZE) {
-        return std::nullopt;
-    }
-    const std::size_t length =
-        ServerHelpers::readUint16BigEndian(remaining.data() + 1);
-
-    if (length > remaining.size() - RECORD_PREFIX_SIZE) {
-        return std::nullopt;
-    }
-    Record record{byteAt(remaining, 0),
-                  remaining.substr(RECORD_PREFIX_SIZE, length)};
-
-    remaining.remove_prefix(RECORD_PREFIX_SIZE + length);
-    return record;
-}
-
-bool PacketChecker::isRecordValid(const Record &record) noexcept
+bool PacketReader::isRecordValid(const Record &record) noexcept
 {
     const bool reliable = (record.type & RELIABLE_BIT) != 0;
 
@@ -268,4 +272,4 @@ bool PacketChecker::isRecordValid(const Record &record) noexcept
     return check == BODY_CHECKS.end() || check->second(body);
 }
 
-} /* namespace rtype::server */
+} /* namespace rtype::protocol */

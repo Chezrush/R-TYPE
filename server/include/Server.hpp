@@ -115,10 +115,12 @@ private:
                               const std::stop_token &stopToken);
     void readIncomingMessage();
     void applyMessage(const IncomingMessage &message);
-    void removePlayer(std::uint32_t clientId, DisconnectReason reason);
+    void removePlayer(std::uint32_t clientId,
+                      protocol::DisconnectReason reason);
     void sendOutgoingMessages();
     void disconnectInactiveClients();
-    void requestDisconnect(std::uint32_t clientId, DisconnectReason reason);
+    void requestDisconnect(std::uint32_t clientId,
+                           protocol::DisconnectReason reason);
     void handleGoodbye(std::uint32_t clientId);
 
     [[nodiscard]] std::chrono::nanoseconds simulationInterval() const noexcept;
