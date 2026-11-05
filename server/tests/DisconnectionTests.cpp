@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "ClientActivity.hpp"
-#include "PlayerSessions.hpp"
 #include "PacketReader.hpp"
+#include "PlayerSessions.hpp"
 #include "Server.hpp"
 #include "TestSupport.hpp"
 
