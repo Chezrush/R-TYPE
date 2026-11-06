@@ -9,17 +9,22 @@
 # client ids. The server links it and drives it one fixed tick at a time.
 add_library(rtype_game STATIC
     src/Bounds.cpp
+    src/Collision.cpp
     src/Components.cpp
     src/Entities.cpp
     src/NetIdAllocator.cpp
+    src/Players.cpp
     src/Random.cpp
     src/ShipMovement.cpp
     src/Simulation.cpp
     src/Waves.cpp
     src/Systems/BoundsSystem.cpp
+    src/Systems/CollisionSystem.cpp
+    src/Systems/DamageSystem.cpp
     src/Systems/EnemyAISystem.cpp
     src/Systems/InputSystem.cpp
     src/Systems/MovementSystem.cpp
+    src/Systems/RespawnSystem.cpp
     src/Systems/SpawnSystem.cpp)
 add_library(rtype::game ALIAS rtype_game)
 
@@ -31,8 +36,11 @@ target_link_libraries(rtype_game
 
 rtype_add_catch_test(rtype_game_tests
     tests/Bounds.cpp
+    tests/Collision.cpp
+    tests/Combat.cpp
     tests/Components.cpp
     tests/Enemies.cpp
+    tests/Lives.cpp
     tests/NetIdAllocator.cpp
     tests/OffScreen.cpp
     tests/Players.cpp

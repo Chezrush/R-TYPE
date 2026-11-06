@@ -28,6 +28,14 @@ namespace keys = rtype::game::keys;
 
 namespace {
 
+GameRules quiet()
+{
+    GameRules rules;
+
+    rules.enemySpawnInterval = 0.0F;
+    return rules;
+}
+
 constexpr std::uint32_t SEED = 7;
 constexpr std::uint8_t SLOT = 1;
 constexpr int ONE_SECOND = 60;
@@ -71,7 +79,7 @@ std::vector<Event> eventsOf(const std::vector<GameEvent> &events)
 
 Simulation withPlayer()
 {
-    Simulation simulation(GameRules{}, SEED);
+    Simulation simulation(quiet(), SEED);
 
     REQUIRE(simulation.addPlayer(SLOT));
     return simulation;
@@ -81,7 +89,7 @@ Simulation withPlayer()
 
 TEST_CASE("adding a player spawns a ship and tells it", "[game][players]")
 {
-    Simulation simulation(GameRules{}, SEED);
+    Simulation simulation(quiet(), SEED);
 
     REQUIRE(simulation.addPlayer(SLOT));
 
@@ -108,7 +116,7 @@ TEST_CASE("a slot can only be taken once", "[game][players]")
 
 TEST_CASE("a slot beyond maxPlayers is refused", "[game][players]")
 {
-    GameRules rules;
+    GameRules rules = quiet();
     rules.maxPlayers = 2;
     Simulation simulation(rules, SEED);
 
@@ -120,7 +128,7 @@ TEST_CASE("a slot beyond maxPlayers is refused", "[game][players]")
 
 TEST_CASE("two players get different ships and net ids", "[game][players]")
 {
-    Simulation simulation(GameRules{}, SEED);
+    Simulation simulation(quiet(), SEED);
 
     REQUIRE(simulation.addPlayer(0));
     REQUIRE(simulation.addPlayer(1));
@@ -176,7 +184,7 @@ TEST_CASE("a slot can be taken again after its player left", "[game][players]")
 TEST_CASE("events are given once, in the order they happened",
           "[game][players]")
 {
-    Simulation simulation(GameRules{}, SEED);
+    Simulation simulation(quiet(), SEED);
 
     REQUIRE(simulation.addPlayer(0));
     simulation.removePlayer(0);
@@ -191,7 +199,7 @@ TEST_CASE("events are given once, in the order they happened",
 
 TEST_CASE("currentWorld describes every living entity", "[game][players]")
 {
-    Simulation simulation(GameRules{}, SEED);
+    Simulation simulation(quiet(), SEED);
 
     REQUIRE(simulation.addPlayer(0));
     REQUIRE(simulation.addPlayer(2));

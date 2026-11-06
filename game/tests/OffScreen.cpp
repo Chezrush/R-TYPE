@@ -27,12 +27,20 @@ namespace keys = rtype::game::keys;
 
 namespace {
 
+GameRules quiet()
+{
+    GameRules rules;
+
+    rules.enemySpawnInterval = 0.0F;
+    return rules;
+}
+
 constexpr std::uint32_t SEED = 3;
 constexpr std::uint8_t SLOT = 0;
 
 GameRules smallWorld()
 {
-    GameRules rules;
+    GameRules rules = quiet();
     rules.worldWidth = 200.0F;
     return rules;
 }
@@ -98,7 +106,7 @@ std::uint64_t firstDestroyTick(Simulation &simulation, int limit)
 TEST_CASE("a step lasts exactly one over the tick rate", "[game][movement]")
 {
     for (const std::uint32_t tickRate : {30U, 60U, 120U}) {
-        GameRules rules;
+        GameRules rules = quiet();
         rules.tickRate = tickRate;
         Simulation simulation(rules, SEED);
 
@@ -115,7 +123,7 @@ TEST_CASE("a step lasts exactly one over the tick rate", "[game][movement]")
 
 TEST_CASE("a missile still on screen is not destroyed", "[game][bounds]")
 {
-    Simulation simulation = shooter(GameRules{});
+    Simulation simulation = shooter(quiet());
 
     for (int i = 0; i < 50; ++i) {
         simulation.step();
@@ -126,7 +134,7 @@ TEST_CASE("a missile still on screen is not destroyed", "[game][bounds]")
 
 TEST_CASE("a missile that leaves the screen is destroyed", "[game][bounds]")
 {
-    Simulation simulation = shooter(GameRules{});
+    Simulation simulation = shooter(quiet());
     const auto id = missileId(simulation.takeEvents());
 
     for (int i = 0; i < 200; ++i) {
@@ -166,7 +174,7 @@ TEST_CASE("a destroyed missile is not destroyed again", "[game][bounds]")
 TEST_CASE("a ship at the edge of the world is never destroyed",
           "[game][bounds]")
 {
-    Simulation simulation(GameRules{}, SEED);
+    Simulation simulation(quiet(), SEED);
 
     REQUIRE(simulation.addPlayer(SLOT));
     simulation.setInput(SLOT, keys::RIGHT | keys::DOWN);

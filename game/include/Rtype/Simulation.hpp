@@ -60,8 +60,9 @@ public:
     /**
      * @brief Sets the keys used from the next step on.
      *
-     * The keys are kept until they are changed. Bits that are not in
-     * keys::MASK are ignored, and so is a slot without a ship.
+     * The keys are kept until they are changed, and a player who is waiting
+     * to respawn gets them back with the new ship. Bits that are not in
+     * keys::MASK are ignored, and so is a slot without a player.
      */
     void setInput(std::uint8_t player, std::uint8_t keys);
 

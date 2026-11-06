@@ -30,6 +30,9 @@ inline constexpr float ENEMY_HEIGHT = 48.0F;
 /**
  * @brief Creates the ship of a player slot and tells it with a SpawnEvent.
  *
+ * The ship starts with the keys held by the player, and with the lives the
+ * player has left. The slot must be below context.players.size().
+ *
  * @return The ship, or std::nullopt if no net_id is free.
  */
 [[nodiscard]] std::optional<engine::ecs::Entity>
@@ -68,9 +71,6 @@ bool spawnEnemy(engine::ecs::Registry &registry,
 bool spawnEnemyMissile(engine::ecs::Registry &registry,
                        engine::ecs::CommandBuffer &commands,
                        GameContext &context, const Position &enemyPosition);
-
-/** @brief Whether at least one player ship is alive. */
-[[nodiscard]] bool hasPlayers(const engine::ecs::Registry &registry);
 
 /**
  * @brief Frees a net_id and emits the DestroyEvent of its entity.

@@ -25,16 +25,17 @@ engine::core::Vec2 shipSpawnPosition(const GameRules &rules,
 }
 
 void attachShip(engine::ecs::Registry &registry, engine::ecs::Entity entity,
-                const SpawnEvent &spawn, std::uint8_t lives)
+                const SpawnEvent &spawn, const PlayerState &player)
 {
     registry.addComponent(entity, Position{spawn.position});
     registry.addComponent(entity, Velocity{});
     registry.addComponent(entity, Hitbox{SHIP_WIDTH, SHIP_HEIGHT});
     registry.addComponent(entity, NetId{spawn.netId});
     registry.addComponent(entity, Kind{spawn.kind, spawn.variant, spawn.owner});
-    registry.addComponent(entity, PlayerControl{spawn.owner, 0, 0.0F});
+    registry.addComponent(entity,
+                          PlayerControl{spawn.owner, player.keys, 0.0F});
     registry.addComponent(entity, Health{});
-    registry.addComponent(entity, Lives{lives});
+    registry.addComponent(entity, Lives{player.lives});
     registry.addComponent(entity, Team{TeamSide::PLAYERS});
 }
 
@@ -109,7 +110,7 @@ std::optional<engine::ecs::Entity> spawnShip(engine::ecs::Registry &registry,
                            {}};
     const engine::ecs::Entity entity = registry.spawnEntity();
 
-    attachShip(registry, entity, spawn, context.rules.lives);
+    attachShip(registry, entity, spawn, context.players.at(slot));
     context.events.emplace_back(spawn);
     return entity;
 }
@@ -174,14 +175,6 @@ bool spawnEnemyMissile(engine::ecs::Registry &registry,
 
     recordMissile(registry, commands, context, spawn, TeamSide::ENEMIES);
     return true;
-}
-
-bool hasPlayers(const engine::ecs::Registry &registry)
-{
-    const auto players =
-        engine::ecs::makeIndexedZipper(registry.getComponents<PlayerControl>());
-
-    return players.begin() != players.end();
 }
 
 void announceDestroy(GameContext &context, std::uint16_t netId,
