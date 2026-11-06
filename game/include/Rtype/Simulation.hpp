@@ -42,21 +42,26 @@ public:
     Simulation &operator=(Simulation &&) noexcept;
 
     /**
-     * @brief Spawns the ship of a player slot.
+     * @brief Spawns the ship of a player slot and emits its SpawnEvent.
      *
-     * @return false if the slot is already taken or not below maxPlayers.
+     * @return false if the slot is already taken, not below maxPlayers, or
+     * if no net_id is free.
      */
     bool addPlayer(std::uint8_t player);
 
     /**
-     * @brief Destroys the ship of a player slot. Calling it twice is safe.
+     * @brief Destroys the ship of a player slot and emits a DestroyEvent.
+     *
+     * The reason is LEFT_SCREEN (expired) and there is no killer. A slot
+     * without a ship is ignored, so calling it twice is safe.
      */
     void removePlayer(std::uint8_t player);
 
     /**
      * @brief Sets the keys used from the next step on.
      *
-     * The keys are kept until they are changed.
+     * The keys are kept until they are changed. Bits that are not in
+     * keys::MASK are ignored, and so is a slot without a ship.
      */
     void setInput(std::uint8_t player, std::uint8_t keys);
 

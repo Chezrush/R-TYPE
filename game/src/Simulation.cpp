@@ -7,21 +7,43 @@
 
 #include "Rtype/Simulation.hpp"
 
+#include <algorithm>
+#include <optional>
 #include <utility>
+
+#include "Engine/Ecs/Registry.hpp"
+#include "Engine/Ecs/Scheduler.hpp"
+#include "Rtype/Components/Components.hpp"
+#include "Rtype/Entities.hpp"
+#include "Rtype/GameContext.hpp"
+#include "Rtype/Systems/InputSystem.hpp"
+#include "Rtype/Systems/MovementSystem.hpp"
 
 namespace rtype::game {
 
 struct Simulation::World {
-    GameRules rules;
+    GameContext context;
     std::uint32_t seed = 0;
+    double stepTime = 1.0;
     std::uint64_t tick = 0;
     GamePhase phase = GamePhase::WAITING;
-    std::vector<GameEvent> events{};
+    engine::ecs::Registry registry{};
+    engine::ecs::Scheduler scheduler{};
+    std::vector<std::optional<engine::ecs::Entity>> ships{};
 };
 
 Simulation::Simulation(const GameRules &rules, std::uint32_t seed)
-    : _world(std::make_unique<World>(World{rules, seed}))
-{}
+    : _world(std::make_unique<World>(
+          World{GameContext{rules}, seed,
+                1.0 / std::max<std::uint32_t>(1, rules.tickRate)}))
+{
+    World &world = *_world;
+
+    world.ships.resize(rules.maxPlayers);
+    registerComponents(world.registry);
+    addInputSystem(world.scheduler, world.registry, world.context);
+    addMovementSystems(world.scheduler, world.context.rules);
+}
 
 Simulation::~Simulation() = default;
 
@@ -29,42 +51,76 @@ Simulation::Simulation(Simulation &&) noexcept = default;
 
 Simulation &Simulation::operator=(Simulation &&) noexcept = default;
 
-/* to do: spawn the ship (player lifecycle task). */
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-bool Simulation::addPlayer(std::uint8_t)
+bool Simulation::addPlayer(std::uint8_t player)
 {
-    return false;
+    World &world = *_world;
+
+    if (player >= world.ships.size() || world.ships[player].has_value()) {
+        return false;
+    }
+    const auto ship = spawnShip(world.registry, world.context, player);
+
+    if (!ship.has_value()) {
+        return false;
+    }
+    world.ships[player] = ship;
+    return true;
 }
 
-/* to do: destroy the ship (player lifecycle task). */
-void Simulation::removePlayer(std::uint8_t) {}
+void Simulation::removePlayer(std::uint8_t player)
+{
+    World &world = *_world;
 
-/* to do: store the keys of the player (player lifecycle task). */
-void Simulation::setInput(std::uint8_t, std::uint8_t) {}
+    if (player >= world.ships.size()) {
+        return;
+    }
+    std::optional<engine::ecs::Entity> &ship = world.ships[player];
 
-/* to do: run the systems. */
+    if (ship.has_value()) {
+        destroyEntity(world.registry, world.context, *ship,
+                      DestroyReason::LEFT_SCREEN, NO_PLAYER);
+        ship.reset();
+    }
+}
+
+void Simulation::setInput(std::uint8_t player, std::uint8_t pressed)
+{
+    World &world = *_world;
+
+    if (player >= world.ships.size()) {
+        return;
+    }
+    const std::optional<engine::ecs::Entity> &ship = world.ships[player];
+
+    if (!ship.has_value()) {
+        return;
+    }
+    auto *control = world.registry.getComponents<PlayerControl>().get(*ship);
+
+    if (control != nullptr) {
+        control->keys = pressed & keys::MASK;
+    }
+}
+
 void Simulation::step()
 {
+    _world->scheduler.run(_world->registry, _world->stepTime);
     ++_world->tick;
 }
 
 std::vector<GameEvent> Simulation::takeEvents()
 {
-    return std::exchange(_world->events, {});
+    return std::exchange(_world->context.events, {});
 }
 
-/* to do: read the entities of the registry (phases and output task). */
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 std::vector<EntityState> Simulation::states() const
 {
-    return {};
+    return collectStates(_world->registry);
 }
 
-/* to do: read the entities of the registry (phases and output task). */
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 std::vector<SpawnEvent> Simulation::currentWorld() const
 {
-    return {};
+    return collectSpawns(_world->registry);
 }
 
 std::uint64_t Simulation::tick() const noexcept
@@ -79,7 +135,7 @@ GamePhase Simulation::phase() const noexcept
 
 const GameRules &Simulation::rules() const noexcept
 {
-    return _world->rules;
+    return _world->context.rules;
 }
 
 } /* namespace rtype::game */

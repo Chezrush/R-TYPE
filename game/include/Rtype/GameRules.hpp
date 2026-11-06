@@ -25,6 +25,9 @@ inline constexpr std::uint8_t LEFT = 1U << 2U;
 inline constexpr std::uint8_t RIGHT = 1U << 3U;
 inline constexpr std::uint8_t SHOOT = 1U << 4U;
 
+/** @brief Every defined bit, the other bits are ignored. */
+inline constexpr std::uint8_t MASK = 0x1FU;
+
 } /* namespace keys */
 
 /**
@@ -45,6 +48,12 @@ struct GameRules {
 
     /** @brief Speed of a player ship, in pixels per second. */
     float shipSpeed = 300.0F;
+
+    /** @brief Speed of a player missile, in pixels per second. */
+    float missileSpeed = 600.0F;
+
+    /** @brief Time between two shots of a ship, in seconds. */
+    float fireInterval = 0.25F;
 
     /** @brief Number of player slots, from 0 to maxPlayers - 1. */
     std::uint8_t maxPlayers = 4;
