@@ -5,10 +5,20 @@
 ## CMakeLists.txt
 ##
 
-add_executable(rtype_game src/main.cpp)
-target_include_directories(rtype_game PRIVATE include)
-target_link_libraries(rtype_game PRIVATE rtype_warnings)
+# The R-Type world. It knows nothing about the network: no sockets, packets or
+# client ids. The server links it and drives it one fixed tick at a time.
+add_library(rtype_game STATIC
+    src/Simulation.cpp)
+add_library(rtype::game ALIAS rtype_game)
 
+target_include_directories(rtype_game PUBLIC include)
+target_compile_features(rtype_game PUBLIC cxx_std_20)
+target_link_libraries(rtype_game
+    PUBLIC rtype::engine
+    PRIVATE rtype_warnings)
+
+rtype_add_catch_test(rtype_game_tests
+    tests/Simulation.cpp)
 if(RTYPE_BUILD_TESTS)
-    add_test(NAME smoke_game COMMAND rtype_game)
+    target_link_libraries(rtype_game_tests PRIVATE rtype::game)
 endif()
