@@ -24,6 +24,8 @@ inline constexpr float SHIP_WIDTH = 64.0F;
 inline constexpr float SHIP_HEIGHT = 32.0F;
 inline constexpr float MISSILE_WIDTH = 24.0F;
 inline constexpr float MISSILE_HEIGHT = 8.0F;
+inline constexpr float ENEMY_WIDTH = 48.0F;
+inline constexpr float ENEMY_HEIGHT = 48.0F;
 
 /**
  * @brief Creates the ship of a player slot and tells it with a SpawnEvent.
@@ -45,6 +47,30 @@ spawnShip(engine::ecs::Registry &registry, GameContext &context,
 bool spawnMissile(engine::ecs::Registry &registry,
                   engine::ecs::CommandBuffer &commands, GameContext &context,
                   const Position &shipPosition, std::uint8_t owner);
+
+/**
+ * @brief Records the creation of an enemy just outside the right edge.
+ *
+ * Its height and its pattern come from the random numbers of the context,
+ * its speed from the current level. The SpawnEvent is emitted now and the
+ * enemy exists once the command buffer is flushed.
+ *
+ * @return false if no net_id is free, nothing is recorded in that case.
+ */
+bool spawnEnemy(engine::ecs::Registry &registry,
+                engine::ecs::CommandBuffer &commands, GameContext &context);
+
+/**
+ * @brief Records the creation of an enemy missile in front of an enemy.
+ *
+ * @return false if no net_id is free, nothing is recorded in that case.
+ */
+bool spawnEnemyMissile(engine::ecs::Registry &registry,
+                       engine::ecs::CommandBuffer &commands,
+                       GameContext &context, const Position &enemyPosition);
+
+/** @brief Whether at least one player ship is alive. */
+[[nodiscard]] bool hasPlayers(const engine::ecs::Registry &registry);
 
 /**
  * @brief Frees a net_id and emits the DestroyEvent of its entity.

@@ -12,11 +12,15 @@ add_library(rtype_game STATIC
     src/Components.cpp
     src/Entities.cpp
     src/NetIdAllocator.cpp
+    src/Random.cpp
     src/ShipMovement.cpp
     src/Simulation.cpp
+    src/Waves.cpp
     src/Systems/BoundsSystem.cpp
+    src/Systems/EnemyAISystem.cpp
     src/Systems/InputSystem.cpp
-    src/Systems/MovementSystem.cpp)
+    src/Systems/MovementSystem.cpp
+    src/Systems/SpawnSystem.cpp)
 add_library(rtype::game ALIAS rtype_game)
 
 target_include_directories(rtype_game PUBLIC include)
@@ -28,11 +32,14 @@ target_link_libraries(rtype_game
 rtype_add_catch_test(rtype_game_tests
     tests/Bounds.cpp
     tests/Components.cpp
+    tests/Enemies.cpp
     tests/NetIdAllocator.cpp
     tests/OffScreen.cpp
     tests/Players.cpp
+    tests/Random.cpp
     tests/ShipMovement.cpp
-    tests/Simulation.cpp)
+    tests/Simulation.cpp
+    tests/Waves.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_game_tests PRIVATE rtype::game)
 endif()

@@ -17,8 +17,10 @@
 #include "Rtype/Entities.hpp"
 #include "Rtype/GameContext.hpp"
 #include "Rtype/Systems/BoundsSystem.hpp"
+#include "Rtype/Systems/EnemyAISystem.hpp"
 #include "Rtype/Systems/InputSystem.hpp"
 #include "Rtype/Systems/MovementSystem.hpp"
+#include "Rtype/Systems/SpawnSystem.hpp"
 
 namespace rtype::game {
 
@@ -27,7 +29,6 @@ struct Simulation::World {
     std::uint32_t seed = 0;
     double stepTime = 1.0;
     std::uint64_t tick = 0;
-    GamePhase phase = GamePhase::WAITING;
     engine::ecs::Registry registry{};
     engine::ecs::Scheduler scheduler{};
     std::vector<std::optional<engine::ecs::Entity>> ships{};
@@ -35,14 +36,20 @@ struct Simulation::World {
 
 Simulation::Simulation(const GameRules &rules, std::uint32_t seed)
     : _world(std::make_unique<World>(
-          World{GameContext{rules}, seed,
-                1.0 / std::max<std::uint32_t>(1, rules.tickRate)}))
+          World{GameContext{rules,
+                            NetIdAllocator{},
+                            {},
+                            Random{seed},
+                            WaveState{rules.enemySpawnInterval, 0}},
+                seed, 1.0 / std::max<std::uint32_t>(1, rules.tickRate)}))
 {
     World &world = *_world;
 
     world.ships.resize(rules.maxPlayers);
     registerComponents(world.registry);
     addInputSystem(world.scheduler, world.registry, world.context);
+    addSpawnSystem(world.scheduler, world.context);
+    addEnemyAISystem(world.scheduler, world.registry, world.context);
     addMovementSystems(world.scheduler, world.context.rules);
     addBoundsSystem(world.scheduler, world.context);
 }
@@ -132,7 +139,7 @@ std::uint64_t Simulation::tick() const noexcept
 
 GamePhase Simulation::phase() const noexcept
 {
-    return _world->phase;
+    return _world->context.phase;
 }
 
 const GameRules &Simulation::rules() const noexcept

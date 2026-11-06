@@ -39,14 +39,55 @@ void attachShip(engine::ecs::Registry &registry, engine::ecs::Entity entity,
 }
 
 void attachMissile(engine::ecs::Registry &registry, engine::ecs::Entity entity,
-                   const SpawnEvent &spawn)
+                   const SpawnEvent &spawn, TeamSide side)
 {
     registry.addComponent(entity, Position{spawn.position});
     registry.addComponent(entity, Velocity{spawn.velocity});
     registry.addComponent(entity, Hitbox{MISSILE_WIDTH, MISSILE_HEIGHT});
     registry.addComponent(entity, NetId{spawn.netId});
     registry.addComponent(entity, Kind{spawn.kind, spawn.variant, spawn.owner});
-    registry.addComponent(entity, Team{TeamSide::PLAYERS});
+    registry.addComponent(entity, Team{side});
+}
+
+void attachEnemy(engine::ecs::Registry &registry, engine::ecs::Entity entity,
+                 const SpawnEvent &spawn, float fireInterval)
+{
+    const auto pattern = static_cast<EnemyPattern>(spawn.variant);
+
+    registry.addComponent(entity, Position{spawn.position});
+    registry.addComponent(entity, Velocity{spawn.velocity});
+    registry.addComponent(entity, Hitbox{ENEMY_WIDTH, ENEMY_HEIGHT});
+    registry.addComponent(entity, NetId{spawn.netId});
+    registry.addComponent(entity, Kind{spawn.kind, spawn.variant, spawn.owner});
+    registry.addComponent(entity, Health{});
+    registry.addComponent(entity, Team{TeamSide::ENEMIES});
+    registry.addComponent(entity, EnemyAI{pattern, 0.0F, fireInterval});
+}
+
+SpawnEvent makeEnemySpawn(GameContext &context, std::uint16_t netId)
+{
+    const GameRules &rules = context.rules;
+    const float height = context.random.nextFloat(
+        ENEMY_HEIGHT, rules.worldHeight - ENEMY_HEIGHT);
+    const auto pattern = context.random.nextBool() ? EnemyPattern::SINE_WAVE
+                                                   : EnemyPattern::STRAIGHT;
+
+    return {netId,
+            EntityKind::BYDOS,
+            static_cast<std::uint8_t>(pattern),
+            NO_PLAYER,
+            {rules.worldWidth + ENEMY_WIDTH / 2.0F, height},
+            {-enemySpeed(rules, context.level), 0.0F}};
+}
+
+void recordMissile(engine::ecs::Registry &registry,
+                   engine::ecs::CommandBuffer &commands, GameContext &context,
+                   const SpawnEvent &spawn, TeamSide side)
+{
+    context.events.emplace_back(spawn);
+    commands.spawn([&registry, spawn, side](engine::ecs::Entity entity) {
+        attachMissile(registry, entity, spawn, side);
+    });
 }
 
 } // namespace
@@ -90,11 +131,57 @@ bool spawnMissile(engine::ecs::Registry &registry,
                            shipPosition.value + engine::core::Vec2{reach, 0.0F},
                            {context.rules.missileSpeed, 0.0F}};
 
-    context.events.emplace_back(spawn);
-    commands.spawn([&registry, spawn](engine::ecs::Entity entity) {
-        attachMissile(registry, entity, spawn);
-    });
+    recordMissile(registry, commands, context, spawn, TeamSide::PLAYERS);
     return true;
+}
+
+bool spawnEnemy(engine::ecs::Registry &registry,
+                engine::ecs::CommandBuffer &commands, GameContext &context)
+{
+    const auto netId = context.netIds.allocate();
+
+    if (!netId) {
+        return false;
+    }
+    const SpawnEvent spawn = makeEnemySpawn(context, *netId);
+    const float fireInterval = context.rules.enemyFireInterval;
+
+    context.events.emplace_back(spawn);
+    commands.spawn(
+        [&registry, spawn, fireInterval](engine::ecs::Entity entity) {
+            attachEnemy(registry, entity, spawn, fireInterval);
+        });
+    return true;
+}
+
+bool spawnEnemyMissile(engine::ecs::Registry &registry,
+                       engine::ecs::CommandBuffer &commands,
+                       GameContext &context, const Position &enemyPosition)
+{
+    const auto netId = context.netIds.allocate();
+
+    if (!netId) {
+        return false;
+    }
+    const float reach = (ENEMY_WIDTH + MISSILE_WIDTH) / 2.0F;
+    const SpawnEvent spawn{*netId,
+                           EntityKind::BYDOS_MISSILE,
+                           0,
+                           NO_PLAYER,
+                           enemyPosition.value -
+                               engine::core::Vec2{reach, 0.0F},
+                           {-context.rules.enemyMissileSpeed, 0.0F}};
+
+    recordMissile(registry, commands, context, spawn, TeamSide::ENEMIES);
+    return true;
+}
+
+bool hasPlayers(const engine::ecs::Registry &registry)
+{
+    const auto players =
+        engine::ecs::makeIndexedZipper(registry.getComponents<PlayerControl>());
+
+    return players.begin() != players.end();
 }
 
 void announceDestroy(GameContext &context, std::uint16_t netId,

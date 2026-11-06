@@ -55,6 +55,21 @@ struct GameRules {
     /** @brief Time between two shots of a ship, in seconds. */
     float fireInterval = 0.25F;
 
+    /** @brief Seconds between two enemies appearing. */
+    float enemySpawnInterval = 1.5F;
+
+    /** @brief Speed of an enemy at level 1, in pixels per second. */
+    float enemySpeed = 150.0F;
+
+    /** @brief Time between two shots of an enemy, in seconds. */
+    float enemyFireInterval = 2.0F;
+
+    /** @brief Speed of an enemy missile, in pixels per second. */
+    float enemyMissileSpeed = 300.0F;
+
+    /** @brief Enemies to create to reach the next level, 0 for never. */
+    std::uint32_t enemiesPerLevel = 10;
+
     /** @brief Number of player slots, from 0 to maxPlayers - 1. */
     std::uint8_t maxPlayers = 4;
 
