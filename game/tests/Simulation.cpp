@@ -64,8 +64,7 @@ TEST_CASE("an empty world has no events, states or spawns",
     REQUIRE(simulation.currentWorld().empty());
 }
 
-TEST_CASE("removing or driving an unknown player is safe",
-          "[game][simulation]")
+TEST_CASE("removing or driving an unknown player is safe", "[game][simulation]")
 {
     Simulation simulation(GameRules{}, SEED);
 
@@ -76,8 +75,7 @@ TEST_CASE("removing or driving an unknown player is safe",
     REQUIRE(simulation.tick() == 1);
 }
 
-TEST_CASE("a simulation can be moved and keeps its state",
-          "[game][simulation]")
+TEST_CASE("a simulation can be moved and keeps its state", "[game][simulation]")
 {
     Simulation first(GameRules{}, SEED);
 
