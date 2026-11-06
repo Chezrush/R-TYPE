@@ -9,6 +9,7 @@
 # client ids. The server links it and drives it one fixed tick at a time.
 add_library(rtype_game STATIC
     src/Components.cpp
+    src/NetIdAllocator.cpp
     src/Simulation.cpp)
 add_library(rtype::game ALIAS rtype_game)
 
@@ -20,6 +21,7 @@ target_link_libraries(rtype_game
 
 rtype_add_catch_test(rtype_game_tests
     tests/Components.cpp
+    tests/NetIdAllocator.cpp
     tests/Simulation.cpp)
 if(RTYPE_BUILD_TESTS)
     target_link_libraries(rtype_game_tests PRIVATE rtype::game)
