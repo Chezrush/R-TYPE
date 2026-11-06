@@ -97,6 +97,13 @@ bool spawnMissile(engine::ecs::Registry &registry,
     return true;
 }
 
+void announceDestroy(GameContext &context, std::uint16_t netId,
+                     DestroyReason reason, std::uint8_t killer)
+{
+    context.netIds.release(netId);
+    context.events.emplace_back(DestroyEvent{netId, reason, killer});
+}
+
 void destroyEntity(engine::ecs::Registry &registry, GameContext &context,
                    engine::ecs::Entity entity, DestroyReason reason,
                    std::uint8_t killer)
@@ -104,8 +111,7 @@ void destroyEntity(engine::ecs::Registry &registry, GameContext &context,
     const NetId *netId = registry.getComponents<NetId>().get(entity);
 
     if (netId != nullptr) {
-        context.netIds.release(netId->value);
-        context.events.emplace_back(DestroyEvent{netId->value, reason, killer});
+        announceDestroy(context, netId->value, reason, killer);
     }
     registry.killEntity(entity);
 }

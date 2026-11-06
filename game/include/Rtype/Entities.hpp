@@ -47,6 +47,15 @@ bool spawnMissile(engine::ecs::Registry &registry,
                   const Position &shipPosition, std::uint8_t owner);
 
 /**
+ * @brief Frees a net_id and emits the DestroyEvent of its entity.
+ *
+ * It does not touch the registry: a system that iterates over the components
+ * calls it, then records the kill in its command buffer.
+ */
+void announceDestroy(GameContext &context, std::uint16_t netId,
+                     DestroyReason reason, std::uint8_t killer);
+
+/**
  * @brief Destroys an entity, frees its net_id and emits a DestroyEvent.
  *
  * A stale handle does nothing.

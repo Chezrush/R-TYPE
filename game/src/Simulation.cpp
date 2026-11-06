@@ -16,6 +16,7 @@
 #include "Rtype/Components/Components.hpp"
 #include "Rtype/Entities.hpp"
 #include "Rtype/GameContext.hpp"
+#include "Rtype/Systems/BoundsSystem.hpp"
 #include "Rtype/Systems/InputSystem.hpp"
 #include "Rtype/Systems/MovementSystem.hpp"
 
@@ -43,6 +44,7 @@ Simulation::Simulation(const GameRules &rules, std::uint32_t seed)
     registerComponents(world.registry);
     addInputSystem(world.scheduler, world.registry, world.context);
     addMovementSystems(world.scheduler, world.context.rules);
+    addBoundsSystem(world.scheduler, world.context);
 }
 
 Simulation::~Simulation() = default;
