@@ -116,9 +116,11 @@ bool hasDisplay()
 
 std::filesystem::path findSystemFont()
 {
-    const std::array<std::filesystem::path, 3> candidates{
+    const std::array<std::filesystem::path, 4> candidates{
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans.ttf", "C:/Windows/Fonts/arial.ttf"};
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "C:/Windows/Fonts/arial.ttf"};
 
     for (const auto &candidate : candidates) {
         if (std::filesystem::exists(candidate))
