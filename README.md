@@ -19,7 +19,7 @@ Dependencies (Asio, SFML) are declared in `vcpkg.json` and fetched automatically
 time. Nothing needs to be installed system-wide besides the compiler and the usual graphics
 libraries (OpenGL / X11 on Linux).
 
-Supported platforms: Linux (client and server). Windows is a target (cross-play), see
+Supported platforms: Linux and macOS (client and server). Windows is a target (cross-play), see
 [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
 ## Build

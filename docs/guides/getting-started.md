@@ -11,6 +11,11 @@ git clone https://github.com/microsoft/vcpkg ~/vcpkg
 export VCPKG_ROOT=~/vcpkg
 ```
 
+- macOS: install the Xcode command line tools (`xcode-select --install`), then
+  `brew install cmake ninja pkg-config python@3.12`. vcpkg needs Python 3.10 or newer to build
+  some dependencies, and the system Python of macOS is older: put the Homebrew one first in your
+  `PATH` (`export PATH="$(brew --prefix python@3.12)/libexec/bin:$PATH"`). Nothing else is needed,
+  OpenGL and the windowing system are provided by macOS.
 - Linux only: the development packages SFML needs to open a window (X11, OpenGL, udev,
   FreeType...). The vcpkg output tells you which ones are missing.
 
