@@ -80,12 +80,14 @@ public:
         for (const std::string &datagram : receiveAll()) {
             handle(datagram);
         }
+        keepAlive();
     }
 
     void send(const std::string &datagram)
     {
         std::error_code error;
 
+        _lastSent = Clock::now();
         _socket.send_to(asio::buffer(datagram), _server, 0, error);
     }
 
@@ -112,6 +114,15 @@ public:
     }
 
 private:
+    void keepAlive()
+    {
+        const auto now = Clock::now();
+
+        if (_connection && now - _lastSent >= 50ms) {
+            send(_connection->buildDatagram(now));
+        }
+    }
+
     std::vector<std::string> receiveAll()
     {
         std::vector<std::string> datagrams;
@@ -159,6 +170,7 @@ private:
     std::unique_ptr<Connection> _connection;
     std::vector<Message> _reliable;
     bool _gotGoodbye = false;
+    Clock::time_point _lastSent{};
 };
 
 bool receivedPlayerEvent(const TestPeer &peer, const Message &expected)
