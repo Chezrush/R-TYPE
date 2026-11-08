@@ -20,6 +20,7 @@ add_library(rtype_protocol STATIC
     src/SipHash.cpp
     src/CookieFactory.cpp
     src/RateLimiter.cpp
+    src/Connection.cpp
     src/PacketBuilder.cpp
     src/PacketReader.cpp
 )

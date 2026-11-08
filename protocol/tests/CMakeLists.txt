@@ -92,3 +92,14 @@ target_link_libraries(security_tests
 )
 
 set_tests_properties(security_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(connection_tests
+    ConnectionTests.cpp
+)
+
+target_link_libraries(connection_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(connection_tests PROPERTIES TIMEOUT 20)
