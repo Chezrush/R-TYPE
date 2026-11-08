@@ -38,20 +38,26 @@ void testSimulationRun()
     config.simulationHz = 100;
 
     Server server(config);
+    const auto begin = std::chrono::steady_clock::now();
 
     CHECK(server.start() == true);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
     const auto ticks = server.tickCount();
+    const std::chrono::duration<double> elapsed =
+        std::chrono::steady_clock::now() - begin;
+    const double expected = elapsed.count() * config.simulationHz;
 
     /*
-     * Allow scheduling jitter, but ensure the simulation has clearly run
-     * independently from any network client.
+     * The simulation catches up after a stall, so the number of ticks
+     * follows the time really elapsed, not the requested sleep. A loaded
+     * machine can sleep much longer than 250 ms. Allow scheduling jitter,
+     * but ensure the simulation has clearly run independently from any
+     * network client.
      */
-    CHECK(ticks >= 15);
-    CHECK(ticks <= 35);
-
+    CHECK(ticks >= expected * 0.5);
+    CHECK(ticks <= expected * 1.2 + 2);
     server.shutdown();
 }
 
