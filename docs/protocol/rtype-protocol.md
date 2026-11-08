@@ -129,7 +129,7 @@ Sender:
   `max(2 × RTT, 100 ms)`, or when three newer datagrams have been acknowledged.
 - At most **128** reliable records may be outstanding (not acknowledged). Beyond that, new ones
   wait in a queue. If the queue exceeds **1024** records the peer cannot keep up and the
-  connection is closed with `goodbye` reason `OVERFLOW`.
+  connection is closed with `goodbye` reason `QUEUE_OVERFLOW`.
 
 Receiver (`next` is the next expected `rel_id`, initially 0):
 
@@ -204,7 +204,7 @@ Enumerations used in connection messages (open sets, section 12):
 | 1 | `TIMEOUT`, the peer was silent too long |
 | 2 | `SHUTDOWN`, the server stops |
 | 3 | `PROTOCOL`, too many invalid datagrams |
-| 4 | `OVERFLOW`, the reliable queue is full |
+| 4 | `QUEUE_OVERFLOW`, the reliable queue is full |
 
 ### 6.2 Input and snapshot
 
@@ -301,7 +301,7 @@ sequenceDiagram
    at most 64 entries). The cookie is valid for at least 5 s and only for the address it was
    sent to.
 3. The client repeats `hello` with the cookie. If the cookie is valid, the server checks the
-   name and the free slots, creates the connection, picks a **random non-zero** `session`
+   name (it MUST NOT be empty, otherwise `INVALID_NAME`) and the free slots, creates the connection, picks a **random non-zero** `session`
    and sends `welcome`, followed by the reliable `spawn` and `player_joined` records of the
    current world. The other clients receive `spawn` and `player_joined` for the new player.
 4. If the server cannot accept the client it answers `reject` instead (`SERVER_FULL`,
@@ -490,3 +490,14 @@ valid example, every single-bit mutation of every valid example, `seq` and `rel_
 duplicated, reordered and too old datagrams, a reliable stream with 30 % loss delivered
 exactly once and in order, and a handshake with a lost `challenge`, `welcome` and `hello`.
 A new client or server can be checked with the hexadecimal examples above.
+
+The reference tests live in `protocol/tests/`: `ConformanceTests` (random datagrams, truncations,
+single-bit mutations, size and record limits), `ReceiveWindowTests`, `ReliableChannelTests` (30 %
+loss and 10 % duplication, wrap-around), `ConnectionTests` (two peers over a lossy, reordering
+link), `HandshakeTests` and `SecurityTests` (SipHash reference vectors, cookies, rate limiter).
+`server/tests/NetworkTests` runs the whole stack over real UDP sockets on the loopback.
+
+## 15. Reference implementation
+
+See [Protocol implementation](implementation.md) for the mapping between the sections of this
+document and the code.

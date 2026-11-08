@@ -26,7 +26,9 @@ nav:
       - ECS: architecture/ecs.md
       - Scenes and state machine: architecture/scenes.md
       - UI and layout system: architecture/ui.md
-  - Protocol: protocol/rtype-protocol.md
+  - Protocol:
+      - RFC: protocol/rtype-protocol.md
+      - Implementation: protocol/implementation.md
   - Design decisions: decisions.md
   - Comparative study: comparative-study.md
   - Accessibility: accessibility.md
