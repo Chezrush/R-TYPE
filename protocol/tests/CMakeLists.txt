@@ -114,3 +114,14 @@ target_link_libraries(handshake_tests
 )
 
 set_tests_properties(handshake_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(conformance_tests
+    ConformanceTests.cpp
+)
+
+target_link_libraries(conformance_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(conformance_tests PROPERTIES TIMEOUT 60)
