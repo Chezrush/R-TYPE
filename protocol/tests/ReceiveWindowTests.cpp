@@ -122,7 +122,7 @@ void testRttFirstSampleThenSmoothing()
     RttEstimator rtt;
 
     CHECK(!rtt.hasSample());
-    CHECK(rtt.retransmissionTimeout() == 200ms);
+    CHECK(rtt.retransmissionTimeout() == 1s);
     rtt.addSample(80ms);
     CHECK(rtt.smoothed() == 80ms);
     rtt.addSample(160ms);
@@ -140,6 +140,14 @@ void testRetransmissionTimeoutHasAFloor()
     CHECK(rtt.smoothed() == 5ms);
 }
 
+void testRetransmissionTimeoutHasACeiling()
+{
+    RttEstimator rtt;
+
+    rtt.addSample(5s);
+    CHECK(rtt.retransmissionTimeout() == 3s);
+}
+
 int main()
 {
     testFirstDatagramFixesTheWindow();
@@ -152,5 +160,6 @@ int main()
     testEveryDatagramIsDeliveredOnceUnderDuplication();
     testRttFirstSampleThenSmoothing();
     testRetransmissionTimeoutHasAFloor();
+    testRetransmissionTimeoutHasACeiling();
     return TEST_RESULT();
 }

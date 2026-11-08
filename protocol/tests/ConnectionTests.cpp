@@ -213,7 +213,60 @@ void testDueReliableFollowsTheTimeout()
     CHECK(connection.hasDueReliable(now));
     static_cast<void>(connection.buildDatagram(now));
     CHECK(!connection.hasDueReliable(now + 50ms));
-    CHECK(connection.hasDueReliable(now + 250ms));
+    CHECK(!connection.hasDueReliable(now + 250ms));
+    CHECK(connection.hasDueReliable(now + 1050ms));
+}
+
+bool anyDueBefore(const Connection &connection, TimePoint start,
+                  std::chrono::milliseconds limit)
+{
+    for (auto step = 20ms; step < limit; step += 20ms) {
+        if (connection.hasDueReliable(start + step)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void testNoRetransmissionBeforeTheFirstSampleOnASlowLink()
+{
+    Connection server(SESSION);
+    Connection client(SESSION);
+    const TimePoint start = Clock::now();
+
+    server.queueReliable(GameState{1, 1});
+    const std::string packet = server.buildDatagram(start);
+    CHECK(!anyDueBefore(server, start, 300ms));
+    static_cast<void>(client.receive(packet, start + 150ms));
+    server.receive(client.buildDatagram(start + 150ms), start + 300ms);
+    CHECK(server.pendingReliable() == 0);
+    CHECK(server.rtt().smoothed() == 300ms);
+}
+
+void testLostRecordIsSentAgainAfterTheInitialTimeout()
+{
+    Connection server(SESSION);
+    const TimePoint start = Clock::now();
+
+    server.queueReliable(GameState{1, 1});
+    static_cast<void>(server.buildDatagram(start));
+    CHECK(!server.hasDueReliable(start + 900ms));
+    CHECK(server.hasDueReliable(start + 1100ms));
+}
+
+void testTimeoutAdaptsDownAfterSamples()
+{
+    Connection server(SESSION);
+    Connection client(SESSION);
+    const TimePoint start = Clock::now();
+
+    server.queueReliable(GameState{1, 1});
+    static_cast<void>(client.receive(server.buildDatagram(start), start));
+    server.receive(client.buildDatagram(start + 20ms), start + 40ms);
+    server.queueReliable(GameState{2, 2});
+    static_cast<void>(server.buildDatagram(start + 1s));
+    CHECK(!server.hasDueReliable(start + 1s + 50ms));
+    CHECK(server.hasDueReliable(start + 1s + 150ms));
 }
 
 struct Link {
@@ -306,6 +359,9 @@ int main()
     testUnknownReliableTypeKeepsTheOrder();
     testFullDatagramStaysUnderTheLimit();
     testDueReliableFollowsTheTimeout();
+    testNoRetransmissionBeforeTheFirstSampleOnASlowLink();
+    testLostRecordIsSentAgainAfterTheInitialTimeout();
+    testTimeoutAdaptsDownAfterSamples();
     testBothDirectionsSurviveALossyReorderingLink();
     return TEST_RESULT();
 }
