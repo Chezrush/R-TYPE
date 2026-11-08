@@ -8,6 +8,7 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
+#include <cstdlib>
 #include <iostream>
 #include <thread>
 
@@ -31,12 +32,23 @@ void waitForShutdown()
     }
 }
 
-int main()
+int main(int argc, char **argv)
 {
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
 
-    rtype::server::Server server;
+    rtype::server::ServerConfig config;
+
+    if (argc > 1) {
+        const int port = std::atoi(argv[1]);
+
+        if (port < 1 || port > 65535) {
+            std::cerr << "Usage: r-type_server [PORT]\n";
+            return 1;
+        }
+        config.port = static_cast<std::uint16_t>(port);
+    }
+    rtype::server::Server server(config);
 
     if (!server.start()) {
         std::cerr << "Failed to start server\n";

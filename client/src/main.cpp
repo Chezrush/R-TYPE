@@ -34,15 +34,28 @@ struct Options {
 
 void printUsage()
 {
-    std::cout << "Usage: r-type_client [--host HOST] [--port PORT] "
-                 "[--name NAME]\n"
+    std::cout << "Usage: r-type_client [HOST [PORT]] [--host HOST] "
+                 "[--port PORT] [--name NAME]\n"
                  "  Defaults: 127.0.0.1, 4242, Player. Arrow keys move, space "
                  "shoots,\n  Escape quits. Keys and display can be changed in "
                  "the settings file.\n";
 }
 
+bool parsePort(const std::string &text, std::uint16_t &port)
+{
+    const int value = std::atoi(text.c_str());
+
+    if (value < 1 || value > 65535) {
+        return false;
+    }
+    port = static_cast<std::uint16_t>(value);
+    return true;
+}
+
 bool parseOptions(int argc, char **argv, Options &options)
 {
+    int positional = 0;
+
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         const bool hasValue = i + 1 < argc;
@@ -54,12 +67,17 @@ bool parseOptions(int argc, char **argv, Options &options)
         } else if (arg == "--name" && hasValue) {
             options.name = argv[++i];
         } else if (arg == "--port" && hasValue) {
-            const int port = std::atoi(argv[++i]);
-
-            if (port < 1 || port > 65535) {
+            if (!parsePort(argv[++i], options.port)) {
                 return false;
             }
-            options.port = static_cast<std::uint16_t>(port);
+        } else if (arg.rfind("--", 0) != 0 && positional < 2) {
+            const bool isPort = positional == 1;
+
+            if (isPort && !parsePort(arg, options.port)) {
+                return false;
+            }
+            options.host = isPort ? options.host : arg;
+            ++positional;
         } else {
             return false;
         }
@@ -98,28 +116,41 @@ std::string findAssets(const char *program)
     return "assets";
 }
 
+bool held(const client::render::GameWindow &window,
+          const client::settings::KeyBindings &bindings, GameAction action,
+          client::settings::ScanCode alternative)
+{
+    return window.isKeyDown(
+               client::settings::bindingOf(bindings, action).key) ||
+           window.isKeyDown(alternative);
+}
+
 std::uint8_t readKeys(const client::render::GameWindow &window,
                       const client::settings::ClientSettings &settings)
 {
-    using client::settings::bindingOf;
+    constexpr client::settings::ScanCode KEY_W = 0x1A;
+    constexpr client::settings::ScanCode KEY_A = 0x04;
+    constexpr client::settings::ScanCode KEY_S = 0x16;
+    constexpr client::settings::ScanCode KEY_D = 0x07;
     const auto &bindings = settings.bindings;
     std::uint8_t keys = 0;
 
-    keys |= window.isKeyDown(bindingOf(bindings, GameAction::MOVE_UP).key)
+    keys |= held(window, bindings, GameAction::MOVE_UP, KEY_W)
                 ? rtype::protocol::KEY_UP
                 : 0;
-    keys |= window.isKeyDown(bindingOf(bindings, GameAction::MOVE_DOWN).key)
+    keys |= held(window, bindings, GameAction::MOVE_DOWN, KEY_S)
                 ? rtype::protocol::KEY_DOWN
                 : 0;
-    keys |= window.isKeyDown(bindingOf(bindings, GameAction::MOVE_LEFT).key)
+    keys |= held(window, bindings, GameAction::MOVE_LEFT, KEY_A)
                 ? rtype::protocol::KEY_LEFT
                 : 0;
-    keys |= window.isKeyDown(bindingOf(bindings, GameAction::MOVE_RIGHT).key)
+    keys |= held(window, bindings, GameAction::MOVE_RIGHT, KEY_D)
                 ? rtype::protocol::KEY_RIGHT
                 : 0;
     const bool shoot =
         bindings.autoFire ||
-        window.isKeyDown(bindingOf(bindings, GameAction::SHOOT).key);
+        window.isKeyDown(
+            client::settings::bindingOf(bindings, GameAction::SHOOT).key);
 
     return keys | (shoot ? rtype::protocol::KEY_SHOOT : 0);
 }
