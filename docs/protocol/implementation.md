@@ -74,3 +74,5 @@ overtaken by three acknowledged datagrams). The result never exceeds 1200 bytes 
   already carries any record the game queues, and `player_joined` and `player_left` are sent.
 - Client prediction and interpolation (section 9.3) are client work and are not in the library.
 - Confidentiality and integrity are out of scope of version 1 (section 11).
+
+Measured bandwidth and reliable-channel behaviour: [Network measurements](measurements.md).

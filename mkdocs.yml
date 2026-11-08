@@ -30,6 +30,7 @@ nav:
   - Protocol:
       - RFC: protocol/rtype-protocol.md
       - Implementation: protocol/implementation.md
+      - Measurements: protocol/measurements.md
   - Design decisions: decisions.md
   - Comparative study: comparative-study.md
   - Accessibility: accessibility.md

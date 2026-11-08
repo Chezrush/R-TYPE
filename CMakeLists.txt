@@ -75,6 +75,7 @@ add_subdirectory(game)
 
 if(RTYPE_BUILD_SERVER)
     add_subdirectory(server)
+    add_subdirectory(tools)
 endif()
 if(RTYPE_BUILD_CLIENT)
     add_subdirectory(client)
