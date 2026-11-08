@@ -218,8 +218,7 @@ void testOnlyASingleHelloWithNoSessionIsAccepted()
     PacketBuilder::writeHeader(withSession, header);
     MessageCodec::appendMessage(withSession, Hello{0, "Bob"});
     CHECK(ask(server, twoRecords, start).kind == ServerHandshake::Kind::DROP);
-    CHECK(ask(server, withSession, start).kind ==
-          ServerHandshake::Kind::DROP);
+    CHECK(ask(server, withSession, start).kind == ServerHandshake::Kind::DROP);
     CHECK(ask(server, "junk", start).kind == ServerHandshake::Kind::DROP);
 }
 
