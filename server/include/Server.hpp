@@ -19,6 +19,7 @@
 #include "ClientActivity.hpp"
 #include "GameBridge.hpp"
 #include "Gateway.hpp"
+#include "NetStats.hpp"
 #include "PlayerSessions.hpp"
 #include "ServerMessage.hpp"
 
@@ -53,6 +54,13 @@ struct ServerConfig {
      * @brief A client silent for longer than this is disconnected.
      */
     std::chrono::milliseconds inactivityTimeout{5000};
+
+    /**
+     * @brief Prints a network statistics line every statsInterval.
+     */
+    bool showStats = false;
+
+    std::chrono::seconds statsInterval{5};
 };
 
 class Server {
@@ -131,6 +139,7 @@ private:
                       protocol::DisconnectReason reason);
     void sendOutgoingMessages();
     void disconnectInactiveClients();
+    void printStats();
     void requestDisconnect(std::uint32_t clientId,
                            protocol::DisconnectReason reason);
     void handleGoodbye(std::uint32_t clientId);
@@ -142,6 +151,8 @@ private:
     std::atomic<std::uint64_t> _tickCount{0};
     std::atomic<std::uint64_t> _rejectedPackets{0};
     std::atomic<std::size_t> _playerCount{0};
+    NetRateMeter _rateMeter;
+    Clock::time_point _lastStatsLine = Clock::now();
 
     ClientActivity _activity;
     PlayerSessions _players;

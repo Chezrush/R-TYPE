@@ -23,7 +23,8 @@ public:
     [[nodiscard]] Duration smoothed() const noexcept;
 
     /**
-     * @brief Delay before a datagram is considered lost: max(2 srtt, 100 ms).
+     * @brief Delay before a datagram is considered lost: 1 s before
+     * the first sample, then 2 srtt clamped to [100 ms, 3 s].
      */
     [[nodiscard]] Duration retransmissionTimeout() const noexcept;
 

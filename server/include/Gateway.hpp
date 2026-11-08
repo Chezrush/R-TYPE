@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "Connection.hpp"
+#include "NetStats.hpp"
 #include "RateLimiter.hpp"
 #include "ServerHandshake.hpp"
 #include "ServerMessage.hpp"
@@ -39,6 +40,25 @@ struct GatewayConfig {
     std::uint16_t worldHeight = 720;
     std::uint16_t shipSpeed = 300;
     protocol::Duration keepalive = std::chrono::seconds(1);
+};
+
+/**
+ * @brief Traffic and latency of one client.
+ */
+struct ClientStats {
+    std::uint32_t clientId = 0;
+    NetCounters traffic;
+    std::chrono::milliseconds rtt{0};
+};
+
+/**
+ * @brief Copy of the network statistics at one instant.
+ */
+struct GatewayStats {
+    NetCounters totals;
+    std::vector<ClientStats> clients;
+
+    [[nodiscard]] std::chrono::milliseconds averageRtt() const;
 };
 
 /**
@@ -95,6 +115,13 @@ public:
 
     [[nodiscard]] std::size_t clientCount() const;
 
+    /**
+     * @brief Returns a consistent copy of the counters.
+     *
+     * Totals keep growing after a client leaves, per-client ones do not.
+     */
+    [[nodiscard]] GatewayStats stats() const;
+
 private:
     struct Remote {
         std::uint32_t clientId = 0;
@@ -107,6 +134,7 @@ private:
         TimePoint invalidSince;
         unsigned invalidCount = 0;
         bool ackDue = false;
+        NetCounters traffic;
         std::vector<protocol::Message> unreliable;
     };
 
@@ -127,6 +155,8 @@ private:
     void countInvalid(Remote &remote, TimePoint now);
     void close(Remote &remote, protocol::DisconnectReason reason, TimePoint now,
                bool notifySimulation);
+    void transmit(const std::string &address, const std::string &datagram,
+                  Remote *remote);
     void sendNow(Remote &remote, TimePoint now);
     [[nodiscard]] static std::string
     goodbyeDatagram(Remote &remote, protocol::DisconnectReason reason,
@@ -141,6 +171,7 @@ private:
     protocol::ServerHandshake _handshake;
     protocol::RateLimiter _datagramLimiter;
     mutable std::mutex _mutex;
+    NetCounters _totals;
     std::uint32_t _nextClientId = 1;
     std::unordered_map<std::string, std::unique_ptr<Remote>> _byAddress;
     std::unordered_map<std::uint32_t, Remote *> _byId;

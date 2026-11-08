@@ -40,8 +40,22 @@ repo. *To complete:* pin a `builtin-baseline` once the team agrees on a vcpkg co
 | Threading | one thread per client, vs one I/O thread + game thread with queues | I/O thread + bounded queues: simple, no locks in game code |
 | Encoding | text (JSON) vs **hand-written binary** | binary: small, fixed-size, trivially bounds-checkable |
 
-*To complete:* measured bandwidth per player at 60 Hz, and the same measurement under
+*To complete:* measured bandwidth per player, and the same measurement under
 `tools/netem.sh loss|lag|slow`.
+
+### Part 2 track: Advanced Networking
+
+| Topic | Options | Decision and status |
+| --- | --- | --- |
+| Reliability over UDP | ENet / yojimbo (hide the mechanism) vs **own layer** (`seq`, `ack` + 32-bit mask, reliable ordered records) | Own layer, so that we can explain and measure it. **Done** |
+| Data size | `float` / `u32` vs **quantization** (fixed-point `i16`, `u16` ids) | Quantized, snapshots at 20 Hz instead of 60 Hz. **Done** |
+| Latency hiding | lockstep, rollback vs **prediction + reconciliation** (`input_ack`) and **interpolation** of other entities | Prediction, reconciliation and interpolation. **Done**, the server stays authoritative |
+| Payload size | **compression** (LZ4, zlib), delta snapshots | **Not done**: absolute snapshots repair themselves after a loss, and the size target is met without it |
+| Several games | **lobbies / rooms**, accounts, chat | **Not done**: one game per server |
+| Fairness | **lag compensation** on the server | **Not done** |
+
+Measurements of bandwidth and of responsiveness under degraded networks are still to be
+published.
 
 ## 5. Algorithms and data structures
 
@@ -59,7 +73,9 @@ repo. *To complete:* pin a `builtin-baseline` once the team agrees on a vcpkg co
 Part 1 keeps everything in memory: the world is rebuilt at each start and nothing needs to
 survive a restart. If Part 2 adds accounts or a scoreboard we will compare SQLite (embedded,
 transactional, zero-ops) with flat files (simple but no concurrency control) and a client-
-server database (overkill for this scale). *To complete if Part 2 needs persistence.*
+server database (overkill for this scale). The chosen Part 2 track (Advanced Networking) does
+not include accounts or a scoreboard yet, so nothing is persisted and this comparison stays
+open.
 
 ## 7. Security
 
