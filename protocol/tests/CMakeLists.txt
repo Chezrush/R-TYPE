@@ -81,3 +81,14 @@ target_link_libraries(reliable_channel_tests
 )
 
 set_tests_properties(reliable_channel_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(security_tests
+    SecurityTests.cpp
+)
+
+target_link_libraries(security_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(security_tests PROPERTIES TIMEOUT 10)

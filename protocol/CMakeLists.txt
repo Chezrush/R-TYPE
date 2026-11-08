@@ -17,6 +17,9 @@ add_library(rtype_protocol STATIC
     src/RttEstimator.cpp
     src/ReliableReceiver.cpp
     src/ReliableSender.cpp
+    src/SipHash.cpp
+    src/CookieFactory.cpp
+    src/RateLimiter.cpp
     src/PacketBuilder.cpp
     src/PacketReader.cpp
 )
