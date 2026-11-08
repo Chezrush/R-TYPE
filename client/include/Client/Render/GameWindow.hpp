@@ -8,10 +8,13 @@
 #ifndef GAMEWINDOW_HPP_
 #define GAMEWINDOW_HPP_
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 
+#include "Client/Hud/HudState.hpp"
 #include "Client/Scenes/Starfield.hpp"
 #include "Client/Settings/ClientSettings.hpp"
 #include "Client/Settings/KeyBindings.hpp"
@@ -30,6 +33,8 @@ struct Frame {
     int rttMs = 0;
     settings::ColorPalette palette = settings::ColorPalette::NORMAL;
     bool highContrast = false;
+    const hud::HudState *hud = nullptr;
+    std::array<std::string, 4> cues{};
 };
 
 /**

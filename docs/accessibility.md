@@ -23,7 +23,7 @@ implemented yet and must be tracked as issues.
 | Players also differ by **sprite** (one ship row per player) and by a **number in the score list** | done |
 | Distinct marker **shapes** per player: circle, triangle, square, cross (slots 1 to 4) | done |
 | Protanopia, deuteranopia and tritanopia palettes for the UI | done |
-| HUD indicator for sounds: a label on the side they come from | indicator done, sound events to come |
+| HUD indicator for sounds: a label on the side they come from | done: shots, enemy fire and explosions show a label on the left or right side (HudFeed); top and bottom sides unused, drawn with the SFML text helper |
 | Separate volumes for music and effects | settings done, audio to come |
 | Scalable UI (100 to 150 %), high contrast: plates behind text, thick outlines | done |
 

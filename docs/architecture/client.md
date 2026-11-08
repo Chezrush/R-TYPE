@@ -27,6 +27,17 @@ tick. Each key sample is numbered and kept. A snapshot gives the authoritative p
 from the server position and replays the others. When the server disagrees (a wall, a hit) the
 ship snaps to the server position, so the server always has the last word.
 
+## HUD feed
+
+`HudFeed` (`client/src/Hud/HudFeed.cpp`, SFML-free) sits between the loop and the HUD models. The
+loop gives it each server message; it validates the kinds and phases, tracks the last known x of
+each entity and publishes the events of the `EventBus`. `HudController` then holds the score,
+the lives (one lost when our ship is destroyed with reason KILLED), the stage and the beam charge,
+and `VisualCueIndicator` turns shots of other players, enemy fire and kills into a label on the
+left or right side of the screen. `GameWindow` draws these values (7-digit score, lives, stage and
+the cue labels) with its SFML text helper. `HudView`, which needs the ECS UI renderer, and
+`StatsOverlay` are not drawn by the game yet.
+
 ## Accessibility in the game
 
 - Player ships differ by **color and by sprite row**, and by the number shown in the score list
