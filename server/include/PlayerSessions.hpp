@@ -26,18 +26,22 @@ namespace rtype::server {
 class PlayerSessions {
 public:
     /**
-     * @brief Gives a free player slot to a new client.
-     *
-     * @return false if the client already plays or every slot is taken.
+     * @param maxPlayers Number of slots, from 0 to maxPlayers - 1. It is
+     * capped at protocol::MAX_PLAYERS.
      */
-    bool join(std::uint32_t clientId);
+    explicit PlayerSessions(std::uint8_t maxPlayers);
 
     /**
-     * @brief Same as join(), asking for a given slot.
+     * @brief Gives a player slot to a new client.
      *
-     * The first free slot is used instead if the one asked for is taken.
+     * @param wanted Slot asked for, the first free slot is used instead if
+     * it is missing, taken or out of range.
+     * @return The slot of the client, or nothing if the client already
+     * plays or every slot is taken.
      */
-    bool joinAt(std::uint32_t clientId, std::uint8_t slot);
+    std::optional<std::uint8_t>
+    join(std::uint32_t clientId,
+         std::optional<std::uint8_t> wanted = std::nullopt);
 
     /**
      * @brief Removes the player of the client and frees its slot.
@@ -54,7 +58,10 @@ public:
     [[nodiscard]] std::size_t size() const noexcept;
 
 private:
-    [[nodiscard]] std::optional<std::uint8_t> freeIndex() const noexcept;
+    [[nodiscard]] bool isFree(std::uint8_t slot) const noexcept;
+    [[nodiscard]] std::optional<std::uint8_t> firstFreeSlot() const noexcept;
+
+    std::uint8_t _maxPlayers;
 
     /** @brief Player slot index of each playing client. */
     std::unordered_map<std::uint32_t, std::uint8_t> _players;

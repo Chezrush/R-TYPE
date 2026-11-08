@@ -19,6 +19,7 @@
 #include "ClientActivity.hpp"
 #include "Gateway.hpp"
 #include "PlayerSessions.hpp"
+#include "Rtype/Simulation.hpp"
 #include "ServerMessage.hpp"
 
 namespace rtype::server {
@@ -27,9 +28,14 @@ using Udp = asio::ip::udp;
 
 struct ServerConfig {
     /**
-     * @brief Simulation frequency, in ticks per second.
+     * @brief Simulation frequency, in ticks per second, from 1 to 240.
      */
     std::uint32_t simulationHz = 60;
+
+    /**
+     * @brief Seed of the game: the same seed gives the same enemy waves.
+     */
+    std::uint32_t seed = 0;
 
     /**
      * @brief Maximum simulated time accepted in a single iteration.
@@ -136,6 +142,9 @@ private:
 
     ServerConfig _config;
     std::atomic<bool> _running{false};
+
+    game::Simulation _simulation;
+
     std::atomic<std::uint64_t> _tickCount{0};
     std::atomic<std::uint64_t> _rejectedPackets{0};
     std::atomic<std::size_t> _playerCount{0};
