@@ -37,6 +37,7 @@ void WorldState::configure(const proto::Welcome &welcome)
     _rules.worldHeight = static_cast<float>(welcome.worldHeight);
     _rules.shipSpeed = static_cast<float>(welcome.shipSpeed);
     _rules.maxPlayers = welcome.maxPlayers;
+    _lives = _rules.lives;
     _localSlot = welcome.playerIndex;
     _configured = true;
 }
@@ -99,12 +100,28 @@ void WorldState::applySnapshot(const proto::Snapshot &snapshot, double now)
     }
 }
 
+void WorldState::applyDestroy(const proto::Destroy &destroy)
+{
+    const auto found = _entities.find(destroy.netId);
+
+    if (found == _entities.end()) {
+        return;
+    }
+    const bool killed = destroy.reason ==
+                        static_cast<std::uint8_t>(proto::DestroyReason::KILLED);
+
+    if (killed && _configured && isLocalShip(found->second) && _lives > 0) {
+        --_lives;
+    }
+    _entities.erase(found);
+}
+
 void WorldState::apply(const proto::Message &message, double now)
 {
     if (const auto *spawn = std::get_if<proto::Spawn>(&message)) {
         applySpawn(*spawn, now);
     } else if (const auto *destroy = std::get_if<proto::Destroy>(&message)) {
-        _entities.erase(destroy->netId);
+        applyDestroy(*destroy);
     } else if (const auto *snapshot = std::get_if<proto::Snapshot>(&message)) {
         applySnapshot(*snapshot, now);
     } else if (const auto *joined =
@@ -230,6 +247,11 @@ WorldState::players() const noexcept
 std::uint8_t WorldState::phase() const noexcept
 {
     return _phase;
+}
+
+unsigned WorldState::lives() const noexcept
+{
+    return _lives;
 }
 
 std::uint8_t WorldState::level() const noexcept

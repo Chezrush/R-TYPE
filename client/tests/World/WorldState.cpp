@@ -176,3 +176,36 @@ TEST_CASE("players, scores and the game state are tracked")
     world.apply(proto::PlayerLeft{1, 0}, 0.0);
     CHECK_FALSE(world.players()[1].present);
 }
+
+TEST_CASE("the own ship loses a life when it is killed, not when it expires")
+{
+    WorldState world;
+
+    world.configure(welcome(0));
+    CHECK(world.lives() == world.rules().lives);
+    world.apply(ship(1, 0, 0, 0), 0.0);
+    world.apply(
+        proto::Destroy{
+            1, static_cast<std::uint8_t>(proto::DestroyReason::EXPIRED), 0},
+        0.1);
+    CHECK(world.lives() == world.rules().lives);
+    world.apply(ship(1, 0, 0, 0), 0.2);
+    world.apply(
+        proto::Destroy{
+            1, static_cast<std::uint8_t>(proto::DestroyReason::KILLED), 0},
+        0.3);
+    CHECK(world.lives() + 1 == world.rules().lives);
+}
+
+TEST_CASE("the death of another ship does not cost a life")
+{
+    WorldState world;
+
+    world.configure(welcome(0));
+    world.apply(ship(2, 1, 0, 0), 0.0);
+    world.apply(
+        proto::Destroy{
+            2, static_cast<std::uint8_t>(proto::DestroyReason::KILLED), 0},
+        0.1);
+    CHECK(world.lives() == world.rules().lives);
+}

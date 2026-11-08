@@ -29,8 +29,11 @@ ship snaps to the server position, so the server always has the last word.
 
 ## Accessibility in the game
 
-- Player ships differ by **color and by sprite row**, and a marker with the player number above
-  them; the local ship marker has a white outline.
+- Player ships differ by **color and by sprite row**, and by the number shown in the score list
+  (`P1` to `P4`, with a color swatch). A marker sits above each ship in the color of the player and in a shape per slot (circle,
+  triangle, square, cross); the local one has a white outline.
+- The HUD shows score, lives (counted on the client from the kills it is told about), level and
+  ping.
 - Color palettes for protanopia, deuteranopia and tritanopia, and a high contrast option, come from
   the settings (`ClientSettings`).
 - Keys are remappable and use physical positions (same on QWERTY and AZERTY); auto-fire removes the

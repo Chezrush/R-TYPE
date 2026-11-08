@@ -63,6 +63,43 @@ sf::Keyboard::Scancode toSfml(settings::ScanCode key)
     return Scan::Unknown;
 }
 
+std::vector<sf::Vector2f> circlePoints()
+{
+    constexpr std::size_t COUNT = 16;
+    constexpr float PI = 3.14159265F;
+    std::vector<sf::Vector2f> points;
+
+    for (std::size_t i = 0; i < COUNT; ++i) {
+        const float angle =
+            2.0F * PI * static_cast<float>(i) / static_cast<float>(COUNT);
+
+        points.emplace_back(8.0F + 8.0F * std::cos(angle),
+                            8.0F + 8.0F * std::sin(angle));
+    }
+    return points;
+}
+
+std::vector<sf::Vector2f> crossPoints()
+{
+    return {{5.0F, 0.0F},   {11.0F, 0.0F},  {11.0F, 5.0F},  {16.0F, 5.0F},
+            {16.0F, 11.0F}, {11.0F, 11.0F}, {11.0F, 16.0F}, {5.0F, 16.0F},
+            {5.0F, 11.0F},  {0.0F, 11.0F},  {0.0F, 5.0F},   {5.0F, 5.0F}};
+}
+
+std::vector<sf::Vector2f> markerPoints(unsigned slot)
+{
+    switch (slot % 4U) {
+        case 0:
+            return circlePoints();
+        case 1:
+            return {{0.0F, 0.0F}, {16.0F, 0.0F}, {8.0F, 14.0F}};
+        case 2:
+            return {{1.0F, 1.0F}, {15.0F, 1.0F}, {15.0F, 15.0F}, {1.0F, 15.0F}};
+        default:
+            return crossPoints();
+    }
+}
+
 sf::Color toSfml(engine::ecs::UIColor color)
 {
     return {color.r, color.g, color.b, color.a};
@@ -140,7 +177,8 @@ private:
                                   float scale);
     void drawBullet(sf::Vector2f at, bool fromPlayer);
     void drawPlaceholder(sf::Vector2f at, sf::Color color);
-    void drawMarker(sf::Vector2f at, sf::Color color, bool local);
+    void drawMarker(sf::Vector2f at, sf::Color color, bool local,
+                    unsigned slot);
     void drawHud(const Frame &frame, const std::vector<sf::Color> &colors);
     void drawScores(const Frame &frame, const std::vector<sf::Color> &colors);
     void drawText(const std::string &text, sf::Vector2f at, unsigned size);
@@ -290,13 +328,15 @@ void GameWindow::Impl::drawPlaceholder(sf::Vector2f at, sf::Color color)
     _window.draw(box);
 }
 
-void GameWindow::Impl::drawMarker(sf::Vector2f at, sf::Color color, bool local)
+void GameWindow::Impl::drawMarker(sf::Vector2f at, sf::Color color, bool local,
+                                  unsigned slot)
 {
-    sf::ConvexShape marker(3);
+    const std::vector<sf::Vector2f> points = markerPoints(slot);
+    sf::ConvexShape marker(points.size());
 
-    marker.setPoint(0, {0.0F, 0.0F});
-    marker.setPoint(1, {16.0F, 0.0F});
-    marker.setPoint(2, {8.0F, 10.0F});
+    for (std::size_t i = 0; i < points.size(); ++i) {
+        marker.setPoint(i, points[i]);
+    }
     marker.setPosition({at.x + 40.0F, at.y - 16.0F});
     marker.setFillColor(color);
     marker.setOutlineColor(local ? sf::Color::White : sf::Color::Black);
@@ -309,7 +349,7 @@ bool GameWindow::Impl::drawKnown(const world::RenderEntity &entity,
 {
     switch (entity.kind) {
         case KIND_SHIP:
-            drawMarker(at, color, local);
+            drawMarker(at, color, local, entity.owner);
             return drawSprite(
                 _ships, sf::IntRect({66, 17 * (entity.owner % 5)}, {33, 17}),
                 at, SHIP_SCALE);
@@ -363,9 +403,10 @@ void GameWindow::Impl::drawHud(const Frame &frame,
                                const std::vector<sf::Color> &colors)
 {
     drawScores(frame, colors);
-    drawText("Level " + std::to_string(frame.world.level()) + "   " +
+    drawText("Lives " + std::to_string(frame.world.lives()) + "   Level " +
+                 std::to_string(frame.world.level()) + "   " +
                  std::to_string(frame.rttMs) + " ms",
-             {WORLD_WIDTH - 220.0F, 12.0F}, 20);
+             {WORLD_WIDTH - 360.0F, 12.0F}, 20);
     if (!frame.banner.empty()) {
         drawText(frame.banner,
                  {WORLD_WIDTH / 2.0F - 220.0F, WORLD_HEIGHT / 2.0F - 20.0F},

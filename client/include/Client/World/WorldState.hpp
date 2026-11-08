@@ -75,6 +75,11 @@ public:
     players() const noexcept;
     [[nodiscard]] std::uint8_t phase() const noexcept;
     [[nodiscard]] std::uint8_t level() const noexcept;
+
+    /**
+     * @brief Lives left to the own ship: one is lost on each kill.
+     */
+    [[nodiscard]] unsigned lives() const noexcept;
     [[nodiscard]] std::size_t entityCount() const noexcept;
 
 private:
@@ -92,6 +97,7 @@ private:
 
     [[nodiscard]] bool isLocalShip(const Entity &entity) const noexcept;
     void applySpawn(const rtype::protocol::Spawn &spawn, double now);
+    void applyDestroy(const rtype::protocol::Destroy &destroy);
     void applySnapshot(const rtype::protocol::Snapshot &snapshot, double now);
     void reconcile(const engine::core::Vec2 &serverPosition,
                    std::uint16_t inputAck);
@@ -105,6 +111,7 @@ private:
     std::array<PlayerInfo, rtype::protocol::MAX_PLAYERS> _players;
     std::uint8_t _phase = 0;
     std::uint8_t _level = 1;
+    unsigned _lives = 0;
     bool _hasPrediction = false;
     engine::core::Vec2 _predicted;
     std::deque<std::pair<std::uint16_t, std::uint8_t>> _pending;
