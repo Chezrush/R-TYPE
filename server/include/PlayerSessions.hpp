@@ -33,6 +33,13 @@ public:
     bool join(std::uint32_t clientId);
 
     /**
+     * @brief Same as join(), asking for a given slot.
+     *
+     * The first free slot is used instead if the one asked for is taken.
+     */
+    bool joinAt(std::uint32_t clientId, std::uint8_t slot);
+
+    /**
      * @brief Removes the player of the client and frees its slot.
      *
      * Leaving twice is safe: the second call does nothing.

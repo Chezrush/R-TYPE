@@ -161,7 +161,11 @@ void Server::applyMessage(const IncomingMessage &message)
         return;
     }
     if (PacketReader::hasRecord(message.payload, MessageType::HELLO)) {
-        _players.join(message.clientId);
+        if (message.slot) {
+            _players.joinAt(message.clientId, *message.slot);
+        } else {
+            _players.join(message.clientId);
+        }
     }
     /*
      * to do:
