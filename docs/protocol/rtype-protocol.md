@@ -126,7 +126,7 @@ Sender:
 - Each reliable record is kept until a datagram that carried it is acknowledged.
 - A record whose datagram is considered lost SHOULD be sent again, inside any later datagram,
   with the **same** `rel_id`. A datagram is considered lost when it is not acknowledged after
-  `max(2 × RTT, 100 ms)`, or when three newer datagrams have been acknowledged.
+  its timeout, or when three newer datagrams have been acknowledged.
 - At most **128** reliable records may be outstanding (not acknowledged). Beyond that, new ones
   wait in a queue. If the queue exceeds **1024** records the peer cannot keep up and the
   connection is closed with `goodbye` reason `QUEUE_OVERFLOW`.
@@ -147,6 +147,10 @@ consumes its `rel_id` (it is delivered to nobody), which keeps the order intact.
 The sender stores the sending time of each recent `seq`. When one is acknowledged for the first
 time, `RTT = now - sent_time` feeds a smoothed estimate (for example
 `srtt += (rtt - srtt) / 8`). No dedicated ping message exists.
+
+The retransmission timeout is **1 s** until the first sample exists, so that a slow link does
+not trigger needless retransmissions. It is then `2 × srtt`, never below **100 ms** and never
+above **3 s**.
 
 ## 6. Messages
 

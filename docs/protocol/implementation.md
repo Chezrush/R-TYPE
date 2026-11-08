@@ -65,6 +65,7 @@ overtaken by three acknowledged datagrams). The result never exceeds 1200 bytes 
 | Cookie from SipHash-2-4 of the address and a 5 s slot | Table of pending hellos, plain hash, HMAC-SHA256 | No state before the client answers, and a keyed hash nobody can forge; SipHash is short, fast and has public test vectors. HMAC-SHA256 would need a crypto library for no gain here |
 | Sticky-failure `ByteReader` | Exceptions, `std::optional` on every read | A truncated body can never read out of bounds, and the decoder stays `noexcept` and short |
 | Typed `std::variant` messages | One class per message with virtual methods | Closed set, no heap, `std::visit` for encoding, equality for free in tests |
+| Retransmission timeout of 1 s before the first RTT sample, then `2 x srtt` in [100 ms, 3 s] | A fixed 100 ms, full RFC 6298 (`srtt + 4 rttvar`) | A 100 ms start retransmitted needlessly on a 300 ms RTT link; the 1 s start follows RFC 6298 and the simple `2 x srtt` rule is enough for a fixed-rate game stream |
 | `Connection` takes the time as a parameter | Reading the clock inside | Deterministic tests of retransmission and RTT, no sleep |
 | One `Gateway` mutex | Lock-free structures | The network thread is the only hot caller, the others (simulation, tests) call rarely |
 
