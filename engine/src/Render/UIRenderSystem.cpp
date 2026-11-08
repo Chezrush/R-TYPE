@@ -387,6 +387,26 @@ Rect padded(const Rect &bounds) noexcept
             std::max(0.0f, bounds.width - 2 * TEXT_PADDING), bounds.height};
 }
 
+/**
+ * @brief Horizontal offset of the caret before the character at an index.
+ *
+ * The cluster of a shaped glyph is the index of its first character, so the
+ * caret goes where the first glyph at or after the index starts. At the end of
+ * the text it goes after the last glyph. Left-to-right text only.
+ */
+float caretOffset(const sf::Text &text, std::size_t index)
+{
+    const auto &glyphs = text.getShapedGlyphs();
+
+    for (const auto &shaped : glyphs) {
+        if (shaped.cluster >= index)
+            return shaped.position.x;
+    }
+    if (glyphs.empty())
+        return 0.0f;
+    return glyphs.back().position.x + glyphs.back().glyph.advance;
+}
+
 } // namespace
 
 UIRenderSystem::UIRenderSystem(resources::ResourceManager &resources) noexcept
@@ -665,9 +685,8 @@ void UIRenderSystem::drawCaret(sf::RenderTarget &target,
         const sf::Text text(
             *font, sf::String::fromUtf8(input.text.begin(), input.text.end()),
             scaledTextSize(input.style.characterSize));
-        x += text.findCharacterPos(
-                     widgets::characterIndex(input.text, input.caret))
-                 .x;
+        x +=
+            caretOffset(text, widgets::characterIndex(input.text, input.caret));
     }
     drawRect(
         target,

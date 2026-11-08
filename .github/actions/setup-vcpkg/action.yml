@@ -39,7 +39,7 @@ runs:
       run: |
         mkdir -p "${{ github.workspace }}/vcpkg-cache" "${{ github.workspace }}/vcpkg-downloads"
         git init -q "$RUNNER_TEMP/vcpkg"
-        git -C "$RUNNER_TEMP/vcpkg" fetch -q --depth 1 https://github.com/microsoft/vcpkg 3cd21e48a75f67acfef289da52893ce79144aaa1
+        git -C "$RUNNER_TEMP/vcpkg" fetch -q --depth 1 https://github.com/microsoft/vcpkg 054bd01bec7f31492ec9ac063740cc984a0fe59e
         git -C "$RUNNER_TEMP/vcpkg" checkout -q FETCH_HEAD
         "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
         {

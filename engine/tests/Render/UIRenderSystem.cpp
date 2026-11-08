@@ -409,6 +409,61 @@ TEST_CASE("widgets are drawn without crashing on missing fonts",
     REQUIRE(renderWorld(world, {140, 130}).getSize().x == 140);
 }
 
+namespace {
+
+/**
+ * Column of the caret of a focused text input made of spaces. Spaces draw
+ * nothing, so the only white pixels of the row are the caret itself.
+ */
+int caretColumn(const std::filesystem::path &font, std::size_t byteOffset)
+{
+    sf::RenderTexture target;
+
+    if (!target.resize({200, 30}))
+        return -1;
+    UIWorld world;
+    UITextInput input;
+    input.text = "   ";
+    input.caret = byteOffset;
+    input.isFocused = true;
+    input.style = opaqueStyle();
+    input.style.fontId = font.filename().string();
+    world.add(world.spawn({0.0f, 0.0f, 200.0f, 30.0f}), input);
+    ResourceManager resources(font.parent_path());
+    UIRenderSystem system(resources);
+    target.clear(sf::Color::Black);
+    system.render(target, world.registry);
+    target.display();
+    const sf::Image image = target.getTexture().copyToImage();
+
+    for (unsigned int x = 0; x < image.getSize().x; ++x) {
+        if (image.getPixel({x, 15}) == sf::Color::White)
+            return static_cast<int>(x);
+    }
+    return -1;
+}
+
+} // namespace
+
+TEST_CASE("the caret follows the characters of the text",
+          "[render][ui][gl][widgets]")
+{
+    const std::filesystem::path font = findSystemFont();
+    if (!hasDisplay() || font.empty())
+        SKIP("no display or no system font available");
+
+    const int start = caretColumn(font, 0);
+    const int first = caretColumn(font, 1);
+    const int second = caretColumn(font, 2);
+    const int end = caretColumn(font, 3);
+
+    REQUIRE(start >= 0);
+    REQUIRE(first > start);
+    REQUIRE(second > first);
+    REQUIRE(end > second);
+    REQUIRE(end - start >= 8);
+}
+
 TEST_CASE("a checked toggle shows its mark", "[render][ui][gl][widgets]")
 {
     if (!hasDisplay())
