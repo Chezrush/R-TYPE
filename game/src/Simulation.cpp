@@ -16,8 +16,15 @@
 #include "Rtype/Components/Components.hpp"
 #include "Rtype/Entities.hpp"
 #include "Rtype/GameContext.hpp"
+#include "Rtype/Players.hpp"
+#include "Rtype/Systems/BoundsSystem.hpp"
+#include "Rtype/Systems/CollisionSystem.hpp"
+#include "Rtype/Systems/DamageSystem.hpp"
+#include "Rtype/Systems/EnemyAISystem.hpp"
 #include "Rtype/Systems/InputSystem.hpp"
 #include "Rtype/Systems/MovementSystem.hpp"
+#include "Rtype/Systems/RespawnSystem.hpp"
+#include "Rtype/Systems/SpawnSystem.hpp"
 
 namespace rtype::game {
 
@@ -26,23 +33,31 @@ struct Simulation::World {
     std::uint32_t seed = 0;
     double stepTime = 1.0;
     std::uint64_t tick = 0;
-    GamePhase phase = GamePhase::WAITING;
     engine::ecs::Registry registry{};
     engine::ecs::Scheduler scheduler{};
-    std::vector<std::optional<engine::ecs::Entity>> ships{};
 };
 
 Simulation::Simulation(const GameRules &rules, std::uint32_t seed)
     : _world(std::make_unique<World>(
-          World{GameContext{rules}, seed,
-                1.0 / std::max<std::uint32_t>(1, rules.tickRate)}))
+          World{GameContext{rules,
+                            NetIdAllocator{},
+                            {},
+                            Random{seed},
+                            WaveState{rules.enemySpawnInterval, 0}},
+                seed, 1.0 / std::max<std::uint32_t>(1, rules.tickRate)}))
 {
     World &world = *_world;
 
-    world.ships.resize(rules.maxPlayers);
+    world.context.players.resize(rules.maxPlayers);
     registerComponents(world.registry);
+    addRespawnSystem(world.scheduler, world.context);
     addInputSystem(world.scheduler, world.registry, world.context);
+    addSpawnSystem(world.scheduler, world.context);
+    addEnemyAISystem(world.scheduler, world.registry, world.context);
     addMovementSystems(world.scheduler, world.context.rules);
+    addCollisionSystem(world.scheduler, world.context);
+    addDamageSystem(world.scheduler, world.context);
+    addBoundsSystem(world.scheduler, world.context);
 }
 
 Simulation::~Simulation() = default;
@@ -53,52 +68,57 @@ Simulation &Simulation::operator=(Simulation &&) noexcept = default;
 
 bool Simulation::addPlayer(std::uint8_t player)
 {
-    World &world = *_world;
+    GameContext &context = _world->context;
 
-    if (player >= world.ships.size() || world.ships[player].has_value()) {
+    if (player >= context.players.size() || context.players[player].present) {
         return false;
     }
-    const auto ship = spawnShip(world.registry, world.context, player);
-
-    if (!ship.has_value()) {
+    context.players[player] = PlayerState{};
+    context.players[player].present = true;
+    context.players[player].lives = context.rules.lives;
+    context.players[player].ship = spawnShip(_world->registry, context, player);
+    if (!context.players[player].ship.has_value()) {
+        context.players[player] = PlayerState{};
         return false;
     }
-    world.ships[player] = ship;
     return true;
 }
 
 void Simulation::removePlayer(std::uint8_t player)
 {
-    World &world = *_world;
+    GameContext &context = _world->context;
 
-    if (player >= world.ships.size()) {
+    if (player >= context.players.size() || !context.players[player].present) {
         return;
     }
-    std::optional<engine::ecs::Entity> &ship = world.ships[player];
+    PlayerState &state = context.players[player];
 
-    if (ship.has_value()) {
-        destroyEntity(world.registry, world.context, *ship,
+    if (state.ship.has_value()) {
+        destroyEntity(_world->registry, context, *state.ship,
                       DestroyReason::LEFT_SCREEN, NO_PLAYER);
-        ship.reset();
     }
+    state = PlayerState{};
+    checkGameOver(context);
 }
 
 void Simulation::setInput(std::uint8_t player, std::uint8_t pressed)
 {
-    World &world = *_world;
+    GameContext &context = _world->context;
 
-    if (player >= world.ships.size()) {
+    if (player >= context.players.size() || !context.players[player].present) {
         return;
     }
-    const std::optional<engine::ecs::Entity> &ship = world.ships[player];
+    PlayerState &state = context.players[player];
 
-    if (!ship.has_value()) {
+    state.keys = pressed & keys::MASK;
+    if (!state.ship.has_value()) {
         return;
     }
-    auto *control = world.registry.getComponents<PlayerControl>().get(*ship);
+    auto *control =
+        _world->registry.getComponents<PlayerControl>().get(*state.ship);
 
     if (control != nullptr) {
-        control->keys = pressed & keys::MASK;
+        control->keys = state.keys;
     }
 }
 
@@ -130,7 +150,7 @@ std::uint64_t Simulation::tick() const noexcept
 
 GamePhase Simulation::phase() const noexcept
 {
-    return _world->phase;
+    return _world->context.phase;
 }
 
 const GameRules &Simulation::rules() const noexcept
