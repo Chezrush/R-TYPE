@@ -28,6 +28,7 @@ using Nanosecond = std::chrono::nanoseconds;
 namespace {
 
 constexpr std::uint8_t SNAPSHOT_RATE = 20;
+constexpr std::uint32_t MAX_TICK_RATE = 240;
 constexpr std::size_t MAX_DATAGRAMS_PER_PASS = 256;
 
 std::string addressOf(const Udp::endpoint &endpoint)
@@ -49,15 +50,29 @@ std::optional<Udp::endpoint> endpointOf(const std::string &address)
                                  std::stoi(address.substr(separator + 1))));
 }
 
-GatewayConfig gatewayConfigOf(const ServerConfig &config)
+game::GameRules gameRulesOf(const ServerConfig &config)
+{
+    game::GameRules rules;
+
+    rules.tickRate =
+        std::clamp<std::uint32_t>(config.simulationHz, 1, MAX_TICK_RATE);
+    return rules;
+}
+
+/**
+ * @brief The welcome sent to the clients describes the rules of the game.
+ */
+GatewayConfig gatewayConfigOf(const game::GameRules &rules)
 {
     GatewayConfig gateway;
-    const std::uint32_t hz =
-        std::clamp<std::uint32_t>(config.simulationHz, 1, 240);
 
-    gateway.tickRate = static_cast<std::uint8_t>(hz);
-    gateway.snapshotRate =
-        static_cast<std::uint8_t>(std::min<std::uint32_t>(SNAPSHOT_RATE, hz));
+    gateway.maxPlayers = rules.maxPlayers;
+    gateway.tickRate = static_cast<std::uint8_t>(rules.tickRate);
+    gateway.snapshotRate = static_cast<std::uint8_t>(
+        std::min<std::uint32_t>(SNAPSHOT_RATE, rules.tickRate));
+    gateway.worldWidth = static_cast<std::uint16_t>(rules.worldWidth);
+    gateway.worldHeight = static_cast<std::uint16_t>(rules.worldHeight);
+    gateway.shipSpeed = static_cast<std::uint16_t>(rules.shipSpeed);
     return gateway;
 }
 
@@ -65,11 +80,14 @@ GatewayConfig gatewayConfigOf(const ServerConfig &config)
 
 Server::Server(ServerConfig config)
     : _config(config),
+      _simulation(gameRulesOf(config), config.seed),
+      _players(_simulation.rules().maxPlayers),
       _incomingMessages(config.maxQueueCapacity),
       _outgoingMessages(config.maxQueueCapacity),
       _socket(_context, Udp::endpoint(Udp::v4(), config.port)),
       _gateway(
-          gatewayConfigOf(config), protocol::CookieFactory::randomSecret(),
+          gatewayConfigOf(_simulation.rules()),
+          protocol::CookieFactory::randomSecret(),
           [this](const std::string &address, const std::string &datagram) {
               sendDatagram(address, datagram);
           },
@@ -96,8 +114,6 @@ bool Server::start()
     if (!_running.compare_exchange_strong(expected, true)) {
         return false;
     }
-
-    _tickCount.store(0);
 
     _networkThread = std::jthread(
         [this](const std::stop_token &stopToken) { runNetwork(stopToken); });
@@ -138,10 +154,7 @@ std::uint64_t Server::tickCount() const noexcept
 
 Nanosecond Server::simulationInterval() const noexcept
 {
-    const std::uint32_t hz =
-        _config.simulationHz > 0 ? _config.simulationHz : 60;
-
-    return Nanosecond(std::chrono::seconds(1)) / hz;
+    return Nanosecond(std::chrono::seconds(1)) / _simulation.rules().tickRate;
 }
 
 void Server::runNetwork(const std::stop_token &stopToken)
@@ -207,9 +220,10 @@ void Server::updateSimulationTick(Nanosecond timestep, Nanosecond &accumulator,
                                   const std::stop_token &stopToken)
 {
     while (accumulator >= timestep && !stopToken.stop_requested()) {
-        _tickCount.fetch_add(1);
+        _simulation.step();
         accumulator -= timestep;
     }
+    _tickCount.store(_simulation.tick());
 }
 
 void Server::disconnectInactiveClients()
@@ -256,11 +270,7 @@ void Server::applyMessage(const IncomingMessage &message)
         return;
     }
     if (PacketReader::hasRecord(message.payload, MessageType::HELLO)) {
-        if (message.slot) {
-            _players.joinAt(message.clientId, *message.slot);
-        } else {
-            _players.join(message.clientId);
-        }
+        _players.join(message.clientId, message.slot);
     }
     /*
      * to do:
@@ -330,7 +340,7 @@ void Server::runSimulation(const std::stop_token &stopToken)
     const auto timestep = simulationInterval();
 
     std::cout << "[server] Simulation thread started at "
-              << _config.simulationHz << " Hz\n";
+              << _simulation.rules().tickRate << " Hz\n";
 
     runSimulationLoop(stopToken, timestep);
 
