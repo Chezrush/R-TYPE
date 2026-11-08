@@ -42,8 +42,10 @@ ClientSession::ClientSession(const std::string &host, std::uint16_t port,
         return;
     }
     _server = *found.begin();
-    _socket.open(Udp::v4(), error);
-    _socket.non_blocking(true, error);
+    error = _socket.open(Udp::v4(), error);
+    if (!error) {
+        error = _socket.non_blocking(true, error);
+    }
     if (error) {
         _state = State::FAILED;
     }

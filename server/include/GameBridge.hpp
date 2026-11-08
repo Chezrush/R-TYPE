@@ -62,6 +62,9 @@ private:
 
     [[nodiscard]] std::vector<OutgoingMessage>
     broadcast(const std::vector<protocol::Message> &events) const;
+    [[nodiscard]] std::string
+    snapshotPacket(const Client &client,
+                   const std::vector<game::EntityState> &states) const;
     [[nodiscard]] std::vector<OutgoingMessage> snapshots() const;
 
     game::Simulation _simulation;

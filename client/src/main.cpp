@@ -6,10 +6,14 @@
 */
 
 #include <algorithm>
+#include <array>
+#include <charconv>
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -43,42 +47,57 @@ void printUsage()
 
 bool parsePort(const std::string &text, std::uint16_t &port)
 {
-    const int value = std::atoi(text.c_str());
+    unsigned value = 0;
+    const char *end = std::to_address(text.end());
+    const auto [last, error] = std::from_chars(text.data(), end, value);
 
-    if (value < 1 || value > 65535) {
+    if (error != std::errc() || last != end || value < 1 || value > 65535) {
         return false;
     }
     port = static_cast<std::uint16_t>(value);
     return true;
 }
 
-bool parseOptions(int argc, char **argv, Options &options)
+bool parseValue(const std::string &flag, const std::string &value,
+                Options &options)
+{
+    if (flag == "--host") {
+        options.host = value;
+        return true;
+    }
+    if (flag == "--name") {
+        options.name = value;
+        return true;
+    }
+    return flag == "--port" && parsePort(value, options.port);
+}
+
+bool parsePositional(const std::string &arg, int &positional, Options &options)
+{
+    if (arg.rfind("--", 0) == 0 || positional >= 2) {
+        return false;
+    }
+    if (positional == 0) {
+        options.host = arg;
+    } else if (!parsePort(arg, options.port)) {
+        return false;
+    }
+    ++positional;
+    return true;
+}
+
+bool parseOptions(const std::vector<std::string> &args, Options &options)
 {
     int positional = 0;
 
-    for (int i = 1; i < argc; ++i) {
-        const std::string arg = argv[i];
-        const bool hasValue = i + 1 < argc;
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const bool hasValue = i + 1 < args.size();
 
-        if (arg == "--help" || arg == "-h") {
+        if (args[i] == "--help" || args[i] == "-h") {
             options.help = true;
-        } else if (arg == "--host" && hasValue) {
-            options.host = argv[++i];
-        } else if (arg == "--name" && hasValue) {
-            options.name = argv[++i];
-        } else if (arg == "--port" && hasValue) {
-            if (!parsePort(argv[++i], options.port)) {
-                return false;
-            }
-        } else if (arg.rfind("--", 0) != 0 && positional < 2) {
-            const bool isPort = positional == 1;
-
-            if (isPort && !parsePort(arg, options.port)) {
-                return false;
-            }
-            options.host = isPort ? options.host : arg;
-            ++positional;
-        } else {
+        } else if (hasValue && parseValue(args[i], args[i + 1], options)) {
+            ++i;
+        } else if (!parsePositional(args[i], positional, options)) {
             return false;
         }
     }
@@ -125,34 +144,41 @@ bool held(const client::render::GameWindow &window,
            window.isKeyDown(alternative);
 }
 
+struct MoveKey {
+    GameAction action;
+    client::settings::ScanCode alternative;
+    unsigned bit;
+};
+
+constexpr client::settings::ScanCode KEY_W = 0x1A;
+constexpr client::settings::ScanCode KEY_A = 0x04;
+constexpr client::settings::ScanCode KEY_S = 0x16;
+constexpr client::settings::ScanCode KEY_D = 0x07;
+
+const std::array<MoveKey, 4> MOVES = {{
+    {GameAction::MOVE_UP, KEY_W, rtype::protocol::KEY_UP},
+    {GameAction::MOVE_DOWN, KEY_S, rtype::protocol::KEY_DOWN},
+    {GameAction::MOVE_LEFT, KEY_A, rtype::protocol::KEY_LEFT},
+    {GameAction::MOVE_RIGHT, KEY_D, rtype::protocol::KEY_RIGHT},
+}};
+
 std::uint8_t readKeys(const client::render::GameWindow &window,
                       const client::settings::ClientSettings &settings)
 {
-    constexpr client::settings::ScanCode KEY_W = 0x1A;
-    constexpr client::settings::ScanCode KEY_A = 0x04;
-    constexpr client::settings::ScanCode KEY_S = 0x16;
-    constexpr client::settings::ScanCode KEY_D = 0x07;
     const auto &bindings = settings.bindings;
-    std::uint8_t keys = 0;
+    const auto shootKey =
+        client::settings::bindingOf(bindings, GameAction::SHOOT).key;
+    unsigned keys = 0;
 
-    keys |= held(window, bindings, GameAction::MOVE_UP, KEY_W)
-                ? rtype::protocol::KEY_UP
-                : 0;
-    keys |= held(window, bindings, GameAction::MOVE_DOWN, KEY_S)
-                ? rtype::protocol::KEY_DOWN
-                : 0;
-    keys |= held(window, bindings, GameAction::MOVE_LEFT, KEY_A)
-                ? rtype::protocol::KEY_LEFT
-                : 0;
-    keys |= held(window, bindings, GameAction::MOVE_RIGHT, KEY_D)
-                ? rtype::protocol::KEY_RIGHT
-                : 0;
-    const bool shoot =
-        bindings.autoFire ||
-        window.isKeyDown(
-            client::settings::bindingOf(bindings, GameAction::SHOOT).key);
-
-    return keys | (shoot ? rtype::protocol::KEY_SHOOT : 0);
+    for (const MoveKey &move : MOVES) {
+        if (held(window, bindings, move.action, move.alternative)) {
+            keys |= move.bit;
+        }
+    }
+    if (bindings.autoFire || window.isKeyDown(shootKey)) {
+        keys |= rtype::protocol::KEY_SHOOT;
+    }
+    return static_cast<std::uint8_t>(keys);
 }
 
 std::string bannerOf(const ClientSession &session,
@@ -200,51 +226,101 @@ double seconds(Clock::time_point start, Clock::time_point now)
     return std::chrono::duration<double>(now - start).count();
 }
 
+struct Game {
+    ClientSession &session;
+    client::render::GameWindow &window;
+    const client::settings::ClientSettings &settings;
+    client::world::WorldState world{};
+    client::scenes::Starfield stars{120, 7};
+    double accumulator = 0.0;
+    double previous = 0.0;
+};
+
+void receive(Game &game, double now)
+{
+    if (!game.world.configured() && game.session.welcome()) {
+        game.world.configure(*game.session.welcome());
+    }
+    for (const auto &message : game.session.takeMessages()) {
+        game.world.apply(message, now);
+        playSounds(message, game.window);
+    }
+}
+
+double stepOf(const Game &game)
+{
+    return 1.0 / static_cast<double>(game.world.rules().tickRate);
+}
+
+void sendInputs(Game &game, double now, Clock::time_point tick)
+{
+    game.accumulator += std::min(now - game.previous, 0.25);
+    game.previous = now;
+    while (game.accumulator >= stepOf(game) && game.world.configured()) {
+        const std::uint8_t keys = readKeys(game.window, game.settings);
+
+        game.world.predict(game.session.sendInput(keys, tick), keys);
+        game.accumulator -= stepOf(game);
+    }
+}
+
+void render(Game &game, double now)
+{
+    game.stars.advance(static_cast<float>(stepOf(game)));
+    game.world.update(now);
+    game.window.draw({game.world, game.stars, now,
+                      bannerOf(game.session, game.world),
+                      static_cast<int>(game.session.rtt().count()),
+                      game.settings.palette, game.settings.highContrast});
+}
+
+bool quitRequested(const Game &game)
+{
+    const auto menuKey = client::settings::bindingOf(game.settings.bindings,
+                                                     GameAction::OPEN_MENU)
+                             .key;
+
+    return game.window.isKeyDown(menuKey);
+}
+
 void runGame(ClientSession &session, client::render::GameWindow &window,
              const client::settings::ClientSettings &settings)
 {
     const auto start = Clock::now();
-    client::world::WorldState world;
-    client::scenes::Starfield stars(120, 7);
-    double accumulator = 0.0;
-    double previous = 0.0;
+    Game game{session, window, settings};
 
     while (window.isOpen()) {
         const auto tick = Clock::now();
         const double now = seconds(start, tick);
 
         window.pollEvents();
-        if (window.isKeyDown(client::settings::bindingOf(settings.bindings,
-                                                         GameAction::OPEN_MENU)
-                                 .key)) {
+        if (quitRequested(game)) {
             window.close();
             break;
         }
         session.update(tick);
-        if (!world.configured() && session.welcome()) {
-            world.configure(*session.welcome());
-        }
-        for (const auto &message : session.takeMessages()) {
-            world.apply(message, now);
-            playSounds(message, window);
-        }
-        accumulator += std::min(now - previous, 0.25);
-        previous = now;
-        const double step = 1.0 / static_cast<double>(world.rules().tickRate);
-
-        while (accumulator >= step && world.configured()) {
-            const std::uint8_t keys = readKeys(window, settings);
-
-            world.predict(session.sendInput(keys, tick), keys);
-            accumulator -= step;
-        }
-        stars.advance(static_cast<float>(step));
-        world.update(now);
-        window.draw({world, stars, now, bannerOf(session, world),
-                     static_cast<int>(session.rtt().count()), settings.palette,
-                     settings.highContrast});
+        receive(game, now);
+        sendInputs(game, now, tick);
+        render(game, now);
     }
     session.disconnect(Clock::now());
+}
+
+} // namespace
+
+namespace {
+
+int play(const Options &options, const char *program)
+{
+    client::settings::SettingsStore store(settingsPath());
+
+    store.load();
+    ClientSession session(options.host, options.port, options.name);
+    client::render::GameWindow window(store.settings(), "R-Type",
+                                      findAssets(program));
+
+    runGame(session, window, store.settings());
+    return 0;
 }
 
 } // namespace
@@ -252,8 +328,11 @@ void runGame(ClientSession &session, client::render::GameWindow &window,
 int main(int argc, char **argv)
 {
     Options options;
+    const std::span<char *> arguments(argv, static_cast<std::size_t>(argc));
+    const auto rest = arguments.empty() ? arguments : arguments.subspan(1);
+    const std::vector<std::string> args(rest.begin(), rest.end());
 
-    if (!parseOptions(argc, argv, options)) {
+    if (!parseOptions(args, options)) {
         printUsage();
         return 1;
     }
@@ -261,13 +340,5 @@ int main(int argc, char **argv)
         printUsage();
         return 0;
     }
-    client::settings::SettingsStore store(settingsPath());
-
-    store.load();
-    ClientSession session(options.host, options.port, options.name);
-    client::render::GameWindow window(store.settings(), "R-Type",
-                                      findAssets(argv[0]));
-
-    runGame(session, window, store.settings());
-    return 0;
+    return play(options, arguments.empty() ? "" : argv[0]);
 }

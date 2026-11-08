@@ -139,31 +139,55 @@ void WorldState::update(double now)
     });
 }
 
+namespace {
+
+template <typename Samples>
+std::size_t firstAtOrAfter(const Samples &samples, double time)
+{
+    std::size_t index = 0;
+
+    while (index < samples.size() && samples[index].time < time) {
+        ++index;
+    }
+    return index;
+}
+
+Vec2 lerpAt(Vec2 from, Vec2 to, double span, double elapsed)
+{
+    const auto ratio = static_cast<float>(elapsed / std::max(span, 1e-6));
+
+    return {from.x + (to.x - from.x) * ratio, from.y + (to.y - from.y) * ratio};
+}
+
+Vec2 extrapolate(Vec2 last, Vec2 velocity, double ahead)
+{
+    const auto seconds =
+        static_cast<float>(std::min(ahead, WorldState::EXTRAPOLATION_LIMIT));
+
+    return {last.x + velocity.x * seconds, last.y + velocity.y * seconds};
+}
+
+} // namespace
+
 Vec2 WorldState::interpolate(const Entity &entity, double renderTime)
 {
     const auto &samples = entity.samples;
 
-    if (samples.empty() || renderTime <= samples.front().time) {
-        return samples.empty() ? entity.look.position
-                               : samples.front().position;
+    if (samples.empty()) {
+        return entity.look.position;
     }
-    for (std::size_t i = 1; i < samples.size(); ++i) {
-        if (renderTime <= samples[i].time) {
-            const double span = samples[i].time - samples[i - 1].time;
-            const auto ratio = static_cast<float>(
-                (renderTime - samples[i - 1].time) / std::max(span, 1e-6));
-            const Vec2 a = samples[i - 1].position;
-            const Vec2 b = samples[i].position;
+    const std::size_t next = firstAtOrAfter(samples, renderTime);
 
-            return {a.x + (b.x - a.x) * ratio, a.y + (b.y - a.y) * ratio};
-        }
+    if (next == 0) {
+        return samples.front().position;
     }
-    const double ahead = std::min(renderTime - samples.back().time,
-                                  WorldState::EXTRAPOLATION_LIMIT);
-    const Vec2 last = samples.back().position;
-
-    return {last.x + entity.velocity.x * static_cast<float>(ahead),
-            last.y + entity.velocity.y * static_cast<float>(ahead)};
+    if (next < samples.size()) {
+        return lerpAt(samples[next - 1].position, samples[next].position,
+                      samples[next].time - samples[next - 1].time,
+                      renderTime - samples[next - 1].time);
+    }
+    return extrapolate(samples.back().position, entity.velocity,
+                       renderTime - samples.back().time);
 }
 
 std::vector<RenderEntity> WorldState::visible(double now) const

@@ -126,26 +126,34 @@ GameBridge::broadcast(const std::vector<Message> &events) const
     return out;
 }
 
+std::string
+GameBridge::snapshotPacket(const Client &client,
+                           const std::vector<game::EntityState> &states) const
+{
+    protocol::Snapshot snapshot;
+    std::string packet;
+
+    snapshot.tick = static_cast<std::uint32_t>(_simulation.tick());
+    snapshot.inputAck = client.inputs.applied();
+    for (const game::EntityState &state : states) {
+        snapshot.entities.push_back({state.netId,
+                                     protocol::toFixed(state.position.x),
+                                     protocol::toFixed(state.position.y)});
+    }
+    protocol::PacketBuilder::writeHeader(packet, protocol::MessageHeader{});
+    MessageCodec::appendMessage(packet, snapshot);
+    return packet;
+}
+
 std::vector<OutgoingMessage> GameBridge::snapshots() const
 {
     std::vector<OutgoingMessage> out;
     const auto states = _simulation.states();
 
+    out.reserve(_clients.size());
     for (const auto &[clientId, client] : _clients) {
-        protocol::Snapshot snapshot;
-
-        snapshot.tick = static_cast<std::uint32_t>(_simulation.tick());
-        snapshot.inputAck = client.inputs.applied();
-        for (const game::EntityState &state : states) {
-            snapshot.entities.push_back({state.netId,
-                                         protocol::toFixed(state.position.x),
-                                         protocol::toFixed(state.position.y)});
-        }
-        std::string packet;
-
-        protocol::PacketBuilder::writeHeader(packet, protocol::MessageHeader{});
-        MessageCodec::appendMessage(packet, snapshot);
-        out.push_back(OutgoingMessage{clientId, std::move(packet)});
+        out.push_back(
+            OutgoingMessage{clientId, snapshotPacket(client, states)});
     }
     return out;
 }
