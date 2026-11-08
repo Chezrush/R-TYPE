@@ -7,7 +7,12 @@
 
 #include "Server.hpp"
 
+#include <array>
 #include <iostream>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <system_error>
 #include <utility>
 
 #include "PacketReader.hpp"
@@ -20,12 +25,64 @@ using protocol::PacketReader;
 
 using Nanosecond = std::chrono::nanoseconds;
 
+namespace {
+
+constexpr std::uint8_t SNAPSHOT_RATE = 20;
+constexpr std::size_t MAX_DATAGRAMS_PER_PASS = 256;
+
+std::string addressOf(const Udp::endpoint &endpoint)
+{
+    return endpoint.address().to_string() + "|" +
+           std::to_string(endpoint.port());
+}
+
+std::optional<Udp::endpoint> endpointOf(const std::string &address)
+{
+    const std::size_t separator = address.rfind('|');
+    std::error_code error;
+    const auto ip = asio::ip::make_address(address.substr(0, separator), error);
+
+    if (separator == std::string::npos || error) {
+        return std::nullopt;
+    }
+    return Udp::endpoint(ip, static_cast<std::uint16_t>(
+                                 std::stoi(address.substr(separator + 1))));
+}
+
+GatewayConfig gatewayConfigOf(const ServerConfig &config)
+{
+    GatewayConfig gateway;
+    const std::uint32_t hz =
+        std::clamp<std::uint32_t>(config.simulationHz, 1, 240);
+
+    gateway.tickRate = static_cast<std::uint8_t>(hz);
+    gateway.snapshotRate =
+        static_cast<std::uint8_t>(std::min<std::uint32_t>(SNAPSHOT_RATE, hz));
+    return gateway;
+}
+
+} // namespace
+
 Server::Server(ServerConfig config)
     : _config(config),
       _incomingMessages(config.maxQueueCapacity),
       _outgoingMessages(config.maxQueueCapacity),
-      _socket(_context, Udp::endpoint(Udp::v4(), config.port))
-{}
+      _socket(_context, Udp::endpoint(Udp::v4(), config.port)),
+      _gateway(
+          gatewayConfigOf(config), protocol::CookieFactory::randomSecret(),
+          [this](const std::string &address, const std::string &datagram) {
+              sendDatagram(address, datagram);
+          },
+          [this](IncomingMessage message) {
+              return receivePacket(std::move(message));
+          },
+          [this](std::uint32_t clientId, DisconnectReason reason) {
+              _activity.forget(clientId);
+              requestDisconnect(clientId, reason);
+          })
+{
+    _socket.non_blocking(true);
+}
 
 Server::~Server()
 {
@@ -66,6 +123,7 @@ void Server::shutdown() noexcept
         _simulationThread.request_stop();
         _simulationThread.join();
     }
+    _gateway.closeAll(DisconnectReason::SHUTDOWN, Clock::now());
 }
 
 bool Server::isRunning() const noexcept
@@ -90,23 +148,57 @@ void Server::runNetwork(const std::stop_token &stopToken)
 {
     std::cout << "[server] Network thread started\n";
     while (!stopToken.stop_requested()) {
+        receiveDatagrams();
         disconnectInactiveClients();
         sendOutgoingMessages();
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
     std::cout << "[server] Network thread stopped\n";
+}
+
+void Server::receiveDatagrams()
+{
+    std::array<char, protocol::MAX_PACKET_SIZE + 1> buffer{};
+    Udp::endpoint sender;
+    std::error_code error;
+
+    for (std::size_t i = 0; i < MAX_DATAGRAMS_PER_PASS; ++i) {
+        const std::size_t size =
+            _socket.receive_from(asio::buffer(buffer), sender, 0, error);
+
+        if (error == asio::error::would_block ||
+            error == asio::error::try_again) {
+            return;
+        }
+        if (error) {
+            continue;
+        }
+        const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch());
+
+        _gateway.onDatagram(addressOf(sender),
+                            std::string_view(buffer.data(), size), Clock::now(),
+                            static_cast<std::uint64_t>(seconds.count()));
+    }
+}
+
+void Server::sendDatagram(const std::string &address,
+                          const std::string &datagram)
+{
+    const auto endpoint = endpointOf(address);
+    std::error_code error;
+
+    if (endpoint) {
+        _socket.send_to(asio::buffer(datagram), *endpoint, 0, error);
+    }
 }
 
 void Server::sendOutgoingMessages()
 {
     while (auto message = _outgoingMessages.handleDequeue()) {
-        /*
-         * to do:
-         * serialize and send message->payload to message->clientId.
-         */
-        std::cout << "[server] Outgoing message for client "
-                  << message->clientId << ": " << message->payload << "\n";
+        _gateway.queueFromSimulation(*message);
     }
+    _gateway.flush(Clock::now());
 }
 
 void Server::updateSimulationTick(Nanosecond timestep, Nanosecond &accumulator,
@@ -124,6 +216,7 @@ void Server::disconnectInactiveClients()
                                                _config.inactivityTimeout);
 
     for (const std::uint32_t clientId : expired) {
+        _gateway.remove(clientId);
         requestDisconnect(clientId, DisconnectReason::TIMEOUT);
     }
 }
@@ -197,6 +290,11 @@ bool Server::receivePacket(IncomingMessage message)
 std::uint64_t Server::rejectedPackets() const noexcept
 {
     return _rejectedPackets.load();
+}
+
+std::uint16_t Server::port() const
+{
+    return _socket.local_endpoint().port();
 }
 
 std::size_t Server::playerCount() const noexcept
