@@ -84,7 +84,7 @@ void testActivityExpiresAfterTimeout()
 
 void testLeaveNotifiesOtherPlayers()
 {
-    PlayerSessions players;
+    PlayerSessions players(4);
 
     CHECK(players.join(1));
     CHECK(players.join(2));
@@ -108,7 +108,7 @@ void testLeaveNotifiesOtherPlayers()
 
 void testRepeatedLeaveIsIgnored()
 {
-    PlayerSessions players;
+    PlayerSessions players(4);
 
     CHECK(players.join(1));
     CHECK(players.join(2));
@@ -117,6 +117,18 @@ void testRepeatedLeaveIsIgnored()
     CHECK(players.leave(1, DisconnectReason::TIMEOUT).empty());
     CHECK(players.size() == 1);
     CHECK(players.join(1));
+}
+
+void testJoinGivesTheSlot()
+{
+    PlayerSessions players(4);
+
+    CHECK(players.join(1) == 0);
+    CHECK(players.join(2, 3) == 3);
+    CHECK(players.join(3, 3) == 1);
+    CHECK(players.join(4, 9) == 2);
+    CHECK(!players.join(5));
+    CHECK(players.size() == 4);
 }
 
 void testExplicitDisconnection()
@@ -157,6 +169,7 @@ int main()
     testActivityExpiresAfterTimeout();
     testLeaveNotifiesOtherPlayers();
     testRepeatedLeaveIsIgnored();
+    testJoinGivesTheSlot();
     testExplicitDisconnection();
     testTimeoutDisconnection();
 

@@ -8,6 +8,7 @@
 #include <asio.hpp>
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <thread>
@@ -221,6 +222,28 @@ void testPlayersSeeEachOtherAndLeave()
     server.shutdown();
 }
 
+void testFifthPlayerIsRejected()
+{
+    Server server(testConfig(5000ms));
+    CHECK(server.start());
+    std::vector<std::unique_ptr<TestPeer>> players;
+
+    for (const char *name : {"Bob", "Eve", "Ann", "Tom"}) {
+        players.push_back(std::make_unique<TestPeer>(server.port(), name));
+        CHECK(players.back()->connect());
+    }
+    TestPeer fifth(server.port(), "Max");
+
+    CHECK(waitFor([&] {
+        fifth.pump();
+        return fifth.handshake().state() == ClientHandshake::State::REJECTED;
+    }));
+    CHECK(fifth.handshake().rejectReason() ==
+          static_cast<std::uint8_t>(RejectReason::SERVER_FULL));
+    CHECK(waitFor([&] { return server.playerCount() == 4; }));
+    server.shutdown();
+}
+
 void testSilentClientTimesOutAndOthersAreTold()
 {
     Server server(testConfig(400ms));
@@ -277,6 +300,7 @@ int main()
 {
     testHandshakeOverRealUdp();
     testPlayersSeeEachOtherAndLeave();
+    testFifthPlayerIsRejected();
     testSilentClientTimesOutAndOthersAreTold();
     testGarbageNeverStopsTheServer();
     testServerSaysGoodbyeOnShutdown();
