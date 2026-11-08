@@ -9,6 +9,7 @@
 
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
+#include <array>
 #include <cmath>
 #include <filesystem>
 #include <optional>
@@ -20,35 +21,44 @@ namespace client::render {
 
 namespace {
 
+using Scan = sf::Keyboard::Scan;
+
 constexpr float WORLD_WIDTH = 1280.0F;
 constexpr float WORLD_HEIGHT = 720.0F;
 constexpr float SHIP_SCALE = 3.0F;
 constexpr float BYDOS_SCALE = 2.5F;
 constexpr unsigned SOUND_RATE = 22050;
+constexpr std::uint8_t KIND_SHIP = 1;
+constexpr std::uint8_t KIND_BYDOS = 2;
+constexpr std::uint8_t KIND_PLAYER_MISSILE = 3;
+constexpr std::uint8_t KIND_ENEMY_MISSILE = 4;
+constexpr settings::ScanCode FIRST_HID_LETTER = 0x04;
+constexpr settings::ScanCode LAST_HID_DIGIT = 0x27;
+
+struct KeyPair {
+    settings::ScanCode key;
+    sf::Keyboard::Scancode scan;
+};
+
+constexpr std::array<KeyPair, 6> SPECIAL_KEYS = {{
+    {settings::KEY_ESCAPE, Scan::Escape},
+    {settings::KEY_SPACE, Scan::Space},
+    {settings::KEY_RIGHT, Scan::Right},
+    {settings::KEY_LEFT, Scan::Left},
+    {settings::KEY_DOWN, Scan::Down},
+    {settings::KEY_UP, Scan::Up},
+}};
 
 sf::Keyboard::Scancode toSfml(settings::ScanCode key)
 {
-    using Scan = sf::Keyboard::Scan;
-
-    switch (key) {
-        case settings::KEY_ESCAPE:
-            return Scan::Escape;
-        case settings::KEY_SPACE:
-            return Scan::Space;
-        case settings::KEY_RIGHT:
-            return Scan::Right;
-        case settings::KEY_LEFT:
-            return Scan::Left;
-        case settings::KEY_DOWN:
-            return Scan::Down;
-        case settings::KEY_UP:
-            return Scan::Up;
-        default:
-            break;
+    for (const KeyPair &pair : SPECIAL_KEYS) {
+        if (pair.key == key) {
+            return pair.scan;
+        }
     }
-    if (key >= 0x04 && key <= 0x27) {
+    if (key >= FIRST_HID_LETTER && key <= LAST_HID_DIGIT) {
         return static_cast<sf::Keyboard::Scancode>(static_cast<int>(Scan::A) +
-                                                   (key - 0x04));
+                                                   (key - FIRST_HID_LETTER));
     }
     return Scan::Unknown;
 }
@@ -64,14 +74,14 @@ std::vector<std::int16_t> tone(float startHz, float endHz, float seconds,
     const auto count = static_cast<std::size_t>(seconds * SOUND_RATE);
     std::vector<std::int16_t> samples(count);
     float phase = 0.0F;
-    unsigned seed = 12345;
+    unsigned seed = 12345U;
 
     for (std::size_t i = 0; i < count; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(count);
         const float hz = startHz + (endHz - startHz) * t;
         seed = seed * 1103515245U + 12345U;
         const float random =
-            static_cast<float>((seed >> 16) & 0x7FFF) / 16384.0F - 1.0F;
+            static_cast<float>((seed >> 16U) & 0x7FFFU) / 16384.0F - 1.0F;
 
         phase += 6.2831853F * hz / SOUND_RATE;
         const float wave = noise ? random : std::sin(phase);
@@ -80,69 +90,119 @@ std::vector<std::int16_t> tone(float startHz, float endHz, float seconds,
     return samples;
 }
 
+bool loadBuffer(sf::SoundBuffer &buffer,
+                const std::vector<std::int16_t> &samples)
+{
+    return buffer.loadFromSamples(samples.data(), samples.size(), 1, SOUND_RATE,
+                                  {sf::SoundChannel::Mono});
+}
+
+std::vector<sf::Color> playerColors(const Frame &frame)
+{
+    const auto theme =
+        settings::makeTheme(frame.palette, frame.highContrast, false);
+
+    return {toSfml(theme.resolve(engine::ecs::UIColorRole::PLAYER_1, {})),
+            toSfml(theme.resolve(engine::ecs::UIColorRole::PLAYER_2, {})),
+            toSfml(theme.resolve(engine::ecs::UIColorRole::PLAYER_3, {})),
+            toSfml(theme.resolve(engine::ecs::UIColorRole::PLAYER_4, {}))};
+}
+
 } // namespace
 
-struct GameWindow::Impl {
-    sf::RenderWindow window;
-    sf::View view{sf::FloatRect({0.0F, 0.0F}, {WORLD_WIDTH, WORLD_HEIGHT})};
-    std::optional<sf::Font> font;
-    std::optional<sf::Texture> ships;
-    std::optional<sf::Texture> bydos;
-    sf::SoundBuffer shotBuffer;
-    sf::SoundBuffer boomBuffer;
-    std::optional<sf::Sound> shot;
-    std::optional<sf::Sound> boom;
+/**
+ * @brief The window library side of GameWindow: window, assets and drawing.
+ */
+class GameWindow::Impl {
+public:
+    Impl(const settings::ClientSettings &settings, const std::string &title,
+         const std::string &assetRoot);
 
-    Impl(const settings::ClientSettings &settings, const std::string &title)
-        : window(sf::VideoMode(
-                     {settings.resolution.width, settings.resolution.height}),
-                 title, sf::Style::Default,
-                 settings.fullscreen ? sf::State::Fullscreen
-                                     : sf::State::Windowed)
-    {
-        window.setVerticalSyncEnabled(settings.vsync);
-        fitView(window.getSize());
-    }
+    [[nodiscard]] bool isOpen() const;
+    void pollEvents();
+    void close();
+    void draw(const Frame &frame);
+    void playShot();
+    void playExplosion();
 
-    void fitView(sf::Vector2u size)
-    {
-        const float window_ratio =
-            static_cast<float>(size.x) / static_cast<float>(size.y);
-        const float world_ratio = WORLD_WIDTH / WORLD_HEIGHT;
-        sf::FloatRect viewport({0.0F, 0.0F}, {1.0F, 1.0F});
-
-        if (window_ratio > world_ratio) {
-            viewport.size.x = world_ratio / window_ratio;
-            viewport.position.x = (1.0F - viewport.size.x) / 2.0F;
-        } else {
-            viewport.size.y = window_ratio / world_ratio;
-            viewport.position.y = (1.0F - viewport.size.y) / 2.0F;
-        }
-        view.setViewport(viewport);
-    }
-
-    void loadAssets(const std::string &root);
+private:
+    void fitView(sf::Vector2u size);
+    void loadTextures(const std::filesystem::path &root);
+    void loadFont(const std::filesystem::path &root);
+    void loadSounds();
     void drawStars(const Frame &frame);
     void drawEntity(const world::RenderEntity &entity, sf::Color color,
                     bool local);
+    [[nodiscard]] bool drawKnown(const world::RenderEntity &entity,
+                                 sf::Vector2f at, sf::Color color, bool local);
+    [[nodiscard]] bool drawSprite(const std::optional<sf::Texture> &texture,
+                                  const sf::IntRect &rect, sf::Vector2f at,
+                                  float scale);
+    void drawBullet(sf::Vector2f at, bool fromPlayer);
+    void drawPlaceholder(sf::Vector2f at, sf::Color color);
+    void drawMarker(sf::Vector2f at, sf::Color color, bool local);
     void drawHud(const Frame &frame, const std::vector<sf::Color> &colors);
-    void drawText(const std::string &text, sf::Vector2f at, unsigned size,
-                  sf::Color color);
+    void drawScores(const Frame &frame, const std::vector<sf::Color> &colors);
+    void drawText(const std::string &text, sf::Vector2f at, unsigned size);
+
+    sf::RenderWindow _window;
+    sf::View _view{sf::FloatRect({0.0F, 0.0F}, {WORLD_WIDTH, WORLD_HEIGHT})};
+    std::optional<sf::Font> _font;
+    std::optional<sf::Texture> _ships;
+    std::optional<sf::Texture> _bydos;
+    sf::SoundBuffer _shotBuffer;
+    sf::SoundBuffer _boomBuffer;
+    std::optional<sf::Sound> _shot;
+    std::optional<sf::Sound> _boom;
 };
 
-void GameWindow::Impl::loadAssets(const std::string &root)
+GameWindow::Impl::Impl(const settings::ClientSettings &settings,
+                       const std::string &title, const std::string &assetRoot)
+    : _window(sf::VideoMode(
+                  {settings.resolution.width, settings.resolution.height}),
+              title, sf::Style::Default,
+              settings.fullscreen ? sf::State::Fullscreen : sf::State::Windowed)
 {
-    const std::filesystem::path base(root);
+    _window.setVerticalSyncEnabled(settings.vsync);
+    fitView(_window.getSize());
+    loadTextures(assetRoot);
+    loadFont(assetRoot);
+    loadSounds();
+}
+
+void GameWindow::Impl::fitView(sf::Vector2u size)
+{
+    const float windowRatio =
+        static_cast<float>(size.x) / static_cast<float>(size.y);
+    const float worldRatio = WORLD_WIDTH / WORLD_HEIGHT;
+    sf::FloatRect viewport({0.0F, 0.0F}, {1.0F, 1.0F});
+
+    if (windowRatio > worldRatio) {
+        viewport.size.x = worldRatio / windowRatio;
+        viewport.position.x = (1.0F - viewport.size.x) / 2.0F;
+    } else {
+        viewport.size.y = windowRatio / worldRatio;
+        viewport.position.y = (1.0F - viewport.size.y) / 2.0F;
+    }
+    _view.setViewport(viewport);
+}
+
+void GameWindow::Impl::loadTextures(const std::filesystem::path &root)
+{
     sf::Texture texture;
 
-    if (texture.loadFromFile((base / "sprites/r-typesheet42.gif").string())) {
-        ships = texture;
+    if (texture.loadFromFile((root / "sprites/r-typesheet42.gif").string())) {
+        _ships = texture;
     }
-    if (texture.loadFromFile((base / "sprites/r-typesheet5.gif").string())) {
-        bydos = texture;
+    if (texture.loadFromFile((root / "sprites/r-typesheet5.gif").string())) {
+        _bydos = texture;
     }
+}
+
+void GameWindow::Impl::loadFont(const std::filesystem::path &root)
+{
     const std::vector<std::filesystem::path> fonts = {
-        base / "fonts/main.ttf",
+        root / "fonts/main.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans.ttf", "C:/Windows/Fonts/arial.ttf",
         "/System/Library/Fonts/Supplemental/Arial.ttf"};
@@ -152,36 +212,35 @@ void GameWindow::Impl::loadAssets(const std::string &root)
 
         if (std::filesystem::exists(path) &&
             candidate.openFromFile(path.string())) {
-            font = std::move(candidate);
-            break;
+            _font = std::move(candidate);
+            return;
         }
     }
-    const auto shotSamples = tone(880.0F, 220.0F, 0.12F, false);
-    const auto boomSamples = tone(200.0F, 40.0F, 0.35F, true);
+}
 
-    if (shotBuffer.loadFromSamples(shotSamples.data(), shotSamples.size(), 1,
-                                   SOUND_RATE, {sf::SoundChannel::Mono})) {
-        shot.emplace(shotBuffer);
+void GameWindow::Impl::loadSounds()
+{
+    if (loadBuffer(_shotBuffer, tone(880.0F, 220.0F, 0.12F, false))) {
+        _shot.emplace(_shotBuffer);
     }
-    if (boomBuffer.loadFromSamples(boomSamples.data(), boomSamples.size(), 1,
-                                   SOUND_RATE, {sf::SoundChannel::Mono})) {
-        boom.emplace(boomBuffer);
+    if (loadBuffer(_boomBuffer, tone(200.0F, 40.0F, 0.35F, true))) {
+        _boom.emplace(_boomBuffer);
     }
 }
 
 void GameWindow::Impl::drawText(const std::string &text, sf::Vector2f at,
-                                unsigned size, sf::Color color)
+                                unsigned size)
 {
-    if (!font) {
+    if (!_font) {
         return;
     }
-    sf::Text label(*font, text, size);
+    sf::Text label(*_font, text, size);
 
     label.setPosition(at);
-    label.setFillColor(color);
+    label.setFillColor(sf::Color::White);
     label.setOutlineColor(sf::Color::Black);
     label.setOutlineThickness(2.0F);
-    window.draw(label);
+    _window.draw(label);
 }
 
 void GameWindow::Impl::drawStars(const Frame &frame)
@@ -192,7 +251,77 @@ void GameWindow::Impl::drawStars(const Frame &frame)
         dot.setPosition(
             {star.position.x * WORLD_WIDTH, star.position.y * WORLD_HEIGHT});
         dot.setFillColor({star.brightness, star.brightness, star.brightness});
-        window.draw(dot);
+        _window.draw(dot);
+    }
+}
+
+bool GameWindow::Impl::drawSprite(const std::optional<sf::Texture> &texture,
+                                  const sf::IntRect &rect, sf::Vector2f at,
+                                  float scale)
+{
+    if (!texture) {
+        return false;
+    }
+    sf::Sprite sprite(*texture);
+
+    sprite.setTextureRect(rect);
+    sprite.setPosition(at);
+    sprite.setScale({scale, scale});
+    _window.draw(sprite);
+    return true;
+}
+
+void GameWindow::Impl::drawBullet(sf::Vector2f at, bool fromPlayer)
+{
+    sf::RectangleShape bullet({24.0F, 6.0F});
+
+    bullet.setPosition(at);
+    bullet.setFillColor(fromPlayer ? sf::Color(80, 220, 255)
+                                   : sf::Color(255, 160, 40));
+    _window.draw(bullet);
+}
+
+void GameWindow::Impl::drawPlaceholder(sf::Vector2f at, sf::Color color)
+{
+    sf::RectangleShape box({40.0F, 24.0F});
+
+    box.setPosition(at);
+    box.setFillColor(color);
+    _window.draw(box);
+}
+
+void GameWindow::Impl::drawMarker(sf::Vector2f at, sf::Color color, bool local)
+{
+    sf::ConvexShape marker(3);
+
+    marker.setPoint(0, {0.0F, 0.0F});
+    marker.setPoint(1, {16.0F, 0.0F});
+    marker.setPoint(2, {8.0F, 10.0F});
+    marker.setPosition({at.x + 40.0F, at.y - 16.0F});
+    marker.setFillColor(color);
+    marker.setOutlineColor(local ? sf::Color::White : sf::Color::Black);
+    marker.setOutlineThickness(local ? 2.0F : 1.0F);
+    _window.draw(marker);
+}
+
+bool GameWindow::Impl::drawKnown(const world::RenderEntity &entity,
+                                 sf::Vector2f at, sf::Color color, bool local)
+{
+    switch (entity.kind) {
+        case KIND_SHIP:
+            drawMarker(at, color, local);
+            return drawSprite(
+                _ships, sf::IntRect({66, 17 * (entity.owner % 5)}, {33, 17}),
+                at, SHIP_SCALE);
+        case KIND_BYDOS:
+            return drawSprite(_bydos, sf::IntRect({0, 0}, {33, 36}), at,
+                              BYDOS_SCALE);
+        case KIND_PLAYER_MISSILE:
+        case KIND_ENEMY_MISSILE:
+            drawBullet(at, entity.kind == KIND_PLAYER_MISSILE);
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -201,51 +330,14 @@ void GameWindow::Impl::drawEntity(const world::RenderEntity &entity,
 {
     const sf::Vector2f at{entity.position.x, entity.position.y};
 
-    if (entity.kind == 1 && ships) {
-        sf::Sprite sprite(*ships);
-        const int row = entity.owner % 5;
-
-        sprite.setTextureRect(sf::IntRect({66, 17 * row}, {33, 17}));
-        sprite.setPosition(at);
-        sprite.setScale({SHIP_SCALE, SHIP_SCALE});
-        window.draw(sprite);
-    } else if (entity.kind == 2 && bydos) {
-        sf::Sprite sprite(*bydos);
-
-        sprite.setTextureRect(sf::IntRect({0, 0}, {33, 36}));
-        sprite.setPosition(at);
-        sprite.setScale({BYDOS_SCALE, BYDOS_SCALE});
-        window.draw(sprite);
-    } else if (entity.kind == 3 || entity.kind == 4) {
-        sf::RectangleShape bullet({24.0F, 6.0F});
-
-        bullet.setPosition(at);
-        bullet.setFillColor(entity.kind == 3 ? sf::Color(80, 220, 255)
-                                             : sf::Color(255, 160, 40));
-        window.draw(bullet);
-    } else {
-        sf::RectangleShape box({40.0F, 24.0F});
-
-        box.setPosition(at);
-        box.setFillColor(entity.kind == 1 ? color : sf::Color(160, 160, 160));
-        window.draw(box);
-    }
-    if (entity.kind == 1) {
-        sf::ConvexShape marker(3);
-
-        marker.setPoint(0, {0.0F, 0.0F});
-        marker.setPoint(1, {16.0F, 0.0F});
-        marker.setPoint(2, {8.0F, 10.0F});
-        marker.setPosition({at.x + 40.0F, at.y - 16.0F});
-        marker.setFillColor(color);
-        marker.setOutlineColor(local ? sf::Color::White : sf::Color::Black);
-        marker.setOutlineThickness(local ? 2.0F : 1.0F);
-        window.draw(marker);
+    if (!drawKnown(entity, at, color, local)) {
+        drawPlaceholder(
+            at, entity.kind == KIND_SHIP ? color : sf::Color(160, 160, 160));
     }
 }
 
-void GameWindow::Impl::drawHud(const Frame &frame,
-                               const std::vector<sf::Color> &colors)
+void GameWindow::Impl::drawScores(const Frame &frame,
+                                  const std::vector<sf::Color> &colors)
 {
     float y = 12.0F;
 
@@ -259,95 +351,122 @@ void GameWindow::Impl::drawHud(const Frame &frame,
 
         swatch.setPosition({16.0F, y + 4.0F});
         swatch.setFillColor(colors[slot % colors.size()]);
-        window.draw(swatch);
+        _window.draw(swatch);
         drawText("P" + std::to_string(slot + 1) + " " + info.name + "  " +
                      std::to_string(info.score),
-                 {44.0F, y}, 22, sf::Color::White);
+                 {44.0F, y}, 22);
         y += 28.0F;
     }
+}
+
+void GameWindow::Impl::drawHud(const Frame &frame,
+                               const std::vector<sf::Color> &colors)
+{
+    drawScores(frame, colors);
     drawText("Level " + std::to_string(frame.world.level()) + "   " +
                  std::to_string(frame.rttMs) + " ms",
-             {WORLD_WIDTH - 220.0F, 12.0F}, 20, sf::Color::White);
+             {WORLD_WIDTH - 220.0F, 12.0F}, 20);
     if (!frame.banner.empty()) {
         drawText(frame.banner,
-                 {WORLD_WIDTH / 2.0F - 220.0F, WORLD_HEIGHT / 2.0F - 20.0F}, 36,
-                 sf::Color::White);
+                 {WORLD_WIDTH / 2.0F - 220.0F, WORLD_HEIGHT / 2.0F - 20.0F},
+                 36);
+    }
+}
+
+bool GameWindow::Impl::isOpen() const
+{
+    return _window.isOpen();
+}
+
+void GameWindow::Impl::pollEvents()
+{
+    while (const std::optional event = _window.pollEvent()) {
+        if (event->is<sf::Event::Closed>()) {
+            _window.close();
+        } else if (const auto *resized = event->getIf<sf::Event::Resized>()) {
+            fitView(resized->size);
+        }
+    }
+}
+
+void GameWindow::Impl::close()
+{
+    _window.close();
+}
+
+void GameWindow::Impl::draw(const Frame &frame)
+{
+    const std::vector<sf::Color> colors = playerColors(frame);
+
+    _window.clear(sf::Color(5, 5, 20));
+    _window.setView(_view);
+    drawStars(frame);
+    for (const world::RenderEntity &entity : frame.world.visible(frame.now)) {
+        const bool local = entity.owner == frame.world.localSlot();
+
+        drawEntity(entity, colors[entity.owner % colors.size()],
+                   local && entity.kind == KIND_SHIP);
+    }
+    drawHud(frame, colors);
+    _window.display();
+}
+
+void GameWindow::Impl::playShot()
+{
+    if (_shot) {
+        _shot->play();
+    }
+}
+
+void GameWindow::Impl::playExplosion()
+{
+    if (_boom) {
+        _boom->play();
     }
 }
 
 GameWindow::GameWindow(const settings::ClientSettings &settings,
                        const std::string &title, const std::string &assetRoot)
-    : _impl(std::make_unique<Impl>(settings, title))
-{
-    _impl->loadAssets(assetRoot);
-}
+    : _impl(std::make_unique<Impl>(settings, title, assetRoot))
+{}
 
 GameWindow::~GameWindow() = default;
 
 bool GameWindow::isOpen() const
 {
-    return _impl->window.isOpen();
+    return _impl->isOpen();
 }
 
 void GameWindow::pollEvents()
 {
-    while (const std::optional event = _impl->window.pollEvent()) {
-        if (event->is<sf::Event::Closed>()) {
-            _impl->window.close();
-        } else if (const auto *resized = event->getIf<sf::Event::Resized>()) {
-            _impl->fitView(resized->size);
-        }
-    }
+    _impl->pollEvents();
 }
 
-bool GameWindow::isKeyDown(settings::ScanCode key) const
+bool GameWindow::isKeyDown(settings::ScanCode key)
 {
     const auto scan = toSfml(key);
 
-    return scan != sf::Keyboard::Scancode::Unknown &&
-           sf::Keyboard::isKeyPressed(scan);
+    return scan != Scan::Unknown && sf::Keyboard::isKeyPressed(scan);
 }
 
 void GameWindow::draw(const Frame &frame)
 {
-    const auto theme =
-        settings::makeTheme(frame.palette, frame.highContrast, false);
-    const std::vector<sf::Color> colors = {
-        toSfml(theme.resolve(engine::ecs::UIColorRole::PLAYER_1, {})),
-        toSfml(theme.resolve(engine::ecs::UIColorRole::PLAYER_2, {})),
-        toSfml(theme.resolve(engine::ecs::UIColorRole::PLAYER_3, {})),
-        toSfml(theme.resolve(engine::ecs::UIColorRole::PLAYER_4, {}))};
-
-    _impl->window.clear(sf::Color(5, 5, 20));
-    _impl->window.setView(_impl->view);
-    _impl->drawStars(frame);
-    for (const world::RenderEntity &entity : frame.world.visible(frame.now)) {
-        const bool local = entity.owner == frame.world.localSlot();
-
-        _impl->drawEntity(entity, colors[entity.owner % colors.size()],
-                          local && entity.kind == 1);
-    }
-    _impl->drawHud(frame, colors);
-    _impl->window.display();
+    _impl->draw(frame);
 }
 
 void GameWindow::close()
 {
-    _impl->window.close();
+    _impl->close();
 }
 
 void GameWindow::playShot()
 {
-    if (_impl->shot) {
-        _impl->shot->play();
-    }
+    _impl->playShot();
 }
 
 void GameWindow::playExplosion()
 {
-    if (_impl->boom) {
-        _impl->boom->play();
-    }
+    _impl->playExplosion();
 }
 
 } /* namespace client::render */

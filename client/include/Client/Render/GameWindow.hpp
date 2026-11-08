@@ -50,6 +50,8 @@ public:
 
     GameWindow(const GameWindow &) = delete;
     GameWindow &operator=(const GameWindow &) = delete;
+    GameWindow(GameWindow &&) = delete;
+    GameWindow &operator=(GameWindow &&) = delete;
 
     [[nodiscard]] bool isOpen() const;
 
@@ -61,7 +63,7 @@ public:
     /**
      * @brief Returns true while the physical key is held.
      */
-    [[nodiscard]] bool isKeyDown(settings::ScanCode key) const;
+    [[nodiscard]] static bool isKeyDown(settings::ScanCode key);
 
     /**
      * @brief Closes the window, which ends the game loop.
@@ -77,7 +79,7 @@ public:
     void playExplosion();
 
 private:
-    struct Impl;
+    class Impl;
     std::unique_ptr<Impl> _impl;
 };
 
