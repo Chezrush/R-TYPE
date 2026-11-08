@@ -12,6 +12,7 @@ add_library(rtype_server_core STATIC
     src/GameBridge.cpp
     src/Gateway.cpp
     src/InputQueue.cpp
+    src/LocalAddress.cpp
     src/PlayerSessions.cpp
     src/Server.cpp
 )

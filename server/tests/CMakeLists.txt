@@ -70,3 +70,14 @@ target_link_libraries(game_bridge_tests
 )
 
 set_tests_properties(game_bridge_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(local_address_tests
+    LocalAddressTests.cpp
+)
+
+target_link_libraries(local_address_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(local_address_tests PROPERTIES TIMEOUT 10)
