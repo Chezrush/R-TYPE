@@ -103,3 +103,14 @@ target_link_libraries(connection_tests
 )
 
 set_tests_properties(connection_tests PROPERTIES TIMEOUT 20)
+
+rtype_add_test(handshake_tests
+    HandshakeTests.cpp
+)
+
+target_link_libraries(handshake_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(handshake_tests PROPERTIES TIMEOUT 10)

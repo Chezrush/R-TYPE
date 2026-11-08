@@ -38,6 +38,15 @@ public:
     parseHeader(std::string_view packet) noexcept;
 
     /**
+     * @brief Reads the header without checking magic, version or flags.
+     *
+     * Only used to report a version mismatch, where the layout of the rest
+     * of the datagram means nothing.
+     */
+    [[nodiscard]] static std::optional<MessageHeader>
+    peekHeader(std::string_view packet) noexcept;
+
+    /**
      * @brief Returns true if a record of the packet has this type.
      */
     [[nodiscard]] static bool hasRecord(std::string_view packet,

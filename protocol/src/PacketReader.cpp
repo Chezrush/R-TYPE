@@ -180,6 +180,15 @@ PacketReader::parseHeader(std::string_view packet) noexcept
     return header;
 }
 
+std::optional<MessageHeader>
+PacketReader::peekHeader(std::string_view packet) noexcept
+{
+    if (packet.size() < PACKET_HEADER_SIZE || packet.size() > MAX_PACKET_SIZE) {
+        return std::nullopt;
+    }
+    return readHeader(packet);
+}
+
 bool PacketReader::hasRecord(std::string_view packet, MessageType type) noexcept
 {
     std::string_view remaining = recordsOf(packet);
