@@ -93,7 +93,20 @@ public:
      */
     [[nodiscard]] std::uint64_t tick() const noexcept;
 
+    /**
+     * @brief Returns the phase of the game.
+     *
+     * WAITING while nobody is in the game, PLAYING from the tick after the
+     * first player joins, GAME_OVER when every player is out of lives. After
+     * rules.gameOverDelay seconds of GAME_OVER a new game starts with the
+     * players still there (everything is reset), or the phase goes back to
+     * WAITING if nobody is left. Every change is reported by a GameStateEvent.
+     */
     [[nodiscard]] GamePhase phase() const noexcept;
+
+    /** @brief Returns the current level, 1 at the start of a game. */
+    [[nodiscard]] std::uint8_t level() const noexcept;
+
     [[nodiscard]] const GameRules &rules() const noexcept;
 
 private:

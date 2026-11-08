@@ -13,6 +13,7 @@ add_library(rtype_game STATIC
     src/Components.cpp
     src/Entities.cpp
     src/NetIdAllocator.cpp
+    src/Phases.cpp
     src/Players.cpp
     src/Random.cpp
     src/ShipMovement.cpp
@@ -22,6 +23,7 @@ add_library(rtype_game STATIC
     src/Systems/CollisionSystem.cpp
     src/Systems/DamageSystem.cpp
     src/Systems/EnemyAISystem.cpp
+    src/Systems/GameStateSystem.cpp
     src/Systems/InputSystem.cpp
     src/Systems/MovementSystem.cpp
     src/Systems/RespawnSystem.cpp
@@ -43,6 +45,7 @@ rtype_add_catch_test(rtype_game_tests
     tests/Lives.cpp
     tests/NetIdAllocator.cpp
     tests/OffScreen.cpp
+    tests/Phases.cpp
     tests/Players.cpp
     tests/Random.cpp
     tests/ShipMovement.cpp

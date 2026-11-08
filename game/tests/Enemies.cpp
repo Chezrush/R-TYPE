@@ -361,7 +361,7 @@ TEST_CASE("the level goes up with the enemies and speeds them up",
                     Approx(-rtype::game::enemySpeed(rules, level)));
             ++enemies;
         }
-        if (state != nullptr) {
+        if (state != nullptr && state->level > 1) {
             levels.push_back(state->level);
             REQUIRE(enemies == 3 * levels.size());
             REQUIRE(state->phase == simulation.phase());

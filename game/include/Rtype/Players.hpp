@@ -21,6 +21,9 @@ namespace rtype::game {
  */
 [[nodiscard]] bool hasActivePlayers(const GameContext &context);
 
+/** @brief Whether at least one player is in a slot, alive or not. */
+[[nodiscard]] bool anyPlayerPresent(const GameContext &context);
+
 /**
  * @brief Ends the game if every player present is out of lives.
  *

@@ -8,7 +8,6 @@
 #include "Rtype/Systems/SpawnSystem.hpp"
 
 #include "Rtype/Entities.hpp"
-#include "Rtype/Players.hpp"
 
 namespace rtype::game {
 
@@ -32,7 +31,7 @@ void updateWaves(engine::ecs::Registry &registry,
     WaveState &wave = context.wave;
 
     if (context.rules.enemySpawnInterval <= 0.0F ||
-        !hasActivePlayers(context)) {
+        context.phase != GamePhase::PLAYING) {
         return;
     }
     wave.spawnTimer -= deltaTime;

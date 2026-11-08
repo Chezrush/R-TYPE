@@ -21,6 +21,7 @@
 #include "Rtype/Systems/CollisionSystem.hpp"
 #include "Rtype/Systems/DamageSystem.hpp"
 #include "Rtype/Systems/EnemyAISystem.hpp"
+#include "Rtype/Systems/GameStateSystem.hpp"
 #include "Rtype/Systems/InputSystem.hpp"
 #include "Rtype/Systems/MovementSystem.hpp"
 #include "Rtype/Systems/RespawnSystem.hpp"
@@ -50,6 +51,7 @@ Simulation::Simulation(const GameRules &rules, std::uint32_t seed)
 
     world.context.players.resize(rules.maxPlayers);
     registerComponents(world.registry);
+    addGameStateSystem(world.scheduler, world.context);
     addRespawnSystem(world.scheduler, world.context);
     addInputSystem(world.scheduler, world.registry, world.context);
     addSpawnSystem(world.scheduler, world.context);
@@ -151,6 +153,11 @@ std::uint64_t Simulation::tick() const noexcept
 GamePhase Simulation::phase() const noexcept
 {
     return _world->context.phase;
+}
+
+std::uint8_t Simulation::level() const noexcept
+{
+    return _world->context.level;
 }
 
 const GameRules &Simulation::rules() const noexcept
