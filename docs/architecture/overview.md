@@ -41,36 +41,64 @@ decoupling the subject asks for. The details are in the [ECS architecture](ecs.m
 
 ## Server
 
+<a id="server-wiring"></a>
+
+### Server wiring
+
+Three classes, each with one job:
+
+- **`Gateway`** (`server/`): the protocol of every client (handshake, `Connection`, reliable
+  channel, flood limits, liveness). It is thread-safe (one mutex) and opens no socket: datagrams
+  and the clock are passed in, and it hands datagrams back through a callback.
+- **`Server`**: owns the Asio UDP socket and two `std::jthread`s, a network thread and a
+  simulation thread. It is the only class that touches the socket.
+- **`GameBridge`**: connects the `rtype::game::Simulation` to protocol messages. Each client has
+  an `InputQueue` that releases **one input per tick** and remembers the last one applied
+  (`input_ack`). Simulation events (spawn, destroy, score, game state) are sent as **reliable**
+  records to every client, and a **snapshot at 20 Hz** (`SNAPSHOT_RATE`) carries the positions
+  and the `input_ack` of each client. A client that joins first receives the current world.
+
 ```mermaid
 flowchart LR
-    net["network thread (udp_worker)"] -- inbox --> game["game thread, 60 Hz"]
-    game -- outbox --> net
+    subgraph net["network thread"]
+        socket["Server: asio UDP socket"]
+    end
+    subgraph sim["simulation thread, 60 Hz"]
+        bridge["GameBridge"] --> simulation["game::Simulation"]
+    end
+    socket -- "datagrams" --> gateway["Gateway: protocol per client"]
+    gateway -- "inputs, join, leave" --> bridge
+    bridge -- "reliable events, snapshots" --> gateway
+    gateway -- "datagrams to send" --> socket
 ```
 
-- The **network thread** owns the socket. It only moves datagrams between the socket and two
-  bounded queues. A flood of packets fills the queue and gets dropped, it cannot grow memory.
-- The **game thread** runs at a fixed 60 Hz (`fixed_timestep_loop`, clock-driven):
-  1. decode inbound datagrams (anything malformed is dropped and counted),
-  2. drop clients silent for 5 s (crash detection) and tell the others (`player_left`),
-  3. fire missiles, spawn Bydos, run systems (control, movement, clamp),
-  4. collisions and off-screen cleanup, broadcast `entity_destroy` for the dead,
-  5. broadcast `entity_state` snapshots.
+Text equivalent: the network thread reads datagrams and gives them to the `Gateway`, which
+validates them and passes inputs and joins to the `GameBridge`. The simulation thread steps the
+`Simulation` once per tick, and the `GameBridge` returns the events and snapshots to the
+`Gateway`, which builds the datagrams that the network thread sends. The client side is in the
+[client architecture](client.md), and the mapping of the protocol to code is in the
+[protocol implementation](../protocol/implementation.md).
+
+### Threads
+
+- The **network thread** owns the socket. It reads at most 256 datagrams per pass, hands them
+  to the `Gateway`, drops clients silent for too long and sends the outgoing datagrams. The
+  message queues are bounded, so a flood of packets cannot grow memory.
+- The **simulation thread** runs at a fixed 60 Hz (clock-driven, never tied to CPU speed):
+  it applies one queued input per client, steps the simulation, broadcasts the events and,
+  every third tick, the snapshots.
 - The server is **authoritative**: clients only send their pressed keys.
 
 ## Client
 
-- Main thread: poll window events, pump network, send input, render. Star-field scrolling
-  uses the real elapsed time (`stopwatch`), never the frame rate.
-- It keeps a local `registry` that mirrors the server's entities (created on first sight,
-  updated by snapshots, removed on `entity_destroy`, or after 1 s of silence in case a destroy
-  packet was lost).
-- SFML is confined to `client/src/window.cpp` and to the engine render library
-  (`rtype::engine_render`, see [UI](ui.md#rendering)), which the server never links.
+See the [client architecture](client.md). In short: a fixed-step loop reads the keys, sends
+them, predicts the own ship with the same `moveShip` as the server, reconciles on each
+snapshot with `input_ack`, interpolates the other entities and draws. SFML is confined to the
+game window and the engine render library, which the server never links.
 
-## Known limits of Part 1 (candidates for Part 2)
+## Known limits (Part 2, Advanced Networking)
 
-- Snapshots are sent at the full tick rate with no delta compression or interpolation.
-- Spawn / destroy messages are not acknowledged (UDP): the client self-heals by creating
-  unknown entities lazily and pruning silent ones, but there is no real reliability layer.
-- One game per server, IPv4 only, no authentication.
-- No enemy missiles, power-ups or sound yet.
+- Snapshots are absolute: no delta compression, no payload compression.
+- One game per server, no lobbies or rooms, IPv4 only, no authentication.
+- No lag compensation on the server.
+- Sound effects are generated and only played for shots and explosions.

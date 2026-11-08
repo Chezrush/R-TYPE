@@ -4,7 +4,10 @@ A networked clone of the classic horizontal shoot'em up **R-Type**, built on a s
 engine of our own (ECS, fixed-timestep loop, UDP networking). Up to 4 players fight waves of
 Bydos on one authoritative server.
 
-> Epitech B-CPP-500 project. Status: **Part 1** (architecture + first playable prototype).
+> Epitech B-CPP-500 project. Status: the game is playable end to end. The authoritative server
+> and the client run a full loop (Bydos enemies, player missiles, lives, score), with client-side
+> prediction, reconciliation and interpolation. Part 2 track: **Advanced Networking** (see
+> [design decisions](docs/decisions.md) for what is done and what is not).
 
 ## Requirements
 
@@ -19,7 +22,8 @@ Dependencies (Asio, SFML) are declared in `vcpkg.json` and fetched automatically
 time. Nothing needs to be installed system-wide besides the compiler and the usual graphics
 libraries (OpenGL / X11 on Linux).
 
-Supported platforms: Linux and macOS (client and server). Windows is a target (cross-play), see
+Supported platforms: Linux, Windows and macOS are all built in CI (GitHub Actions matrix), but
+only Linux has been run by hand. Windows and macOS builds are not validated by playing, see
 [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
 ## Build
@@ -40,12 +44,16 @@ Binaries end up in `build/<preset>/bin/`: `r-type_server` and `r-type_client`.
 
 ## Play
 
+Quick start: build, then start one server and one client per player (up to 4).
+
 ```sh
-./r-type_server 4242                 # UDP port, default 4242
-./r-type_client 127.0.0.1 4242       # one per player, up to 4
+./r-type_server [PORT]                         # UDP port, default 4242
+./r-type_client [HOST [PORT]] [--name NAME]    # defaults: 127.0.0.1, 4242, Player
 ```
 
-Controls: **arrow keys** or **WASD** to move, **Space** to shoot.
+Controls: **arrow keys** or **WASD** to move, **Space** to shoot, **Escape** to quit.
+Keys, resolution, fullscreen, vsync, colour palette and high contrast are read from the
+settings file `~/.config/r-type/settings.cfg`.
 
 ## Project layout
 

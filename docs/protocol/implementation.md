@@ -70,7 +70,10 @@ overtaken by three acknowledged datagrams). The result never exceeds 1200 bytes 
 
 ## Limits of this implementation
 
-- The simulation does not produce snapshots, spawns or scores yet: `Gateway::queueFromSimulation`
-  already carries any record the game queues, and `player_joined` and `player_left` are sent.
-- Client prediction and interpolation (section 9.3) are client work and are not in the library.
+- The server side of the game is wired by `GameBridge` (see the
+  [architecture overview](../architecture/overview.md#server-wiring)), which turns simulation
+  events into reliable records and builds the 20 Hz snapshots.
+- Client prediction and interpolation (section 9.3) are client work, in `client/`
+  (see the [client architecture](../architecture/client.md)), not in the protocol library.
+- No compression, no delta snapshots, no lag compensation.
 - Confidentiality and integrity are out of scope of version 1 (section 11).
