@@ -9,7 +9,9 @@ find_package(asio CONFIG REQUIRED)
 
 add_library(rtype_server_core STATIC
     src/ClientActivity.cpp
+    src/GameBridge.cpp
     src/Gateway.cpp
+    src/InputQueue.cpp
     src/PlayerSessions.cpp
     src/Server.cpp
 )
@@ -26,6 +28,7 @@ target_link_libraries(rtype_server_core
         rtype_warnings
     PUBLIC
         rtype_protocol
+        rtype::game
         Threads::Threads
         asio::asio
 )
