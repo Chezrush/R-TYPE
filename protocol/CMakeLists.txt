@@ -7,6 +7,10 @@
 
 add_library(rtype_protocol STATIC
     src/ByteOrder.cpp
+    src/ByteReader.cpp
+    src/ByteWriter.cpp
+    src/FixedPoint.cpp
+    src/SerialNumber.cpp
     src/PacketBuilder.cpp
     src/PacketReader.cpp
 )

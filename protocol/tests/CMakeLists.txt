@@ -26,3 +26,25 @@ target_link_libraries(packet_builder_tests
 )
 
 set_tests_properties(packet_builder_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(byte_stream_tests
+    ByteStreamTests.cpp
+)
+
+target_link_libraries(byte_stream_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(byte_stream_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(numeric_tests
+    NumericTests.cpp
+)
+
+target_link_libraries(numeric_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(numeric_tests PROPERTIES TIMEOUT 10)
