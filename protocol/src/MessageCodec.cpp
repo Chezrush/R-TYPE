@@ -344,6 +344,14 @@ const std::unordered_map<MessageType, Decoder> DECODERS = {
     {MessageType::GAMESTATE, decodeGameState},
 };
 
+std::optional<Message> decodeWith(Decoder decoder,
+                                  std::string_view body) noexcept
+{
+    ByteReader reader(body);
+
+    return decoder(reader);
+}
+
 } // namespace
 
 std::optional<Message> MessageCodec::decodeBody(std::uint8_t type,
@@ -354,9 +362,7 @@ std::optional<Message> MessageCodec::decodeBody(std::uint8_t type,
     if (decoder == DECODERS.end()) {
         return std::nullopt;
     }
-    ByteReader reader(body);
-
-    return decoder->second(reader);
+    return decodeWith(decoder->second, body);
 }
 
 void MessageCodec::appendMessage(std::string &packet, const Message &message)
