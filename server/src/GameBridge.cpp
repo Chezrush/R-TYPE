@@ -186,4 +186,14 @@ std::size_t GameBridge::clientCount() const noexcept
     return _clients.size();
 }
 
+const game::GameRules &GameBridge::rules() const noexcept
+{
+    return _simulation.rules();
+}
+
+std::uint64_t GameBridge::tick() const noexcept
+{
+    return _simulation.tick();
+}
+
 } /* namespace rtype::server */

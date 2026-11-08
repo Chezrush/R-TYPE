@@ -155,8 +155,8 @@ private:
     Clock::time_point _lastStatsLine = Clock::now();
 
     ClientActivity _activity;
-    PlayerSessions _players;
     GameBridge _bridge;
+    PlayerSessions _players;
 
     std::jthread _networkThread;
     std::jthread _simulationThread;

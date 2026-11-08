@@ -84,7 +84,7 @@ void testActivityExpiresAfterTimeout()
 
 void testLeaveNotifiesOtherPlayers()
 {
-    PlayerSessions players;
+    PlayerSessions players(4);
 
     CHECK(players.join(1));
     CHECK(players.join(2));
@@ -108,7 +108,7 @@ void testLeaveNotifiesOtherPlayers()
 
 void testRepeatedLeaveIsIgnored()
 {
-    PlayerSessions players;
+    PlayerSessions players(4);
 
     CHECK(players.join(1));
     CHECK(players.join(2));
@@ -117,6 +117,35 @@ void testRepeatedLeaveIsIgnored()
     CHECK(players.leave(1, DisconnectReason::TIMEOUT).empty());
     CHECK(players.size() == 1);
     CHECK(players.join(1));
+}
+
+void testJoinGivesTheSlot()
+{
+    PlayerSessions players(4);
+
+    CHECK(players.join(1) == 0);
+    CHECK(players.join(2, 3) == 3);
+    CHECK(players.join(3, 3) == 1);
+    CHECK(players.join(4, 9) == 2);
+    CHECK(!players.join(5));
+    CHECK(players.size() == 4);
+}
+
+void testServerKeepsFourPlayers()
+{
+    Server server(testConfig(5000ms));
+
+    std::size_t accepted = 0;
+
+    CHECK(server.start());
+    for (std::uint32_t clientId = 1; clientId <= 5; ++clientId) {
+        accepted += server.receivePacket({clientId, HELLO, {}}) ? 1 : 0;
+    }
+    CHECK(accepted == 5);
+    CHECK(waitFor([&] { return server.playerCount() == 4; }));
+    std::this_thread::sleep_for(50ms);
+    CHECK(server.playerCount() == 4);
+    server.shutdown();
 }
 
 void testExplicitDisconnection()
@@ -157,6 +186,8 @@ int main()
     testActivityExpiresAfterTimeout();
     testLeaveNotifiesOtherPlayers();
     testRepeatedLeaveIsIgnored();
+    testJoinGivesTheSlot();
+    testServerKeepsFourPlayers();
     testExplicitDisconnection();
     testTimeoutDisconnection();
 
