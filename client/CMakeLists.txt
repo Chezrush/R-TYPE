@@ -12,6 +12,7 @@ add_library(rtype_client_core STATIC
     src/Console/ConsoleService.cpp
     src/Hud/BeamGauge.cpp
     src/Hud/HudController.cpp
+    src/Hud/HudFeed.cpp
     src/Hud/HudView.cpp
     src/Hud/StatsOverlay.cpp
     src/Hud/VisualCueIndicator.cpp
@@ -63,6 +64,7 @@ rtype_add_catch_test(rtype_client_tests
     tests/Console/ConsoleModel.cpp
     tests/Hud/BeamGauge.cpp
     tests/Hud/HudController.cpp
+    tests/Hud/HudFeed.cpp
     tests/Hud/HudView.cpp
     tests/Hud/StatsOverlay.cpp
     tests/Hud/VisualCueIndicator.cpp

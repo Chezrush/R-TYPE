@@ -9,6 +9,7 @@
 
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <filesystem>
@@ -25,6 +26,7 @@ using Scan = sf::Keyboard::Scan;
 
 constexpr float WORLD_WIDTH = 1280.0F;
 constexpr float WORLD_HEIGHT = 720.0F;
+constexpr std::size_t SCORE_DIGITS = 7;
 constexpr float SHIP_SCALE = 3.0F;
 constexpr float BYDOS_SCALE = 2.5F;
 constexpr unsigned SOUND_RATE = 22050;
@@ -179,6 +181,8 @@ private:
     void drawPlaceholder(sf::Vector2f at, sf::Color color);
     void drawMarker(sf::Vector2f at, sf::Color color, bool local,
                     unsigned slot);
+    static std::string stats(const Frame &frame);
+    void drawCues(const Frame &frame);
     void drawHud(const Frame &frame, const std::vector<sf::Color> &colors);
     void drawScores(const Frame &frame, const std::vector<sf::Color> &colors);
     void drawText(const std::string &text, sf::Vector2f at, unsigned size);
@@ -399,14 +403,39 @@ void GameWindow::Impl::drawScores(const Frame &frame,
     }
 }
 
+std::string GameWindow::Impl::stats(const Frame &frame)
+{
+    const hud::HudState fallback;
+    const hud::HudState &state = frame.hud != nullptr ? *frame.hud : fallback;
+    std::string score = std::to_string(state.score);
+
+    score.insert(0, SCORE_DIGITS - std::min(SCORE_DIGITS, score.size()), '0');
+    return "Score " + score + "   Lives " + std::to_string(state.lives) +
+           "   Stage " + std::to_string(state.level) + "   " +
+           std::to_string(frame.rttMs) + " ms";
+}
+
+void GameWindow::Impl::drawCues(const Frame &frame)
+{
+    const std::array<sf::Vector2f, 4> places = {
+        {{16.0F, WORLD_HEIGHT / 2.0F},
+         {WORLD_WIDTH - 200.0F, WORLD_HEIGHT / 2.0F},
+         {WORLD_WIDTH / 2.0F - 80.0F, 48.0F},
+         {WORLD_WIDTH / 2.0F - 80.0F, WORLD_HEIGHT - 60.0F}}};
+
+    for (std::size_t side = 0; side < places.size(); ++side) {
+        if (!frame.cues[side].empty()) {
+            drawText(frame.cues[side], places[side], 24);
+        }
+    }
+}
+
 void GameWindow::Impl::drawHud(const Frame &frame,
                                const std::vector<sf::Color> &colors)
 {
     drawScores(frame, colors);
-    drawText("Lives " + std::to_string(frame.world.lives()) + "   Level " +
-                 std::to_string(frame.world.level()) + "   " +
-                 std::to_string(frame.rttMs) + " ms",
-             {WORLD_WIDTH - 360.0F, 12.0F}, 20);
+    drawText(stats(frame), {WORLD_WIDTH - 520.0F, 12.0F}, 20);
+    drawCues(frame);
     if (!frame.banner.empty()) {
         drawText(frame.banner,
                  {WORLD_WIDTH / 2.0F - 220.0F, WORLD_HEIGHT / 2.0F - 20.0F},

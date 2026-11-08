@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "Client/Hud/HudFeed.hpp"
 #include "Client/Net/ClientSession.hpp"
 #include "Client/Render/GameWindow.hpp"
 #include "Client/Scenes/Starfield.hpp"
@@ -231,18 +232,22 @@ struct Game {
     client::render::GameWindow &window;
     const client::settings::ClientSettings &settings;
     client::world::WorldState world{};
+    client::hud::HudFeed hud{};
     client::scenes::Starfield stars{120, 7};
     double accumulator = 0.0;
     double previous = 0.0;
+    double hudPrevious = 0.0;
 };
 
 void receive(Game &game, double now)
 {
     if (!game.world.configured() && game.session.welcome()) {
         game.world.configure(*game.session.welcome());
+        game.hud.welcome(*game.session.welcome());
     }
     for (const auto &message : game.session.takeMessages()) {
         game.world.apply(message, now);
+        game.hud.feed(message);
         playSounds(message, game.window);
     }
 }
@@ -264,14 +269,38 @@ void sendInputs(Game &game, double now, Clock::time_point tick)
     }
 }
 
+void updateHud(Game &game, double now)
+{
+    const auto dt = static_cast<float>(std::min(now - game.hudPrevious, 0.25));
+    const auto keys = readKeys(game.window, game.settings);
+
+    game.hudPrevious = now;
+    game.hud.update(dt, (keys & rtype::protocol::KEY_SHOOT) != 0);
+}
+
+client::render::Frame frameOf(const Game &game, double now)
+{
+    client::render::Frame frame{game.world,
+                                game.stars,
+                                now,
+                                bannerOf(game.session, game.world),
+                                static_cast<int>(game.session.rtt().count()),
+                                game.settings.palette,
+                                game.settings.highContrast};
+
+    frame.hud = &game.hud.state();
+    for (std::size_t side = 0; side < frame.cues.size(); ++side) {
+        frame.cues[side] =
+            game.hud.cue(static_cast<client::events::CueDirection>(side));
+    }
+    return frame;
+}
+
 void render(Game &game, double now)
 {
     game.stars.advance(static_cast<float>(stepOf(game)));
     game.world.update(now);
-    game.window.draw({game.world, game.stars, now,
-                      bannerOf(game.session, game.world),
-                      static_cast<int>(game.session.rtt().count()),
-                      game.settings.palette, game.settings.highContrast});
+    game.window.draw(frameOf(game, now));
 }
 
 bool quitRequested(const Game &game)
@@ -301,6 +330,7 @@ void runGame(ClientSession &session, client::render::GameWindow &window,
         session.update(tick);
         receive(game, now);
         sendInputs(game, now, tick);
+        updateHud(game, now);
         render(game, now);
     }
     session.disconnect(Clock::now());
