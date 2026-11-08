@@ -75,8 +75,25 @@ The wire format is specified in the [protocol RFC](protocol/rtype-protocol.md).
 | Numbers | Fixed-point `i16` (1/16 px) and `u16` entity ids | `float` and `u32` | Halves the size of an entity state, and there is no NaN or infinity to validate. 1/16 px is finer than a pixel on a 1280 x 720 field. Ids are unique among living entities only | decided |
 | State updates | Sparse absolute snapshots at 20 Hz, velocity hint in `spawn` | Full snapshot at 60 Hz; delta against an acknowledged baseline | A full snapshot at 60 Hz is about 13 times over the 5 KB/s target. Absolute entries repair themselves after a loss, unlike deltas which need baseline tracking. Delta compression stays possible in a later version | decided |
 | Enumerations | Open sets: unknown `kind`, `variant`, `reason` are passed to the game | Closed sets rejected by the decoder | New monsters, weapons and bosses (Part 2, advanced gameplay) need no protocol change | decided |
-| Netcode | Client prediction with `input_ack`, interpolation of the others, redundant inputs | Lockstep; rollback | Lockstep stalls on the slowest link. Rollback needs a deterministic simulation on every client, which is too heavy for this schedule. Prediction keeps the server authoritative | direction |
+| Netcode | Client prediction with `input_ack`, interpolation of the others, redundant inputs (last 4 samples per datagram) | Lockstep; rollback | Lockstep stalls on the slowest link. Rollback needs a deterministic simulation on every client, which is too heavy for this schedule. Prediction keeps the server authoritative | decided, implemented |
 | Confidentiality | None in version 1, `flags` bit reserved | DTLS, own encryption now | Out of the subject's scope for Part 1. The reserved bit and the version field allow adding it without breaking the format | direction |
+
+## Part 2 track: Advanced Networking
+
+The chosen track is **Advanced Networking**. We picked it over Advanced Architecture and
+Advanced Gameplay because the protocol, the reliability layer and the netcode were already the
+core of the project, so the remaining work is measurement rather than a new subsystem.
+
+| Feature | Alternatives | Why | Status |
+| --- | --- | --- | --- |
+| Reliability over UDP with acknowledgements | Library (ENet), TCP side channel | Own layer, see the Reliability line above | done |
+| Quantization | Floats on the wire | See the Numbers line above | done |
+| Client-side prediction and reconciliation | None (wait for the server) | The own ship uses the same `moveShip` as the server and is replayed from `input_ack` | done |
+| Interpolation of other entities | Draw the last snapshot | Hides the 20 Hz snapshot rate (100 ms in the past) | done |
+| Compression (LZ4, zlib), delta snapshots | Absolute snapshots | Not needed to meet the bandwidth target, and deltas need baseline tracking | not done |
+| Multi-instance server, lobbies, accounts, chat | One game per server | Would need a session layer above the `Gateway` | not done |
+| Lag compensation | Server rewinds nothing | Missiles are resolved on the current server state | not done |
+| Measurements (bandwidth, lag) | Estimates | Required by the subject, with `tools/netem.sh` | to publish |
 
 ## Rules applied to every decision
 

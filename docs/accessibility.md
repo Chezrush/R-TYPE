@@ -2,7 +2,10 @@
 
 The game and this documentation must be usable by as many people as possible. For each family
 of disability we list what exists today and what is planned. Items marked **todo** are not
-implemented yet and must be tracked as issues.
+implemented yet and must be tracked as issues. **Not in game** means the code and its tests
+exist (settings, widgets) but the `r-type_client` game loop does not apply it yet. The settings
+are read from `~/.config/r-type/settings.cfg`; the client starts straight in the game, so the
+settings and help screens are not reachable from it.
 
 ## Physical and motor
 
@@ -10,9 +13,10 @@ implemented yet and must be tracked as issues.
 | --- | --- |
 | Arrow keys **and** WASD both work, Space to shoot | done |
 | Only 5 keys needed, no key combinations, no mouse | done |
-| Remappable keys, stored as physical scancodes | done |
-| Auto-fire option (hold-free shooting), hold or toggle for the beam | option done, gameplay input to come |
-| Gamepad bindings and menu navigation | UI done, device reading to come |
+| Remappable keys, stored as physical scancodes | done (read from the settings file, no in-game screen) |
+| Auto-fire option (hold-free shooting) | done (settings file) |
+| Hold or toggle for the beam | not in game (no beam yet) |
+| Gamepad bindings and menu navigation | not in game (UI only, device not read) |
 | Adjustable game speed / difficulty | todo |
 
 ## Audio and visual
@@ -22,10 +26,12 @@ implemented yet and must be tracked as issues.
 | Players differ by **colour** and the local player has an outline | done |
 | Players also differ by **sprite** (one ship row per player) and by a **number in the score list** | done |
 | Distinct marker **shapes** per player: circle, triangle, square, cross (slots 1 to 4) | done |
-| Protanopia, deuteranopia and tritanopia palettes for the UI | done |
-| HUD indicator for sounds: a label on the side they come from | indicator done, sound events to come |
-| Separate volumes for music and effects | settings done, audio to come |
-| Scalable UI (100 to 150 %), high contrast: plates behind text, thick outlines | done |
+| Protanopia, deuteranopia and tritanopia palettes for the HUD and player tags | done (applied in game) |
+| HUD indicator for sounds: a label on the side they come from | not in game (widget only) |
+| Separate volumes for music and effects | not in game (setting stored, not applied) |
+| High contrast: plates behind text, thick outlines | done (applied in game) |
+| Scalable UI (100 to 150 %) | not in game (setting stored, not applied) |
+| Resolution, fullscreen and vsync options | done (applied at start) |
 
 ### Colour-blind palettes
 
@@ -41,9 +47,9 @@ Game sprites are not tinted by the palettes, so a ship can differ from the colou
 | Measure | Status |
 | --- | --- |
 | Very simple rules: move, shoot, avoid | done |
-| Reduced motion option: stops the star-field and the full beam color change | done |
+| Reduced motion option: stops the star-field and the full beam color change | not in game (setting stored, the star-field always scrolls) |
 | Pause and difficulty settings | todo |
-| "How to play" screen in short, plain sentences | done |
+| "How to play" screen in short, plain sentences | screen done, not reachable from the client yet |
 
 ## Documentation
 

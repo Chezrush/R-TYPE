@@ -27,30 +27,48 @@ cmake --build --preset debug
 ctest --preset debug
 ```
 
-On a machine without a display, `--preset server-only` builds everything except the client.
+The presets are `debug`, `release` and `server-only` (everything except the client, for a
+machine without a display). The `Makefile` wraps them: `make` (release, copies the two binaries
+to the repository root), `make debug`, `make server-only`, `make tests_run` (debug build and
+tests) and `make docs` (`mkdocs serve`, needs `pip install mkdocs-material`).
 
 ## 3. Run
 
 ```sh
-build/debug/bin/r-type_server 4242
-build/debug/bin/r-type_client 127.0.0.1 4242   # repeat in other terminals, up to 4 players
+build/debug/bin/r-type_server [PORT]                       # default 4242
+build/debug/bin/r-type_client [HOST [PORT]] [--name NAME]  # defaults 127.0.0.1, 4242, Player
 ```
+
+Controls: arrow keys or WASD to move, Space to shoot, Escape to quit. Settings (keys,
+resolution, fullscreen, vsync, palette, high contrast) are in `~/.config/r-type/settings.cfg`.
+
+### A 2-client game on one machine
+
+1. Terminal 1: `build/debug/bin/r-type_server 4242`
+2. Terminal 2: `build/debug/bin/r-type_client 127.0.0.1 4242 --name Alice`
+3. Terminal 3: `build/debug/bin/r-type_client 127.0.0.1 4242 --name Bob`
+
+Each client opens its own window, up to 4 players. Stop the server with Ctrl+C. Killing one
+client does not stop the game: the others are told that the player left.
 
 ## 4. Test under bad network conditions
 
-Linux (needs root, acts on the loopback interface):
+Linux (needs root, acts on the loopback interface, so run the server and the clients on the
+same machine as above):
 
 ```sh
 sudo tools/netem.sh loss    # 2% packet loss
-sudo tools/netem.sh lag     # 150 ms latency
+sudo tools/netem.sh dup     # 2% duplicated packets
+sudo tools/netem.sh lag     # 150 ms latency (+/- 20 ms jitter)
 sudo tools/netem.sh slow    # ~5 KB/s
-sudo tools/netem.sh reset
+sudo tools/netem.sh reset   # back to normal
 ```
 
-On Windows use [clumsy](https://jagt.github.io/clumsy/).
+Set `IFACE=eth0` to act on another interface. Always run `reset` when you are done. On Windows
+use [clumsy](https://jagt.github.io/clumsy/).
 
-## Windows notes
+## Windows and macOS notes
 
-The code is written to be portable (Asio, SFML, standard C++), but the Windows build is not
-yet validated by CI jobs that run the game. Check it early: cross-platform problems are much
-cheaper to fix at the start of the project.
+CI builds the project on Linux, Windows and macOS, but only Linux has been run by hand
+(server, clients, `netem`). The code is written to be portable (Asio, SFML, standard C++), so
+problems on the other two systems are most likely to show up when playing: report them.
