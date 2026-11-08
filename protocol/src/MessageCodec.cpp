@@ -188,10 +188,11 @@ std::optional<Message> decodeInput(ByteReader &reader) noexcept
     for (std::size_t i = 0; i < count; ++i) {
         m.keys.push_back(reader.readU8());
     }
-    const bool valid = reader.finished() &&
-                       std::all_of(m.keys.begin(), m.keys.end(), [](auto keys) {
-                           return (keys & ~KEYS_MASK) == 0;
-                       });
+    const bool valid =
+        reader.finished() &&
+        std::all_of(m.keys.begin(), m.keys.end(), [](auto keys) {
+            return (keys & static_cast<std::uint8_t>(~KEYS_MASK)) == 0;
+        });
 
     return valid ? std::optional<Message>(std::move(m)) : std::nullopt;
 }

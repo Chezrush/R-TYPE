@@ -17,7 +17,7 @@
 
 namespace rtype::protocol {
 
-enum class ReliableVerdict {
+enum class ReliableVerdict : std::uint8_t {
     DELIVERED,
     BUFFERED,
     DUPLICATE,

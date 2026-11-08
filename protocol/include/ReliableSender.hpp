@@ -76,8 +76,8 @@ private:
         std::vector<std::uint16_t> relIds;
     };
 
-    [[nodiscard]] bool isDue(const Entry &entry, TimePoint now,
-                             Duration timeout) const noexcept;
+    [[nodiscard]] static bool isDue(const Entry &entry, TimePoint now,
+                                    Duration timeout) noexcept;
     [[nodiscard]] bool inSendWindow(const Entry &entry) const noexcept;
     void acknowledge(std::uint16_t seq);
     void remove(std::uint16_t relId);

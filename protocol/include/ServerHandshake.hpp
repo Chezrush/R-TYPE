@@ -29,7 +29,7 @@ namespace rtype::protocol {
  */
 class ServerHandshake {
 public:
-    enum class Kind {
+    enum class Kind : std::uint8_t {
         IGNORE,
         REPLY,
         ACCEPT

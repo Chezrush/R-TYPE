@@ -43,7 +43,7 @@ bool ReliableSender::inSendWindow(const Entry &entry) const noexcept
 }
 
 bool ReliableSender::isDue(const Entry &entry, TimePoint now,
-                           Duration timeout) const noexcept
+                           Duration timeout) noexcept
 {
     if (!entry.sent) {
         return true;

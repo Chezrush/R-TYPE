@@ -192,7 +192,7 @@ bool isReliable(std::uint8_t type) noexcept;
 /**
  * @brief Returns the wire type of a message.
  */
-MessageType typeOf(const Message &message) noexcept;
+MessageType typeOf(const Message &message);
 
 } /* namespace rtype::protocol */
 

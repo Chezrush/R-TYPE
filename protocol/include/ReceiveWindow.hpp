@@ -12,7 +12,7 @@
 
 namespace rtype::protocol {
 
-enum class SeqVerdict {
+enum class SeqVerdict : std::uint8_t {
     ACCEPT,
     DUPLICATE,
     TOO_OLD

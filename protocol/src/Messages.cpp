@@ -19,7 +19,7 @@ bool isReliable(MessageType type) noexcept
     return isReliable(static_cast<std::uint8_t>(type));
 }
 
-MessageType typeOf(const Message &message) noexcept
+MessageType typeOf(const Message &message)
 {
     return std::visit([](const auto &value) { return value.TYPE; }, message);
 }

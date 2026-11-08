@@ -103,7 +103,7 @@ void Connection::applyAck(const MessageHeader &header, TimePoint now)
 }
 
 void Connection::deliverReliable(std::vector<ReliableRecord> &released,
-                                 ReceivedDatagram &result) const
+                                 ReceivedDatagram &result)
 {
     for (const ReliableRecord &record : released) {
         auto message = MessageCodec::decodeBody(record.type, record.payload);

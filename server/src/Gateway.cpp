@@ -306,7 +306,7 @@ void Gateway::close(Remote &remote, DisconnectReason reason, TimePoint now,
 void Gateway::remove(std::uint32_t clientId)
 {
     const std::lock_guard lock(_mutex);
-    Remote *remote = find(clientId);
+    const Remote *remote = find(clientId);
 
     if (remote != nullptr) {
         const std::string address = remote->address;

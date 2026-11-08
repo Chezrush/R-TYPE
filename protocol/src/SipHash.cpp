@@ -79,7 +79,7 @@ std::uint64_t sipHash24(const SipKey &key, std::string_view data) noexcept
         (static_cast<std::uint64_t>(data.size()) << 56U);
 
     absorb(s, last);
-    s.v2 ^= 0xff;
+    s.v2 ^= 0xffU;
     for (int i = 0; i < 4; ++i) {
         sipRound(s);
     }

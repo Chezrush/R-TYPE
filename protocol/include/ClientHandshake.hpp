@@ -28,7 +28,7 @@ namespace rtype::protocol {
  */
 class ClientHandshake {
 public:
-    enum class State {
+    enum class State : std::uint8_t {
         CONNECTING,
         CONNECTED,
         REJECTED,

@@ -24,7 +24,7 @@
 
 namespace rtype::protocol {
 
-enum class DatagramStatus {
+enum class DatagramStatus : std::uint8_t {
     ACCEPTED,
     INVALID,
     WRONG_SESSION,
@@ -104,8 +104,8 @@ private:
     [[nodiscard]] bool reliableInWindow(std::string_view records) const;
     void applyAck(const MessageHeader &header, TimePoint now);
     void deliver(std::string_view records, ReceivedDatagram &result);
-    void deliverReliable(std::vector<ReliableRecord> &released,
-                         ReceivedDatagram &result) const;
+    static void deliverReliable(std::vector<ReliableRecord> &released,
+                                ReceivedDatagram &result);
 
     std::uint32_t _session;
     std::uint16_t _nextSeq = 0;

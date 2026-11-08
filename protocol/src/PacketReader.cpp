@@ -102,7 +102,8 @@ bool checkInput(std::string_view body) noexcept
         return false;
     }
     for (const char keys : body.substr(3)) {
-        if ((static_cast<std::uint8_t>(keys) & ~KEYS_MASK) != 0) {
+        if ((static_cast<std::uint8_t>(keys) &
+             static_cast<std::uint8_t>(~KEYS_MASK)) != 0) {
             return false;
         }
     }
@@ -245,7 +246,8 @@ MessageHeader PacketReader::readHeader(std::string_view packet) noexcept
 bool PacketReader::isHeaderValid(const MessageHeader &header) noexcept
 {
     const bool ackValid = (header.flags & FLAG_ACK_VALID) != 0;
-    const bool unknownFlags = (header.flags & ~FLAG_ACK_VALID) != 0;
+    const bool unknownFlags =
+        (header.flags & static_cast<std::uint8_t>(~FLAG_ACK_VALID)) != 0;
     const bool ackWithoutFlag = header.ack != 0 || header.ackBits != 0;
 
     return header.magicNumber == PROTOCOL_MAGIC &&
