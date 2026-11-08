@@ -68,6 +68,20 @@ overtaken by three acknowledged datagrams). The result never exceeds 1200 bytes 
 | `Connection` takes the time as a parameter | Reading the clock inside | Deterministic tests of retransmission and RTT, no sleep |
 | One `Gateway` mutex | Lock-free structures | The network thread is the only hot caller, the others (simulation, tests) call rarely |
 
+## Server statistics
+
+Start the server with `r-type_server [PORT] [--stats]` to print one line every 5 seconds:
+
+```
+[net] clients=2 in=1.4 KB/s out=4.5 KB/s dropped=0 rtt=3ms
+```
+
+`in` and `out` are the UDP payload rates since the previous line, `dropped` counts the datagrams
+rejected since the start (invalid, out of the reliable window, rate limited or unknown senders), and
+`rtt` is the mean smoothed round trip time of the clients. `Gateway::stats()` returns the same
+counters, globally and per client, for tests and tools. Use it with `tools/netem.sh` to see the
+effect of loss and latency.
+
 ## Limits of this implementation
 
 - The server side of the game is wired by `GameBridge` (see the

@@ -162,9 +162,27 @@ void Server::runNetwork(const std::stop_token &stopToken)
         receiveDatagrams();
         disconnectInactiveClients();
         sendOutgoingMessages();
+        printStats();
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
     std::cout << "[server] Network thread stopped\n";
+}
+
+void Server::printStats()
+{
+    const auto now = Clock::now();
+
+    if (!_config.showStats || now - _lastStatsLine < _config.statsInterval) {
+        return;
+    }
+    _lastStatsLine = now;
+    const GatewayStats stats = _gateway.stats();
+    const NetRates rates = _rateMeter.sample(stats.totals, now);
+
+    std::cout << formatNetLine(stats.clients.size(), rates,
+                               stats.totals.dropped, stats.averageRtt())
+              << "\n"
+              << std::flush;
 }
 
 void Server::dispatch(const Udp::endpoint &sender, std::string_view datagram)

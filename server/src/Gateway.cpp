@@ -70,6 +70,31 @@ std::size_t Gateway::clientCount() const
     return _byAddress.size();
 }
 
+GatewayStats Gateway::stats() const
+{
+    const std::lock_guard lock(_mutex);
+    GatewayStats snapshot;
+
+    snapshot.totals = _totals;
+    for (const auto &[address, remote] : _byAddress) {
+        snapshot.clients.push_back(
+            ClientStats{remote->clientId, remote->traffic,
+                        std::chrono::duration_cast<std::chrono::milliseconds>(
+                            remote->connection.rtt().smoothed())});
+    }
+    return snapshot;
+}
+
+std::chrono::milliseconds GatewayStats::averageRtt() const
+{
+    std::chrono::milliseconds sum{0};
+
+    for (const ClientStats &client : clients) {
+        sum += client.rtt;
+    }
+    return clients.empty() ? sum : sum / static_cast<long>(clients.size());
+}
+
 Gateway::Remote *Gateway::find(std::uint32_t clientId)
 {
     const auto found = _byId.find(clientId);
@@ -103,13 +128,18 @@ void Gateway::onDatagram(const std::string &address, std::string_view datagram,
     const std::lock_guard lock(_mutex);
     const auto known = _byAddress.find(address);
 
+    _totals.recordIn(datagram.size());
     if (known == _byAddress.end()) {
         onStranger(address, datagram, now, nowSeconds);
         return;
     }
+    known->second->traffic.recordIn(datagram.size());
     if (_datagramLimiter.allow(address, now)) {
         onClient(*known->second, datagram, now, nowSeconds);
+        return;
     }
+    _totals.recordDropped();
+    known->second->traffic.recordDropped();
 }
 
 void Gateway::onStranger(const std::string &address, std::string_view datagram,
@@ -120,9 +150,11 @@ void Gateway::onStranger(const std::string &address, std::string_view datagram,
         _handshake.handle(address, datagram, now, nowSeconds, room);
 
     if (decision.kind == ServerHandshake::Kind::REPLY) {
-        _send(address, decision.reply);
+        transmit(address, decision.reply, nullptr);
     } else if (decision.kind == ServerHandshake::Kind::ACCEPT) {
         accept(address, decision.hello, now);
+    } else {
+        _totals.recordDropped();
     }
 }
 
@@ -133,7 +165,7 @@ void Gateway::onHandshakeRetry(Remote &remote, std::string_view datagram,
         _handshake.handle(remote.address, datagram, now, nowSeconds, true);
 
     if (decision.kind == ServerHandshake::Kind::REPLY) {
-        _send(remote.address, decision.reply);
+        transmit(remote.address, decision.reply, &remote);
         return;
     }
     if (decision.kind != ServerHandshake::Kind::ACCEPT) {
@@ -166,6 +198,8 @@ void Gateway::onResult(Remote &remote, const protocol::ReceivedDatagram &result,
 {
     if (result.status == DatagramStatus::INVALID ||
         result.status == DatagramStatus::RELIABLE_OUT_OF_WINDOW) {
+        _totals.recordDropped();
+        remote.traffic.recordDropped();
         countInvalid(remote, now);
         return;
     }
@@ -244,10 +278,20 @@ void Gateway::sendWelcome(Remote &remote, TimePoint now)
     sendNow(remote, now);
 }
 
+void Gateway::transmit(const std::string &address, const std::string &datagram,
+                       Remote *remote)
+{
+    _totals.recordOut(datagram.size());
+    if (remote != nullptr) {
+        remote->traffic.recordOut(datagram.size());
+    }
+    _send(address, datagram);
+}
+
 void Gateway::sendNow(Remote &remote, TimePoint now)
 {
-    _send(remote.address,
-          remote.connection.buildDatagram(now, remote.unreliable));
+    transmit(remote.address,
+             remote.connection.buildDatagram(now, remote.unreliable), &remote);
     remote.unreliable.clear();
     remote.lastSent = now;
     remote.ackDue = false;
@@ -311,7 +355,7 @@ void Gateway::close(Remote &remote, DisconnectReason reason, TimePoint now,
     const std::string address = remote.address;
 
     if (notifySimulation) {
-        _send(address, goodbyeDatagram(remote, reason, now));
+        transmit(address, goodbyeDatagram(remote, reason, now), &remote);
         _drop(clientId, reason);
     }
     _byId.erase(clientId);
@@ -336,7 +380,7 @@ void Gateway::closeAll(DisconnectReason reason, TimePoint now)
     const std::lock_guard lock(_mutex);
 
     for (const auto &[address, remote] : _byAddress) {
-        _send(address, goodbyeDatagram(*remote, reason, now));
+        transmit(address, goodbyeDatagram(*remote, reason, now), remote.get());
     }
     _byId.clear();
     _byAddress.clear();
