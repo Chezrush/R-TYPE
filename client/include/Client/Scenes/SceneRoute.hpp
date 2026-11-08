@@ -28,7 +28,8 @@ enum class SceneRoute : std::uint8_t {
     CONSOLE,
     ROOMS,
     LOBBY,
-    CHAT
+    CHAT,
+    NOTICE
 };
 
 using NavigationRequested = engine::core::NavigationRequested<SceneRoute>;

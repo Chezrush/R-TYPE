@@ -16,7 +16,11 @@
 #include <optional>
 #include <vector>
 
+#include "Client/Events/SettingsEvents.hpp"
 #include "Client/Settings/Palette.hpp"
+#include "Engine/Ecs/Components/UIComponents.hpp"
+#include "Engine/Render/UIRenderSystem.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
 
 namespace client::render {
 
@@ -26,7 +30,6 @@ using Scan = sf::Keyboard::Scan;
 
 constexpr float WORLD_WIDTH = 1280.0F;
 constexpr float WORLD_HEIGHT = 720.0F;
-constexpr std::size_t SCORE_DIGITS = 7;
 constexpr float SHIP_SCALE = 3.0F;
 constexpr float BYDOS_SCALE = 2.5F;
 constexpr unsigned SOUND_RATE = 22050;
@@ -42,13 +45,29 @@ struct KeyPair {
     sf::Keyboard::Scancode scan;
 };
 
-constexpr std::array<KeyPair, 6> SPECIAL_KEYS = {{
+constexpr settings::ScanCode KEY_ENTER = 0x28;
+constexpr settings::ScanCode KEY_BACKSPACE = 0x2A;
+constexpr settings::ScanCode KEY_TAB = 0x2B;
+constexpr settings::ScanCode KEY_HOME = 0x4A;
+constexpr settings::ScanCode KEY_DELETE = 0x4C;
+constexpr settings::ScanCode KEY_END = 0x4D;
+constexpr settings::ScanCode FIRST_HID_FUNCTION = 0x3A;
+constexpr settings::ScanCode LAST_HID_FUNCTION = 0x45;
+
+constexpr std::array<KeyPair, 13> SPECIAL_KEYS = {{
     {settings::KEY_ESCAPE, Scan::Escape},
     {settings::KEY_SPACE, Scan::Space},
     {settings::KEY_RIGHT, Scan::Right},
     {settings::KEY_LEFT, Scan::Left},
     {settings::KEY_DOWN, Scan::Down},
     {settings::KEY_UP, Scan::Up},
+    {KEY_ENTER, Scan::Enter},
+    {KEY_BACKSPACE, Scan::Backspace},
+    {KEY_TAB, Scan::Tab},
+    {settings::KEY_GRAVE, Scan::Grave},
+    {KEY_HOME, Scan::Home},
+    {KEY_DELETE, Scan::Delete},
+    {KEY_END, Scan::End},
 }};
 
 sf::Keyboard::Scancode toSfml(settings::ScanCode key)
@@ -58,6 +77,10 @@ sf::Keyboard::Scancode toSfml(settings::ScanCode key)
             return pair.scan;
         }
     }
+    if (key >= FIRST_HID_FUNCTION && key <= LAST_HID_FUNCTION) {
+        return static_cast<sf::Keyboard::Scancode>(static_cast<int>(Scan::F1) +
+                                                   (key - FIRST_HID_FUNCTION));
+    }
     if (key >= FIRST_HID_LETTER && key <= LAST_HID_DIGIT) {
         return static_cast<sf::Keyboard::Scancode>(static_cast<int>(Scan::A) +
                                                    (key - FIRST_HID_LETTER));
@@ -65,41 +88,60 @@ sf::Keyboard::Scancode toSfml(settings::ScanCode key)
     return Scan::Unknown;
 }
 
-std::vector<sf::Vector2f> circlePoints()
+settings::ScanCode toHid(sf::Keyboard::Scancode scan)
 {
-    constexpr std::size_t COUNT = 16;
-    constexpr float PI = 3.14159265F;
-    std::vector<sf::Vector2f> points;
-
-    for (std::size_t i = 0; i < COUNT; ++i) {
-        const float angle =
-            2.0F * PI * static_cast<float>(i) / static_cast<float>(COUNT);
-
-        points.emplace_back(8.0F + 8.0F * std::cos(angle),
-                            8.0F + 8.0F * std::sin(angle));
+    for (const KeyPair &pair : SPECIAL_KEYS) {
+        if (pair.scan == scan) {
+            return pair.key;
+        }
     }
-    return points;
+    const int code = static_cast<int>(scan);
+
+    if (code >= static_cast<int>(Scan::F1) &&
+        code <= static_cast<int>(Scan::F12)) {
+        return static_cast<settings::ScanCode>(
+            FIRST_HID_FUNCTION + (code - static_cast<int>(Scan::F1)));
+    }
+    if (code >= static_cast<int>(Scan::A) &&
+        code <= static_cast<int>(Scan::Num0)) {
+        return static_cast<settings::ScanCode>(
+            FIRST_HID_LETTER + (code - static_cast<int>(Scan::A)));
+    }
+    return 0;
 }
 
-std::vector<sf::Vector2f> crossPoints()
-{
-    return {{5.0F, 0.0F},   {11.0F, 0.0F},  {11.0F, 5.0F},  {16.0F, 5.0F},
-            {16.0F, 11.0F}, {11.0F, 11.0F}, {11.0F, 16.0F}, {5.0F, 16.0F},
-            {5.0F, 11.0F},  {0.0F, 11.0F},  {0.0F, 5.0F},   {5.0F, 5.0F}};
-}
+struct UiKeyPair {
+    sf::Keyboard::Scancode scan;
+    engine::ecs::UIKey key;
+};
 
-std::vector<sf::Vector2f> markerPoints(unsigned slot)
+constexpr std::array<UiKeyPair, 12> UI_KEYS = {{
+    {Scan::Tab, engine::ecs::UIKey::TAB},
+    {Scan::Up, engine::ecs::UIKey::UP},
+    {Scan::Down, engine::ecs::UIKey::DOWN},
+    {Scan::Left, engine::ecs::UIKey::LEFT},
+    {Scan::Right, engine::ecs::UIKey::RIGHT},
+    {Scan::Enter, engine::ecs::UIKey::ENTER},
+    {Scan::Space, engine::ecs::UIKey::SPACE},
+    {Scan::Escape, engine::ecs::UIKey::ESCAPE},
+    {Scan::Backspace, engine::ecs::UIKey::BACKSPACE},
+    {Scan::Delete, engine::ecs::UIKey::DEL},
+    {Scan::Home, engine::ecs::UIKey::HOME},
+    {Scan::End, engine::ecs::UIKey::END},
+}};
+
+std::optional<engine::ecs::UIKey> toUiKey(const sf::Event::KeyPressed &key)
 {
-    switch (slot % 4U) {
-        case 0:
-            return circlePoints();
-        case 1:
-            return {{0.0F, 0.0F}, {16.0F, 0.0F}, {8.0F, 14.0F}};
-        case 2:
-            return {{1.0F, 1.0F}, {15.0F, 1.0F}, {15.0F, 15.0F}, {1.0F, 15.0F}};
-        default:
-            return crossPoints();
+    for (const UiKeyPair &pair : UI_KEYS) {
+        if (pair.scan != key.scancode) {
+            continue;
+        }
+        if (pair.scan == Scan::Tab && key.shift) {
+            return engine::ecs::UIKey::BACK_TAB;
+        }
+        return pair.key;
     }
+    return std::nullopt;
 }
 
 sf::Color toSfml(engine::ecs::UIColor color)
@@ -161,41 +203,67 @@ public:
     void pollEvents();
     void close();
     void draw(const Frame &frame);
+    void drawUi();
     void playShot();
     void playExplosion();
+    [[nodiscard]] engine::ecs::Registry &registry() noexcept;
+    [[nodiscard]] engine::core::EventBus &bus() noexcept;
+    [[nodiscard]] engine::ecs::UIInteractionSystem &interaction() noexcept;
+    [[nodiscard]] engine::ecs::UILayoutSystem &layout() noexcept;
+    [[nodiscard]] engine::ecs::UITheme &theme() noexcept;
+    [[nodiscard]] const std::string &fontId() const noexcept;
+    [[nodiscard]] engine::core::Vec2 size() const;
+    [[nodiscard]] engine::core::Vec2 toScreen(engine::core::Vec2 world) const;
 
 private:
     void fitView(sf::Vector2u size);
+    void resize(sf::Vector2u size);
+    void onEvent(const sf::Event &event);
+    void onMouse(const sf::Event &event);
+    void onButton(const sf::Event &event);
+    void onKey(const sf::Event::KeyPressed &key);
+    void onText(const sf::Event::TextEntered &text);
+    void listenToSettings();
+    void applyVideo(const events::VideoSettingsChanged &video);
+    void applyVolume() const;
     void loadTextures(const std::filesystem::path &root);
     void loadFont(const std::filesystem::path &root);
     void loadSounds();
     void drawStars(const Frame &frame);
-    void drawEntity(const world::RenderEntity &entity, sf::Color color,
-                    bool local);
+    void drawEntity(const world::RenderEntity &entity, sf::Color color);
     [[nodiscard]] bool drawKnown(const world::RenderEntity &entity,
-                                 sf::Vector2f at, sf::Color color, bool local);
+                                 sf::Vector2f at);
     [[nodiscard]] bool drawSprite(const std::optional<sf::Texture> &texture,
                                   const sf::IntRect &rect, sf::Vector2f at,
                                   float scale);
     void drawBullet(sf::Vector2f at, bool fromPlayer);
     void drawPlaceholder(sf::Vector2f at, sf::Color color);
-    void drawMarker(sf::Vector2f at, sf::Color color, bool local,
-                    unsigned slot);
-    static std::string stats(const Frame &frame);
     void drawCues(const Frame &frame);
     void drawHud(const Frame &frame, const std::vector<sf::Color> &colors);
     void drawScores(const Frame &frame, const std::vector<sf::Color> &colors);
     void drawText(const std::string &text, sf::Vector2f at, unsigned size);
 
     sf::RenderWindow _window;
+    std::string _title;
     sf::View _view{sf::FloatRect({0.0F, 0.0F}, {WORLD_WIDTH, WORLD_HEIGHT})};
     std::optional<sf::Font> _font;
+    std::string _fontId;
     std::optional<sf::Texture> _ships;
     std::optional<sf::Texture> _bydos;
     sf::SoundBuffer _shotBuffer;
     sf::SoundBuffer _boomBuffer;
     std::optional<sf::Sound> _shot;
     std::optional<sf::Sound> _boom;
+    int _masterVolume;
+    int _sfxVolume;
+    bool _muted;
+    engine::ecs::Registry _registry;
+    engine::core::EventBus _bus;
+    engine::ecs::UIInteractionSystem _interaction;
+    engine::ecs::UILayoutSystem _layout;
+    engine::ecs::UITheme _theme;
+    engine::resources::ResourceManager _resources;
+    engine::render::UIRenderSystem _uiRender;
 };
 
 GameWindow::Impl::Impl(const settings::ClientSettings &settings,
@@ -203,13 +271,39 @@ GameWindow::Impl::Impl(const settings::ClientSettings &settings,
     : _window(sf::VideoMode(
                   {settings.resolution.width, settings.resolution.height}),
               title, sf::Style::Default,
-              settings.fullscreen ? sf::State::Fullscreen : sf::State::Windowed)
+              settings.fullscreen ? sf::State::Fullscreen
+                                  : sf::State::Windowed),
+      _title(title),
+      _masterVolume(settings.masterVolume),
+      _sfxVolume(settings.sfxVolume),
+      _muted(settings.muted),
+      _interaction(_bus),
+      _theme(settings::makeTheme(settings.palette, settings.highContrast,
+                                 settings.reducedMotion)),
+      _resources(assetRoot),
+      _uiRender(_resources)
 {
+    engine::ecs::registerUIComponents(_registry);
+    _uiRender.setTheme(_theme);
     _window.setVerticalSyncEnabled(settings.vsync);
-    fitView(_window.getSize());
+    resize(_window.getSize());
     loadTextures(assetRoot);
     loadFont(assetRoot);
     loadSounds();
+    applyVolume();
+    listenToSettings();
+}
+
+void GameWindow::Impl::resize(sf::Vector2u size)
+{
+    if (size.x == 0 || size.y == 0) {
+        return;
+    }
+    fitView(size);
+    _layout.setResolution(static_cast<float>(size.x),
+                          static_cast<float>(size.y));
+    _bus.publish(events::WindowResized{static_cast<float>(size.x),
+                                       static_cast<float>(size.y)});
 }
 
 void GameWindow::Impl::fitView(sf::Vector2u size)
@@ -255,6 +349,7 @@ void GameWindow::Impl::loadFont(const std::filesystem::path &root)
         if (std::filesystem::exists(path) &&
             candidate.openFromFile(path.string())) {
             _font = std::move(candidate);
+            _fontId = path == fonts.front() ? "fonts/main.ttf" : path.string();
             return;
         }
     }
@@ -332,28 +427,11 @@ void GameWindow::Impl::drawPlaceholder(sf::Vector2f at, sf::Color color)
     _window.draw(box);
 }
 
-void GameWindow::Impl::drawMarker(sf::Vector2f at, sf::Color color, bool local,
-                                  unsigned slot)
-{
-    const std::vector<sf::Vector2f> points = markerPoints(slot);
-    sf::ConvexShape marker(points.size());
-
-    for (std::size_t i = 0; i < points.size(); ++i) {
-        marker.setPoint(i, points[i]);
-    }
-    marker.setPosition({at.x + 40.0F, at.y - 16.0F});
-    marker.setFillColor(color);
-    marker.setOutlineColor(local ? sf::Color::White : sf::Color::Black);
-    marker.setOutlineThickness(local ? 2.0F : 1.0F);
-    _window.draw(marker);
-}
-
 bool GameWindow::Impl::drawKnown(const world::RenderEntity &entity,
-                                 sf::Vector2f at, sf::Color color, bool local)
+                                 sf::Vector2f at)
 {
     switch (entity.kind) {
         case KIND_SHIP:
-            drawMarker(at, color, local, entity.owner);
             return drawSprite(
                 _ships, sf::IntRect({66, 17 * (entity.owner % 5)}, {33, 17}),
                 at, SHIP_SCALE);
@@ -370,11 +448,11 @@ bool GameWindow::Impl::drawKnown(const world::RenderEntity &entity,
 }
 
 void GameWindow::Impl::drawEntity(const world::RenderEntity &entity,
-                                  sf::Color color, bool local)
+                                  sf::Color color)
 {
     const sf::Vector2f at{entity.position.x, entity.position.y};
 
-    if (!drawKnown(entity, at, color, local)) {
+    if (!drawKnown(entity, at)) {
         drawPlaceholder(
             at, entity.kind == KIND_SHIP ? color : sf::Color(160, 160, 160));
     }
@@ -403,18 +481,6 @@ void GameWindow::Impl::drawScores(const Frame &frame,
     }
 }
 
-std::string GameWindow::Impl::stats(const Frame &frame)
-{
-    const hud::HudState fallback;
-    const hud::HudState &state = frame.hud != nullptr ? *frame.hud : fallback;
-    std::string score = std::to_string(state.score);
-
-    score.insert(0, SCORE_DIGITS - std::min(SCORE_DIGITS, score.size()), '0');
-    return "Score " + score + "   Lives " + std::to_string(state.lives) +
-           "   Stage " + std::to_string(state.level) + "   " +
-           std::to_string(frame.rttMs) + " ms";
-}
-
 void GameWindow::Impl::drawCues(const Frame &frame)
 {
     const std::array<sf::Vector2f, 4> places = {
@@ -434,7 +500,8 @@ void GameWindow::Impl::drawHud(const Frame &frame,
                                const std::vector<sf::Color> &colors)
 {
     drawScores(frame, colors);
-    drawText(stats(frame), {WORLD_WIDTH - 520.0F, 12.0F}, 20);
+    drawText(std::to_string(frame.rttMs) + " ms", {WORLD_WIDTH - 110.0F, 12.0F},
+             20);
     drawCues(frame);
     if (!frame.banner.empty()) {
         drawText(frame.banner,
@@ -451,12 +518,113 @@ bool GameWindow::Impl::isOpen() const
 void GameWindow::Impl::pollEvents()
 {
     while (const std::optional event = _window.pollEvent()) {
-        if (event->is<sf::Event::Closed>()) {
-            _window.close();
-        } else if (const auto *resized = event->getIf<sf::Event::Resized>()) {
-            fitView(resized->size);
+        onEvent(*event);
+    }
+}
+
+void GameWindow::Impl::onEvent(const sf::Event &event)
+{
+    if (event.is<sf::Event::Closed>()) {
+        _window.close();
+    } else if (const auto *resized = event.getIf<sf::Event::Resized>()) {
+        resize(resized->size);
+    } else if (const auto *key = event.getIf<sf::Event::KeyPressed>()) {
+        onKey(*key);
+    } else if (const auto *text = event.getIf<sf::Event::TextEntered>()) {
+        onText(*text);
+    } else {
+        onMouse(event);
+    }
+}
+
+void GameWindow::Impl::onMouse(const sf::Event &event)
+{
+    if (const auto *moved = event.getIf<sf::Event::MouseMoved>()) {
+        _interaction.onMouseMove(static_cast<float>(moved->position.x),
+                                 static_cast<float>(moved->position.y));
+    } else if (const auto *wheel =
+                   event.getIf<sf::Event::MouseWheelScrolled>()) {
+        _interaction.onMouseWheel(static_cast<float>(wheel->position.x),
+                                  static_cast<float>(wheel->position.y),
+                                  wheel->delta);
+    } else {
+        onButton(event);
+    }
+}
+
+void GameWindow::Impl::onButton(const sf::Event &event)
+{
+    if (const auto *down = event.getIf<sf::Event::MouseButtonPressed>()) {
+        if (down->button == sf::Mouse::Button::Left) {
+            _interaction.onMouseDown(static_cast<float>(down->position.x),
+                                     static_cast<float>(down->position.y));
+        }
+    } else if (const auto *up = event.getIf<sf::Event::MouseButtonReleased>()) {
+        if (up->button == sf::Mouse::Button::Left) {
+            _interaction.onMouseUp(static_cast<float>(up->position.x),
+                                   static_cast<float>(up->position.y));
         }
     }
+}
+
+void GameWindow::Impl::onKey(const sf::Event::KeyPressed &key)
+{
+    const settings::ScanCode hid = toHid(key.scancode);
+
+    if (hid != 0) {
+        _bus.publish(events::RawKeyPressed{hid});
+    }
+    if (const auto uiKey = toUiKey(key)) {
+        _interaction.onKeyPressed(*uiKey);
+    }
+}
+
+void GameWindow::Impl::onText(const sf::Event::TextEntered &text)
+{
+    constexpr char32_t FIRST_PRINTABLE = 32;
+    constexpr char32_t DELETE_CHARACTER = 127;
+
+    if (text.unicode >= FIRST_PRINTABLE && text.unicode != DELETE_CHARACTER) {
+        _interaction.onTextEntered(text.unicode);
+    }
+}
+
+void GameWindow::Impl::listenToSettings()
+{
+    _bus.subscribe<events::VideoSettingsChanged>(
+        [this](const events::VideoSettingsChanged &video) {
+            applyVideo(video);
+        });
+    _bus.subscribe<events::VolumeChanged>(
+        [this](const events::VolumeChanged &volume) {
+            if (volume.bus == events::VolumeBus::MASTER) {
+                _masterVolume = volume.value;
+            } else if (volume.bus == events::VolumeBus::SFX) {
+                _sfxVolume = volume.value;
+            }
+            applyVolume();
+        });
+    _bus.subscribe<events::MuteChanged>(
+        [this](const events::MuteChanged &mute) {
+            _muted = mute.muted;
+            applyVolume();
+        });
+}
+
+void GameWindow::Impl::applyVideo(const events::VideoSettingsChanged &video)
+{
+    _window.create(
+        sf::VideoMode({video.resolution.width, video.resolution.height}),
+        _title, sf::Style::Default,
+        video.fullscreen ? sf::State::Fullscreen : sf::State::Windowed);
+    _window.setVerticalSyncEnabled(video.vsync);
+    resize(_window.getSize());
+}
+
+void GameWindow::Impl::applyVolume() const
+{
+    sf::Listener::setGlobalVolume(_muted ? 0.0F
+                                         : static_cast<float>(_masterVolume));
 }
 
 void GameWindow::Impl::close()
@@ -472,18 +640,72 @@ void GameWindow::Impl::draw(const Frame &frame)
     _window.setView(_view);
     drawStars(frame);
     for (const world::RenderEntity &entity : frame.world.visible(frame.now)) {
-        const bool local = entity.owner == frame.world.localSlot();
-
-        drawEntity(entity, colors[entity.owner % colors.size()],
-                   local && entity.kind == KIND_SHIP);
+        drawEntity(entity, colors[entity.owner % colors.size()]);
     }
     drawHud(frame, colors);
+    _uiRender.render(_window, _registry);
     _window.display();
+}
+
+void GameWindow::Impl::drawUi()
+{
+    _window.clear(sf::Color(5, 5, 20));
+    _uiRender.render(_window, _registry);
+    _window.display();
+}
+
+engine::ecs::Registry &GameWindow::Impl::registry() noexcept
+{
+    return _registry;
+}
+
+engine::core::EventBus &GameWindow::Impl::bus() noexcept
+{
+    return _bus;
+}
+
+engine::ecs::UIInteractionSystem &GameWindow::Impl::interaction() noexcept
+{
+    return _interaction;
+}
+
+engine::ecs::UILayoutSystem &GameWindow::Impl::layout() noexcept
+{
+    return _layout;
+}
+
+engine::ecs::UITheme &GameWindow::Impl::theme() noexcept
+{
+    return _theme;
+}
+
+const std::string &GameWindow::Impl::fontId() const noexcept
+{
+    return _fontId;
+}
+
+engine::core::Vec2 GameWindow::Impl::size() const
+{
+    const sf::Vector2u pixels = _window.getSize();
+
+    return {static_cast<float>(pixels.x), static_cast<float>(pixels.y)};
+}
+
+engine::core::Vec2 GameWindow::Impl::toScreen(engine::core::Vec2 world) const
+{
+    const sf::FloatRect viewport = _view.getViewport();
+    const engine::core::Vec2 pixels = size();
+
+    return {(viewport.position.x + world.x / WORLD_WIDTH * viewport.size.x) *
+                pixels.x,
+            (viewport.position.y + world.y / WORLD_HEIGHT * viewport.size.y) *
+                pixels.y};
 }
 
 void GameWindow::Impl::playShot()
 {
     if (_shot) {
+        _shot->setVolume(static_cast<float>(_sfxVolume));
         _shot->play();
     }
 }
@@ -491,6 +713,7 @@ void GameWindow::Impl::playShot()
 void GameWindow::Impl::playExplosion()
 {
     if (_boom) {
+        _boom->setVolume(static_cast<float>(_sfxVolume));
         _boom->play();
     }
 }
@@ -522,6 +745,51 @@ bool GameWindow::isKeyDown(settings::ScanCode key)
 void GameWindow::draw(const Frame &frame)
 {
     _impl->draw(frame);
+}
+
+void GameWindow::drawUi()
+{
+    _impl->drawUi();
+}
+
+engine::ecs::Registry &GameWindow::registry() noexcept
+{
+    return _impl->registry();
+}
+
+engine::core::EventBus &GameWindow::bus() noexcept
+{
+    return _impl->bus();
+}
+
+engine::ecs::UIInteractionSystem &GameWindow::interaction() noexcept
+{
+    return _impl->interaction();
+}
+
+engine::ecs::UILayoutSystem &GameWindow::layout() noexcept
+{
+    return _impl->layout();
+}
+
+engine::ecs::UITheme &GameWindow::theme() noexcept
+{
+    return _impl->theme();
+}
+
+const std::string &GameWindow::fontId() const noexcept
+{
+    return _impl->fontId();
+}
+
+engine::core::Vec2 GameWindow::size() const
+{
+    return _impl->size();
+}
+
+engine::core::Vec2 GameWindow::toScreen(engine::core::Vec2 world) const
+{
+    return _impl->toScreen(world);
 }
 
 void GameWindow::close()

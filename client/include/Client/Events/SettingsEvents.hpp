@@ -57,6 +57,12 @@ struct BindingsChanged {
     settings::KeyBindings bindings;
 };
 
+/** @brief The window changed size, in pixels. Published by the window code. */
+struct WindowResized {
+    float width = 1280.0f;
+    float height = 720.0f;
+};
+
 /** @brief A key went down. Published by the window code, for key capture. */
 struct RawKeyPressed {
     settings::ScanCode key = 0;

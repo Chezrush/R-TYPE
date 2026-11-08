@@ -10,6 +10,9 @@
 add_library(rtype_client_core STATIC
     src/Console/ConsoleModel.cpp
     src/Console/ConsoleService.cpp
+    src/Flow/ClientApp.cpp
+    src/Flow/GameInput.cpp
+    src/Flow/GameScene.cpp
     src/Hud/BeamGauge.cpp
     src/Hud/HudController.cpp
     src/Hud/HudFeed.cpp
@@ -32,6 +35,7 @@ add_library(rtype_client_core STATIC
     src/Scenes/LobbyScene.cpp
     src/Scenes/MainMenuScene.cpp
     src/Scenes/MenuContext.cpp
+    src/Scenes/NoticeOverlay.cpp
     src/Scenes/RespawnOverlay.cpp
     src/Scenes/RoomBrowserScene.cpp
     src/Scenes/SettingsScene.cpp
@@ -53,7 +57,7 @@ find_package(SFML 3 COMPONENTS Graphics Audio CONFIG REQUIRED)
 add_library(rtype_client_render STATIC src/Render/GameWindow.cpp)
 target_include_directories(rtype_client_render PUBLIC include)
 target_link_libraries(rtype_client_render
-    PUBLIC rtype_client_core SFML::Graphics SFML::Audio
+    PUBLIC rtype_client_core rtype::engine_render SFML::Graphics SFML::Audio
     PRIVATE rtype_warnings)
 
 add_executable(r-type_client src/main.cpp)
@@ -62,6 +66,8 @@ target_link_libraries(r-type_client PRIVATE rtype_client_render rtype_warnings)
 
 rtype_add_catch_test(rtype_client_tests
     tests/Console/ConsoleModel.cpp
+    tests/Flow/ClientApp.cpp
+    tests/Flow/GameInput.cpp
     tests/Hud/BeamGauge.cpp
     tests/Hud/HudController.cpp
     tests/Hud/HudFeed.cpp
@@ -77,6 +83,7 @@ rtype_add_catch_test(rtype_client_tests
     tests/Scenes/GameOverlays.cpp
     tests/Scenes/LobbyScenes.cpp
     tests/Scenes/MainMenuScene.cpp
+    tests/Scenes/NoticeOverlay.cpp
     tests/Scenes/SceneRouter.cpp
     tests/Scenes/SettingsScene.cpp
     tests/Scenes/UIScaleFit.cpp
