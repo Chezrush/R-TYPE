@@ -14,28 +14,17 @@
 #include <memory>
 #include <string>
 
-#include "Client/Hud/HudState.hpp"
-#include "Client/Scenes/Starfield.hpp"
+#include "Client/Render/Frame.hpp"
 #include "Client/Settings/ClientSettings.hpp"
 #include "Client/Settings/KeyBindings.hpp"
-#include "Client/World/WorldState.hpp"
+#include "Engine/Core/EventBus.hpp"
+#include "Engine/Core/Vec2.hpp"
+#include "Engine/Ecs/Components/UITheme.hpp"
+#include "Engine/Ecs/Registry.hpp"
+#include "Engine/Ecs/Systems/UIInteractionSystem.hpp"
+#include "Engine/Ecs/Systems/UILayoutSystem.hpp"
 
 namespace client::render {
-
-/**
- * @brief What the window draws in one frame.
- */
-struct Frame {
-    const world::WorldState &world;
-    const scenes::Starfield &stars;
-    double now = 0;
-    std::string banner;
-    int rttMs = 0;
-    settings::ColorPalette palette = settings::ColorPalette::NORMAL;
-    bool highContrast = false;
-    const hud::HudState *hud = nullptr;
-    std::array<std::string, 4> cues{};
-};
 
 /**
  * @brief The window of the game: drawing and keyboard.
@@ -75,7 +64,41 @@ public:
      */
     void close();
 
+    /**
+     * @brief Draws the world, then the UI layer above it.
+     */
     void draw(const Frame &frame);
+
+    /**
+     * @brief Draws only the UI layer, for the menus.
+     */
+    void drawUi();
+
+    /**
+     * @brief The UI layer: widgets of the scenes, the HUD and the overlays.
+     *
+     * The window feeds the interaction system with the mouse, the typed text
+     * and the keys, publishes RawKeyPressed and WindowResized on the bus,
+     * and applies VideoSettingsChanged, VolumeChanged and MuteChanged.
+     */
+    [[nodiscard]] engine::ecs::Registry &registry() noexcept;
+    [[nodiscard]] engine::core::EventBus &bus() noexcept;
+    [[nodiscard]] engine::ecs::UIInteractionSystem &interaction() noexcept;
+    [[nodiscard]] engine::ecs::UILayoutSystem &layout() noexcept;
+    [[nodiscard]] engine::ecs::UITheme &theme() noexcept;
+
+    /**
+     * @brief Font id of the UI: an asset path, or a system font as a fallback.
+     *
+     * Empty when no font was found: the texts are then not drawn.
+     */
+    [[nodiscard]] const std::string &fontId() const noexcept;
+
+    /** @brief Size of the window, in pixels. */
+    [[nodiscard]] engine::core::Vec2 size() const;
+
+    /** @brief Pixel of the window under a point of the 1280 x 720 world. */
+    [[nodiscard]] engine::core::Vec2 toScreen(engine::core::Vec2 world) const;
 
     /**
      * @brief Plays a short effect, if the sound is available.

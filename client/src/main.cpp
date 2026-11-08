@@ -17,17 +17,13 @@
 #include <string>
 #include <vector>
 
-#include "Client/Hud/HudFeed.hpp"
-#include "Client/Net/ClientSession.hpp"
+#include "Client/Flow/ClientApp.hpp"
+#include "Client/Flow/IGameDevice.hpp"
 #include "Client/Render/GameWindow.hpp"
-#include "Client/Scenes/Starfield.hpp"
 #include "Client/Settings/SettingsStore.hpp"
-#include "Client/World/WorldState.hpp"
 
 namespace {
 
-using client::net::ClientSession;
-using client::settings::GameAction;
 using rtype::protocol::Clock;
 
 struct Options {
@@ -41,9 +37,10 @@ void printUsage()
 {
     std::cout << "Usage: r-type_client [HOST [PORT]] [--host HOST] "
                  "[--port PORT] [--name NAME]\n"
-                 "  Defaults: 127.0.0.1, 4242, Player. Arrow keys move, space "
-                 "shoots,\n  Escape quits. Keys and display can be changed in "
-                 "the settings file.\n";
+                 "  The options fill the connection form of the menu. "
+                 "Defaults: 127.0.0.1,\n  4242, Player. Arrow keys move, space "
+                 "shoots, Escape opens the menu.\n  Keys and display can be "
+                 "changed in the settings screen.\n";
 }
 
 bool parsePort(const std::string &text, std::uint16_t &port)
@@ -136,220 +133,89 @@ std::string findAssets(const char *program)
     return "assets";
 }
 
-bool held(const client::render::GameWindow &window,
-          const client::settings::KeyBindings &bindings, GameAction action,
-          client::settings::ScanCode alternative)
-{
-    return window.isKeyDown(
-               client::settings::bindingOf(bindings, action).key) ||
-           window.isKeyDown(alternative);
-}
+class WindowDevice : public client::flow::IGameDevice {
+public:
+    explicit WindowDevice(client::render::GameWindow &window)
+        : _window(window)
+    {}
 
-struct MoveKey {
-    GameAction action;
-    client::settings::ScanCode alternative;
-    unsigned bit;
+    [[nodiscard]] bool isKeyDown(client::settings::ScanCode key) const override
+    {
+        return client::render::GameWindow::isKeyDown(key);
+    }
+
+    void playShot() override
+    {
+        _window.playShot();
+    }
+
+    void playExplosion() override
+    {
+        _window.playExplosion();
+    }
+
+    [[nodiscard]] engine::core::Vec2
+    toScreen(engine::core::Vec2 world) const override
+    {
+        return _window.toScreen(world);
+    }
+
+    [[nodiscard]] engine::core::Vec2 size() const override
+    {
+        return _window.size();
+    }
+
+private:
+    client::render::GameWindow &_window;
 };
 
-constexpr client::settings::ScanCode KEY_W = 0x1A;
-constexpr client::settings::ScanCode KEY_A = 0x04;
-constexpr client::settings::ScanCode KEY_S = 0x16;
-constexpr client::settings::ScanCode KEY_D = 0x07;
-
-const std::array<MoveKey, 4> MOVES = {{
-    {GameAction::MOVE_UP, KEY_W, rtype::protocol::KEY_UP},
-    {GameAction::MOVE_DOWN, KEY_S, rtype::protocol::KEY_DOWN},
-    {GameAction::MOVE_LEFT, KEY_A, rtype::protocol::KEY_LEFT},
-    {GameAction::MOVE_RIGHT, KEY_D, rtype::protocol::KEY_RIGHT},
-}};
-
-std::uint8_t readKeys(const client::render::GameWindow &window,
-                      const client::settings::ClientSettings &settings)
+float secondsBetween(Clock::time_point start, Clock::time_point now)
 {
-    const auto &bindings = settings.bindings;
-    const auto shootKey =
-        client::settings::bindingOf(bindings, GameAction::SHOOT).key;
-    unsigned keys = 0;
+    constexpr double MAX_FRAME = 0.25;
 
-    for (const MoveKey &move : MOVES) {
-        if (held(window, bindings, move.action, move.alternative)) {
-            keys |= move.bit;
-        }
-    }
-    if (bindings.autoFire || window.isKeyDown(shootKey)) {
-        keys |= rtype::protocol::KEY_SHOOT;
-    }
-    return static_cast<std::uint8_t>(keys);
+    return static_cast<float>(std::min(
+        std::chrono::duration<double>(now - start).count(), MAX_FRAME));
 }
 
-std::string bannerOf(const ClientSession &session,
-                     const client::world::WorldState &world)
+void runLoop(client::render::GameWindow &window, client::flow::ClientApp &app)
 {
-    switch (session.state()) {
-        case ClientSession::State::CONNECTING:
-            return "Connecting...";
-        case ClientSession::State::REJECTED:
-            return "Server refused the connection";
-        case ClientSession::State::FAILED:
-            return "Connection lost";
-        case ClientSession::State::CLOSED:
-            return "Disconnected";
-        case ClientSession::State::CONNECTED:
-            break;
-    }
-    if (world.phase() ==
-        static_cast<std::uint8_t>(rtype::protocol::GamePhase::GAME_OVER)) {
-        return "Game over";
-    }
-    return {};
-}
+    auto previous = Clock::now();
 
-void playSounds(const rtype::protocol::Message &message,
-                client::render::GameWindow &window)
-{
-    namespace proto = rtype::protocol;
-
-    if (const auto *spawn = std::get_if<proto::Spawn>(&message)) {
-        if (spawn->kind ==
-            static_cast<std::uint8_t>(proto::EntityKind::PLAYER_MISSILE)) {
-            window.playShot();
-        }
-    } else if (const auto *destroy = std::get_if<proto::Destroy>(&message)) {
-        if (destroy->reason ==
-            static_cast<std::uint8_t>(proto::DestroyReason::KILLED)) {
-            window.playExplosion();
-        }
-    }
-}
-
-double seconds(Clock::time_point start, Clock::time_point now)
-{
-    return std::chrono::duration<double>(now - start).count();
-}
-
-struct Game {
-    ClientSession &session;
-    client::render::GameWindow &window;
-    const client::settings::ClientSettings &settings;
-    client::world::WorldState world{};
-    client::hud::HudFeed hud{};
-    client::scenes::Starfield stars{120, 7};
-    double accumulator = 0.0;
-    double previous = 0.0;
-    double hudPrevious = 0.0;
-};
-
-void receive(Game &game, double now)
-{
-    if (!game.world.configured() && game.session.welcome()) {
-        game.world.configure(*game.session.welcome());
-        game.hud.welcome(*game.session.welcome());
-    }
-    for (const auto &message : game.session.takeMessages()) {
-        game.world.apply(message, now);
-        game.hud.feed(message);
-        playSounds(message, game.window);
-    }
-}
-
-double stepOf(const Game &game)
-{
-    return 1.0 / static_cast<double>(game.world.rules().tickRate);
-}
-
-void sendInputs(Game &game, double now, Clock::time_point tick)
-{
-    game.accumulator += std::min(now - game.previous, 0.25);
-    game.previous = now;
-    while (game.accumulator >= stepOf(game) && game.world.configured()) {
-        const std::uint8_t keys = readKeys(game.window, game.settings);
-
-        game.world.predict(game.session.sendInput(keys, tick), keys);
-        game.accumulator -= stepOf(game);
-    }
-}
-
-void updateHud(Game &game, double now)
-{
-    const auto dt = static_cast<float>(std::min(now - game.hudPrevious, 0.25));
-    const auto keys = readKeys(game.window, game.settings);
-
-    game.hudPrevious = now;
-    game.hud.update(dt, (keys & rtype::protocol::KEY_SHOOT) != 0);
-}
-
-client::render::Frame frameOf(const Game &game, double now)
-{
-    client::render::Frame frame{game.world,
-                                game.stars,
-                                now,
-                                bannerOf(game.session, game.world),
-                                static_cast<int>(game.session.rtt().count()),
-                                game.settings.palette,
-                                game.settings.highContrast};
-
-    frame.hud = &game.hud.state();
-    for (std::size_t side = 0; side < frame.cues.size(); ++side) {
-        frame.cues[side] =
-            game.hud.cue(static_cast<client::events::CueDirection>(side));
-    }
-    return frame;
-}
-
-void render(Game &game, double now)
-{
-    game.stars.advance(static_cast<float>(stepOf(game)));
-    game.world.update(now);
-    game.window.draw(frameOf(game, now));
-}
-
-bool quitRequested(const Game &game)
-{
-    const auto menuKey = client::settings::bindingOf(game.settings.bindings,
-                                                     GameAction::OPEN_MENU)
-                             .key;
-
-    return game.window.isKeyDown(menuKey);
-}
-
-void runGame(ClientSession &session, client::render::GameWindow &window,
-             const client::settings::ClientSettings &settings)
-{
-    const auto start = Clock::now();
-    Game game{session, window, settings};
-
-    while (window.isOpen()) {
-        const auto tick = Clock::now();
-        const double now = seconds(start, tick);
+    while (window.isOpen() && !app.quitRequested()) {
+        const auto now = Clock::now();
 
         window.pollEvents();
-        if (quitRequested(game)) {
-            window.close();
-            break;
+        app.frame(secondsBetween(previous, now));
+        previous = now;
+        if (const auto frame = app.gameFrame()) {
+            window.draw(*frame);
+        } else {
+            window.drawUi();
         }
-        session.update(tick);
-        receive(game, now);
-        sendInputs(game, now, tick);
-        updateHud(game, now);
-        render(game, now);
     }
-    session.disconnect(Clock::now());
+    app.shutdown();
 }
-
-} // namespace
-
-namespace {
 
 int play(const Options &options, const char *program)
 {
     client::settings::SettingsStore store(settingsPath());
 
     store.load();
-    ClientSession session(options.host, options.port, options.name);
     client::render::GameWindow window(store.settings(), "R-Type",
                                       findAssets(program));
+    WindowDevice device(window);
+    client::flow::ClientApp app(
+        {device,
+         window.registry(),
+         window.bus(),
+         window.interaction(),
+         window.layout(),
+         window.theme(),
+         store,
+         window.fontId(),
+         {options.host, std::to_string(options.port), options.name}});
 
-    runGame(session, window, store.settings());
+    runLoop(window, app);
     return 0;
 }
 

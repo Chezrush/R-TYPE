@@ -51,9 +51,13 @@ Quick start: build, then start one server and one client per player (up to 4).
 ./r-type_client [HOST [PORT]] [--name NAME]    # defaults: 127.0.0.1, 4242, Player
 ```
 
-Controls: **arrow keys** or **WASD** to move, **Space** to shoot, **Escape** to quit.
-Keys, resolution, fullscreen, vsync, colour palette and high contrast are read from the
-settings file `~/.config/r-type/settings.cfg`.
+The client opens on a main menu: **Play** shows the connection form (the command line options
+only prefill it), then the game starts. Controls: **arrow keys** or **WASD** to move, **Space**
+to shoot, **Escape** to open the in-game menu (Resume, Settings, Controls, How to play,
+Disconnect), **F3** for the performance and network overlay. Keys, resolution, fullscreen, vsync,
+volumes, colour palette and high contrast are changed in the Settings and Controls screens and
+saved in `~/.config/r-type/settings.cfg`. Lobbies, rooms and chat do not exist yet: the server
+has no such feature, so those screens are not reachable.
 
 ## Project layout
 

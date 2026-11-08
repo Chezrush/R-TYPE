@@ -37,8 +37,11 @@ bool isKind(std::uint8_t kind, EntityKind expected) noexcept
 
 } // namespace
 
-HudFeed::HudFeed()
-    : _controller(_bus)
+HudFeed::HudFeed(engine::core::EventBus *bus)
+    : _ownedBus(bus == nullptr ? std::make_unique<engine::core::EventBus>()
+                               : nullptr),
+      _bus(bus == nullptr ? *_ownedBus : *bus),
+      _controller(_bus)
 {
     engine::ecs::registerUIComponents(_registry);
     _cues = std::make_unique<VisualCueIndicator>(_registry, _bus, "");

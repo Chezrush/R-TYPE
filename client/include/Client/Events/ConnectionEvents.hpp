@@ -45,6 +45,10 @@ struct ConnectionStarted {
     std::uint16_t port = 0;
 };
 
+/** @brief The connection broke during the game: the server stopped answering.
+ */
+struct ConnectionLost {};
+
 /** @brief The network layer could not connect. */
 struct ConnectionFailed {
     ConnectionFailure reason = ConnectionFailure::TIMEOUT;

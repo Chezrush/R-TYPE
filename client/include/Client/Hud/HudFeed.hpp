@@ -30,7 +30,11 @@ namespace client::hud {
  */
 class HudFeed {
 public:
-    HudFeed();
+    /**
+     * @param bus Bus the HUD events go to; the feed owns one if null. A shared
+     * bus must outlive the feed.
+     */
+    explicit HudFeed(engine::core::EventBus *bus = nullptr);
     ~HudFeed();
 
     HudFeed(const HudFeed &) = delete;
@@ -65,7 +69,8 @@ private:
     void requestCue(events::CueIcon icon, std::int16_t x);
     [[nodiscard]] events::CueDirection sideOf(std::int16_t x) const noexcept;
 
-    engine::core::EventBus _bus;
+    std::unique_ptr<engine::core::EventBus> _ownedBus;
+    engine::core::EventBus &_bus;
     engine::ecs::Registry _registry;
     HudController _controller;
     std::unique_ptr<VisualCueIndicator> _cues;

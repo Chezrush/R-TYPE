@@ -3,9 +3,9 @@
 The game and this documentation must be usable by as many people as possible. For each family
 of disability we list what exists today and what is planned. Items marked **todo** are not
 implemented yet and must be tracked as issues. **Not in game** means the code and its tests
-exist (settings, widgets) but the `r-type_client` game loop does not apply it yet. The settings
-are read from `~/.config/r-type/settings.cfg`; the client starts straight in the game, so the
-settings and help screens are not reachable from it.
+exist but the `r-type_client` does not apply it yet. The client starts on a main menu (Play,
+Settings, Controls, How to play, Quit); Escape in the game opens the in-game menu. The settings
+screen writes `~/.config/r-type/settings.cfg`, which is read at start.
 
 ## Physical and motor
 
@@ -13,9 +13,10 @@ settings and help screens are not reachable from it.
 | --- | --- |
 | Arrow keys **and** WASD both work, Space to shoot | done |
 | Only 5 keys needed, no key combinations, no mouse | done |
-| Remappable keys, stored as physical scancodes | done (read from the settings file, no in-game screen) |
-| Auto-fire option (hold-free shooting) | done (settings file) |
+| Remappable keys, stored as physical scancodes | done (Controls screen, from the main or the in-game menu) |
+| Auto-fire option (hold-free shooting) | done (Controls screen) |
 | Hold or toggle for the beam | not in game (no beam yet) |
+| Menu navigation with the keyboard only (Tab, arrows, Enter, Escape) or the mouse | done |
 | Gamepad bindings and menu navigation | not in game (UI only, device not read) |
 | Adjustable game speed / difficulty | todo |
 
@@ -27,11 +28,11 @@ settings and help screens are not reachable from it.
 | Players also differ by **sprite** (one ship row per player) and by a **number in the score list** | done |
 | Distinct marker **shapes** per player: circle, triangle, square, cross (slots 1 to 4) | done |
 | Protanopia, deuteranopia and tritanopia palettes for the HUD and player tags | done (applied in game) |
-| HUD indicator for sounds: a label on the side they come from | not in game (widget only) |
-| Separate volumes for music and effects | not in game (setting stored, not applied) |
+| HUD indicator for sounds: a label on the side they come from | done (shots, enemy fire and kills) |
+| Volumes (master, effects) and mute | done (Settings screen, applied at once; there is no music yet) |
 | High contrast: plates behind text, thick outlines | done (applied in game) |
-| Scalable UI (100 to 150 %) | not in game (setting stored, not applied) |
-| Resolution, fullscreen and vsync options | done (applied at start) |
+| Scalable UI (100 to 150 %) | done for the menus, the HUD and the overlays (the game world is not scaled) |
+| Resolution, fullscreen and vsync options | done (Settings screen, applied at once) |
 
 ### Colour-blind palettes
 
@@ -47,9 +48,10 @@ Game sprites are not tinted by the palettes, so a ship can differ from the colou
 | Measure | Status |
 | --- | --- |
 | Very simple rules: move, shoot, avoid | done |
-| Reduced motion option: stops the star-field and the full beam color change | not in game (setting stored, the star-field always scrolls) |
-| Pause and difficulty settings | todo |
-| "How to play" screen in short, plain sentences | screen done, not reachable from the client yet |
+| Reduced motion option: stops the star-field and the full beam color change | done |
+| In-game menu with Resume (the game goes on behind it: the server is authoritative, there is no pause) | done |
+| Difficulty settings | todo |
+| "How to play" screen in short, plain sentences | done (main menu and in-game menu) |
 
 ## Documentation
 
