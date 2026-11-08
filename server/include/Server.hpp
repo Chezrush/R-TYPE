@@ -128,6 +128,8 @@ private:
     void updateSimulationTick(std::chrono::nanoseconds timestep,
                               std::chrono::nanoseconds &accumulator,
                               const std::stop_token &stopToken);
+    void publishGameOutput();
+    void broadcast(const std::string &packet);
     void readIncomingMessage();
     void applyMessage(const IncomingMessage &message);
     void removePlayer(std::uint32_t clientId,

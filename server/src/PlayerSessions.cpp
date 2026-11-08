@@ -70,6 +70,17 @@ std::vector<OutgoingMessage> PlayerSessions::leave(std::uint32_t clientId,
     return notices;
 }
 
+std::vector<std::uint32_t> PlayerSessions::clientIds() const
+{
+    std::vector<std::uint32_t> ids;
+
+    ids.reserve(_players.size());
+    for (const auto &[clientId, slot] : _players) {
+        ids.push_back(clientId);
+    }
+    return ids;
+}
+
 bool PlayerSessions::contains(std::uint32_t clientId) const noexcept
 {
     return _players.contains(clientId);

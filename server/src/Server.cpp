@@ -15,6 +15,7 @@
 #include <system_error>
 #include <utility>
 
+#include "GameEncoder.hpp"
 #include "PacketReader.hpp"
 
 namespace rtype::server {
@@ -59,6 +60,12 @@ game::GameRules gameRulesOf(const ServerConfig &config)
     return rules;
 }
 
+std::uint8_t snapshotRateOf(const game::GameRules &rules)
+{
+    return static_cast<std::uint8_t>(
+        std::min<std::uint32_t>(SNAPSHOT_RATE, rules.tickRate));
+}
+
 /**
  * @brief The welcome sent to the clients describes the rules of the game.
  */
@@ -68,8 +75,7 @@ GatewayConfig gatewayConfigOf(const game::GameRules &rules)
 
     gateway.maxPlayers = rules.maxPlayers;
     gateway.tickRate = static_cast<std::uint8_t>(rules.tickRate);
-    gateway.snapshotRate = static_cast<std::uint8_t>(
-        std::min<std::uint32_t>(SNAPSHOT_RATE, rules.tickRate));
+    gateway.snapshotRate = snapshotRateOf(rules);
     gateway.worldWidth = static_cast<std::uint16_t>(rules.worldWidth);
     gateway.worldHeight = static_cast<std::uint16_t>(rules.worldHeight);
     gateway.shipSpeed = static_cast<std::uint16_t>(rules.shipSpeed);
@@ -221,9 +227,34 @@ void Server::updateSimulationTick(Nanosecond timestep, Nanosecond &accumulator,
 {
     while (accumulator >= timestep && !stopToken.stop_requested()) {
         _simulation.step();
+        publishGameOutput();
         accumulator -= timestep;
     }
     _tickCount.store(_simulation.tick());
+}
+
+void Server::publishGameOutput()
+{
+    const auto &rules = _simulation.rules();
+    const std::uint64_t interval =
+        GameEncoder::snapshotInterval(rules.tickRate, snapshotRateOf(rules));
+    const std::uint64_t tick = _simulation.tick();
+
+    for (const std::string &packet :
+         GameEncoder::encodeEvents(_simulation.takeEvents())) {
+        broadcast(packet);
+    }
+    if (tick % interval == 0) {
+        broadcast(GameEncoder::encodeSnapshot(GameEncoder::makeSnapshot(
+            tick, tick / interval, _simulation.states())));
+    }
+}
+
+void Server::broadcast(const std::string &packet)
+{
+    for (const std::uint32_t clientId : _players.clientIds()) {
+        _outgoingMessages.handleEnqueue({clientId, packet});
+    }
 }
 
 void Server::disconnectInactiveClients()

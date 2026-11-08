@@ -70,7 +70,9 @@ overtaken by three acknowledged datagrams). The result never exceeds 1200 bytes 
 
 ## Limits of this implementation
 
-- The simulation does not produce snapshots, spawns or scores yet: `Gateway::queueFromSimulation`
-  already carries any record the game queues, and `player_joined` and `player_left` are sent.
+- `GameEncoder` (in `server/`) turns the game events into `spawn`, `destroy`, `score` and
+  `game_state`, and sends a snapshot every `tick_rate / snapshot_rate` ticks with the priority
+  of section 9.2. Every client gets the same snapshot, so `input_ack` stays 0 until the server
+  applies inputs.
 - Client prediction and interpolation (section 9.3) are client work and are not in the library.
 - Confidentiality and integrity are out of scope of version 1 (section 11).

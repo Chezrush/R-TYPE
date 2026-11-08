@@ -59,3 +59,14 @@ target_link_libraries(network_tests
 )
 
 set_tests_properties(network_tests PROPERTIES TIMEOUT 30)
+
+rtype_add_test(game_encoder_tests
+    GameEncoderTests.cpp
+)
+
+target_link_libraries(game_encoder_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(game_encoder_tests PROPERTIES TIMEOUT 10)

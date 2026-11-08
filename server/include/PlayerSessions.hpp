@@ -54,6 +54,11 @@ public:
     [[nodiscard]] std::vector<OutgoingMessage>
     leave(std::uint32_t clientId, protocol::DisconnectReason reason);
 
+    /**
+     * @brief Returns the id of every playing client.
+     */
+    [[nodiscard]] std::vector<std::uint32_t> clientIds() const;
+
     [[nodiscard]] bool contains(std::uint32_t clientId) const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;
 
