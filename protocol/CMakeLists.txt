@@ -13,6 +13,8 @@ add_library(rtype_protocol STATIC
     src/SerialNumber.cpp
     src/Messages.cpp
     src/MessageCodec.cpp
+    src/ReceiveWindow.cpp
+    src/RttEstimator.cpp
     src/PacketBuilder.cpp
     src/PacketReader.cpp
 )

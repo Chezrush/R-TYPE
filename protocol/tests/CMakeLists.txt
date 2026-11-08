@@ -59,3 +59,14 @@ target_link_libraries(message_codec_tests
 )
 
 set_tests_properties(message_codec_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(receive_window_tests
+    ReceiveWindowTests.cpp
+)
+
+target_link_libraries(receive_window_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(receive_window_tests PROPERTIES TIMEOUT 10)
