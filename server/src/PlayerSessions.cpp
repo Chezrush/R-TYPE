@@ -7,6 +7,7 @@
 
 #include "PlayerSessions.hpp"
 
+#include <algorithm>
 #include <array>
 #include <string>
 
@@ -40,6 +41,19 @@ bool PlayerSessions::join(std::uint32_t clientId)
         return false;
     }
     _players.emplace(clientId, *index);
+    return true;
+}
+
+bool PlayerSessions::joinAt(std::uint32_t clientId, std::uint8_t slot)
+{
+    const bool taken = std::any_of(
+        _players.begin(), _players.end(),
+        [slot](const auto &player) { return player.second == slot; });
+
+    if (contains(clientId) || slot >= MAX_PLAYERS || taken) {
+        return join(clientId);
+    }
+    _players.emplace(clientId, slot);
     return true;
 }
 

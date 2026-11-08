@@ -102,7 +102,8 @@ bool checkInput(std::string_view body) noexcept
         return false;
     }
     for (const char keys : body.substr(3)) {
-        if ((static_cast<std::uint8_t>(keys) & ~KEYS_MASK) != 0) {
+        if ((static_cast<std::uint8_t>(keys) &
+             static_cast<std::uint8_t>(~KEYS_MASK)) != 0) {
             return false;
         }
     }
@@ -180,6 +181,15 @@ PacketReader::parseHeader(std::string_view packet) noexcept
     return header;
 }
 
+std::optional<MessageHeader>
+PacketReader::peekHeader(std::string_view packet) noexcept
+{
+    if (packet.size() < PACKET_HEADER_SIZE || packet.size() > MAX_PACKET_SIZE) {
+        return std::nullopt;
+    }
+    return readHeader(packet);
+}
+
 bool PacketReader::hasRecord(std::string_view packet, MessageType type) noexcept
 {
     std::string_view remaining = recordsOf(packet);
@@ -236,7 +246,8 @@ MessageHeader PacketReader::readHeader(std::string_view packet) noexcept
 bool PacketReader::isHeaderValid(const MessageHeader &header) noexcept
 {
     const bool ackValid = (header.flags & FLAG_ACK_VALID) != 0;
-    const bool unknownFlags = (header.flags & ~FLAG_ACK_VALID) != 0;
+    const bool unknownFlags =
+        (header.flags & static_cast<std::uint8_t>(~FLAG_ACK_VALID)) != 0;
     const bool ackWithoutFlag = header.ack != 0 || header.ackBits != 0;
 
     return header.magicNumber == PROTOCOL_MAGIC &&

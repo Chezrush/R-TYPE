@@ -27,7 +27,10 @@ namespace rtype::server {
 struct IncomingMessage {
     std::uint32_t clientId = 0;
     std::string payload;
-    std::optional<protocol::DisconnectReason> disconnect;
+    std::optional<protocol::DisconnectReason> disconnect = std::nullopt;
+
+    /** @brief Player slot chosen by the network layer for a new client. */
+    std::optional<std::uint8_t> slot = std::nullopt;
 };
 
 /**

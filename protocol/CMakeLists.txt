@@ -7,6 +7,22 @@
 
 add_library(rtype_protocol STATIC
     src/ByteOrder.cpp
+    src/ByteReader.cpp
+    src/ByteWriter.cpp
+    src/FixedPoint.cpp
+    src/SerialNumber.cpp
+    src/Messages.cpp
+    src/MessageCodec.cpp
+    src/ReceiveWindow.cpp
+    src/RttEstimator.cpp
+    src/ReliableReceiver.cpp
+    src/ReliableSender.cpp
+    src/SipHash.cpp
+    src/CookieFactory.cpp
+    src/RateLimiter.cpp
+    src/Connection.cpp
+    src/ClientHandshake.cpp
+    src/ServerHandshake.cpp
     src/PacketBuilder.cpp
     src/PacketReader.cpp
 )

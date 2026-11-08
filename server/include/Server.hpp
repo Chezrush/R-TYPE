@@ -17,6 +17,7 @@
 #include <thread>
 
 #include "ClientActivity.hpp"
+#include "Gateway.hpp"
 #include "PlayerSessions.hpp"
 #include "ServerMessage.hpp"
 
@@ -103,12 +104,20 @@ public:
     [[nodiscard]] std::uint64_t rejectedPackets() const noexcept;
 
     /**
+     * @brief Returns the UDP port the server listens on.
+     */
+    [[nodiscard]] std::uint16_t port() const;
+
+    /**
      * @brief Returns the number of players in the simulation.
      */
     [[nodiscard]] std::size_t playerCount() const noexcept;
 
 private:
     void runNetwork(const std::stop_token &stopToken);
+    void receiveDatagrams();
+    void dispatch(const Udp::endpoint &sender, std::string_view datagram);
+    void sendDatagram(const std::string &address, const std::string &datagram);
     void runSimulation(const std::stop_token &stopToken);
     void updateSimulationTick(std::chrono::nanoseconds timestep,
                               std::chrono::nanoseconds &accumulator,
@@ -142,6 +151,7 @@ private:
 
     asio::io_context _context;
     Udp::socket _socket;
+    Gateway _gateway;
 };
 
 } /* namespace rtype::server */

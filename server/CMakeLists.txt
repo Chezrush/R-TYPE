@@ -9,6 +9,7 @@ find_package(asio CONFIG REQUIRED)
 
 add_library(rtype_server_core STATIC
     src/ClientActivity.cpp
+    src/Gateway.cpp
     src/PlayerSessions.cpp
     src/Server.cpp
 )
