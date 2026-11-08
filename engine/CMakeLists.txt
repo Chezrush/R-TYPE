@@ -69,7 +69,7 @@ endif()
 # Rendering needs SFML, so it lives in its own library: the server only links
 # rtype::engine and never pulls SFML in.
 if(RTYPE_BUILD_CLIENT)
-    find_package(SFML 3 COMPONENTS Graphics CONFIG REQUIRED)
+    find_package(SFML 3.1 COMPONENTS Graphics CONFIG REQUIRED)
 
     add_library(rtype_engine_render STATIC
         src/Render/UIRenderSystem.cpp
