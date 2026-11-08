@@ -7,6 +7,7 @@
 
 #include "Client/Net/ClientSession.hpp"
 
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <functional>
@@ -76,6 +77,34 @@ struct Player {
     }
 };
 
+std::size_t shipCount(const Player &player)
+{
+    const auto items = player.world.visible(player.now());
+
+    return static_cast<std::size_t>(
+        std::count_if(items.begin(), items.end(),
+                      [](const auto &item) { return item.kind == 1; }));
+}
+
+bool hasPlayer(const Player &player, const std::string &name)
+{
+    const auto &players = player.world.players();
+
+    return std::any_of(players.begin(), players.end(),
+                       [&name](const auto &info) {
+                           return info.present && info.name == name;
+                       });
+}
+
+std::size_t presentCount(const Player &player)
+{
+    const auto &players = player.world.players();
+
+    return static_cast<std::size_t>(
+        std::count_if(players.begin(), players.end(),
+                      [](const auto &info) { return info.present; }));
+}
+
 } // namespace
 
 TEST_CASE("a session connects to the server and receives a welcome")
@@ -134,10 +163,8 @@ TEST_CASE("two players see each other")
     REQUIRE(waitFor([&] {
         first.pump();
         second.pump();
-        return first.world.entityCount() == 2 &&
-               second.world.entityCount() == 2 &&
-               first.world.players()[1].name == "Eve" &&
-               second.world.players()[0].name == "Bob";
+        return shipCount(first) == 2 && shipCount(second) == 2 &&
+               hasPlayer(first, "Eve") && hasPlayer(second, "Bob");
     }));
     server.shutdown();
 }
@@ -152,13 +179,12 @@ TEST_CASE("a leaving player disappears for the others")
     REQUIRE(waitFor([&] {
         first->pump();
         second.pump();
-        return second.world.entityCount() == 2;
+        return shipCount(second) == 2;
     }));
     first->session.disconnect(std::chrono::steady_clock::now());
     REQUIRE(waitFor([&] {
         second.pump();
-        return second.world.entityCount() == 1 &&
-               !second.world.players()[0].present;
+        return shipCount(second) == 1 && presentCount(second) == 0;
     }));
     server.shutdown();
 }
