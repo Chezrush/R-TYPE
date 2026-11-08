@@ -70,3 +70,14 @@ target_link_libraries(receive_window_tests
 )
 
 set_tests_properties(receive_window_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(reliable_channel_tests
+    ReliableChannelTests.cpp
+)
+
+target_link_libraries(reliable_channel_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(reliable_channel_tests PROPERTIES TIMEOUT 10)

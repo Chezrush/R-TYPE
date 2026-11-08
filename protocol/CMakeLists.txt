@@ -15,6 +15,8 @@ add_library(rtype_protocol STATIC
     src/MessageCodec.cpp
     src/ReceiveWindow.cpp
     src/RttEstimator.cpp
+    src/ReliableReceiver.cpp
+    src/ReliableSender.cpp
     src/PacketBuilder.cpp
     src/PacketReader.cpp
 )
