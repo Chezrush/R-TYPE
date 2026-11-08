@@ -30,13 +30,13 @@ namespace rtype::protocol {
 class ServerHandshake {
 public:
     enum class Kind : std::uint8_t {
-        IGNORE,
+        DROP,
         REPLY,
         ACCEPT
     };
 
     struct Decision {
-        Kind kind = Kind::IGNORE;
+        Kind kind = Kind::DROP;
         std::string reply;
         Hello hello;
     };
@@ -50,7 +50,7 @@ public:
      * @param nowSeconds Wall time in seconds, used to age the cookies.
      * @param slotAvailable Whether the game can take one more player.
      * @return REPLY with the datagram to send back, ACCEPT with the hello
-     * of a client whose cookie is valid, or IGNORE.
+     * of a client whose cookie is valid, or DROP.
      */
     [[nodiscard]] Decision handle(std::string_view address,
                                   std::string_view datagram, TimePoint now,
