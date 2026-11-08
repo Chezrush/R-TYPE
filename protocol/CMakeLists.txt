@@ -11,6 +11,8 @@ add_library(rtype_protocol STATIC
     src/ByteWriter.cpp
     src/FixedPoint.cpp
     src/SerialNumber.cpp
+    src/Messages.cpp
+    src/MessageCodec.cpp
     src/PacketBuilder.cpp
     src/PacketReader.cpp
 )

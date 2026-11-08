@@ -48,3 +48,14 @@ target_link_libraries(numeric_tests
 )
 
 set_tests_properties(numeric_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(message_codec_tests
+    MessageCodecTests.cpp
+)
+
+target_link_libraries(message_codec_tests
+    PRIVATE
+        rtype_protocol
+)
+
+set_tests_properties(message_codec_tests PROPERTIES TIMEOUT 10)
