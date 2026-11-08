@@ -35,21 +35,15 @@ SeqVerdict ReceiveWindow::check(std::uint16_t seq) const noexcept
     return seen ? SeqVerdict::DUPLICATE : SeqVerdict::ACCEPT;
 }
 
-void ReceiveWindow::commit(std::uint16_t seq) noexcept
+void ReceiveWindow::markSeen(std::uint16_t age) noexcept
 {
-    if (!_started) {
-        _started = true;
-        _latest = seq;
-        return;
+    if (age >= 1 && age <= WINDOW_SIZE) {
+        _seen |= 1U << (age - 1U);
     }
-    if (!isNewer(seq, _latest)) {
-        const std::uint16_t age = distance(_latest, seq);
+}
 
-        if (age >= 1 && age <= WINDOW_SIZE) {
-            _seen |= 1U << (age - 1U);
-        }
-        return;
-    }
+void ReceiveWindow::advance(std::uint16_t seq) noexcept
+{
     const std::uint16_t shift = distance(seq, _latest);
 
     _seen = shift < WINDOW_SIZE ? _seen << shift : 0;
@@ -57,6 +51,18 @@ void ReceiveWindow::commit(std::uint16_t seq) noexcept
         _seen |= 1U << (shift - 1U);
     }
     _latest = seq;
+}
+
+void ReceiveWindow::commit(std::uint16_t seq) noexcept
+{
+    if (!_started) {
+        _started = true;
+        _latest = seq;
+    } else if (isNewer(seq, _latest)) {
+        advance(seq);
+    } else {
+        markSeen(distance(_latest, seq));
+    }
 }
 
 bool ReceiveWindow::hasReceived() const noexcept

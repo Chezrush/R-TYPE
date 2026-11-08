@@ -35,6 +35,9 @@ public:
     [[nodiscard]] std::uint32_t seenMask() const noexcept;
 
 private:
+    void markSeen(std::uint16_t age) noexcept;
+    void advance(std::uint16_t seq) noexcept;
+
     bool _started = false;
     std::uint16_t _latest = 0;
     std::uint32_t _seen = 0;

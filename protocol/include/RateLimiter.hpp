@@ -48,6 +48,7 @@ private:
     };
 
     void evictIdle(TimePoint now);
+    [[nodiscard]] Bucket *bucketFor(std::string_view key, TimePoint now);
 
     double _perSecond;
     double _burst;

@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "Messages.hpp"
+#include "PacketReader.hpp"
 #include "ReceiveWindow.hpp"
 #include "ReliableReceiver.hpp"
 #include "ReliableSender.hpp"
@@ -101,6 +102,14 @@ private:
         bool pending = false;
     };
 
+    [[nodiscard]] MessageHeader nextHeader(std::uint16_t seq) const;
+    [[nodiscard]] static std::size_t
+    appendUnreliable(std::string &packet, std::span<const Message> messages);
+    void appendDue(std::string &packet, TimePoint now, std::uint16_t seq,
+                   std::size_t records);
+    [[nodiscard]] DatagramStatus screen(const MessageHeader &header,
+                                        std::string_view records) const;
+    void deliverRecord(const Record &record, ReceivedDatagram &result);
     [[nodiscard]] bool reliableInWindow(std::string_view records) const;
     void applyAck(const MessageHeader &header, TimePoint now);
     void deliver(std::string_view records, ReceivedDatagram &result);

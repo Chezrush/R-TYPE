@@ -53,28 +53,35 @@ bool ReliableSender::isDue(const Entry &entry, TimePoint now,
 }
 
 std::vector<ReliableRecord>
-ReliableSender::collect(TimePoint now, Duration timeout, std::uint16_t seq,
-                        std::size_t maxBytes, std::size_t maxRecords)
+ReliableSender::gather(TimePoint now, Duration timeout, std::size_t maxBytes,
+                       std::size_t maxRecords, SentDatagram &datagram)
 {
-    SentDatagram datagram{seq, {}};
     std::vector<ReliableRecord> taken;
 
     for (Entry &entry : _entries) {
         const std::size_t size =
             RECORD_PREFIX_SIZE + REL_ID_SIZE + entry.record.payload.size();
-
         if (!inSendWindow(entry) || taken.size() >= maxRecords ||
             size > maxBytes) {
             break;
         }
-        if (!isDue(entry, now, timeout)) {
-            continue;
+        if (isDue(entry, now, timeout)) {
+            entry = Entry{entry.record, true, now, datagram.seq, 0};
+            taken.push_back(entry.record);
+            datagram.relIds.push_back(entry.record.relId);
+            maxBytes -= size;
         }
-        entry = Entry{entry.record, true, now, seq, 0};
-        taken.push_back(entry.record);
-        datagram.relIds.push_back(entry.record.relId);
-        maxBytes -= size;
     }
+    return taken;
+}
+
+std::vector<ReliableRecord>
+ReliableSender::collect(TimePoint now, Duration timeout, std::uint16_t seq,
+                        std::size_t maxBytes, std::size_t maxRecords)
+{
+    SentDatagram datagram{seq, {}};
+    auto taken = gather(now, timeout, maxBytes, maxRecords, datagram);
+
     _log.push_back(std::move(datagram));
     if (_log.size() > MAX_LOGGED_DATAGRAMS) {
         _log.pop_front();

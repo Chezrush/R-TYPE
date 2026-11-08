@@ -46,6 +46,8 @@ public:
     [[nodiscard]] std::size_t buffered() const noexcept;
 
 private:
+    void drain(std::vector<ReliableRecord> &delivered);
+
     std::uint16_t _next = 0;
     std::unordered_map<std::uint16_t, ReliableRecord> _buffer;
 };

@@ -32,6 +32,26 @@ std::string replyDatagram(const Message &message)
     return packet;
 }
 
+std::optional<Hello> parseHello(std::string_view datagram)
+{
+    const auto header = PacketReader::parseHeader(datagram);
+
+    if (!header || header->session != 0 || !PacketReader::isValid(datagram)) {
+        return std::nullopt;
+    }
+    std::string_view records = PacketReader::recordsOf(datagram);
+    const auto record = PacketReader::readRecord(records);
+    const auto message =
+        record ? MessageCodec::decodeBody(record->type, record->body)
+               : std::nullopt;
+
+    if (!records.empty() || !message ||
+        !std::holds_alternative<Hello>(*message)) {
+        return std::nullopt;
+    }
+    return std::get<Hello>(*message);
+}
+
 } // namespace
 
 ServerHandshake::ServerHandshake(const SipKey &secret)
@@ -104,24 +124,12 @@ ServerHandshake::Decision ServerHandshake::handle(std::string_view address,
         peeked->version != PROTOCOL_VERSION) {
         return onWrongVersion(address, datagram, now);
     }
-    const auto header = PacketReader::parseHeader(datagram);
+    const auto hello = parseHello(datagram);
 
-    if (!header || header->session != 0 || !PacketReader::isValid(datagram)) {
+    if (!hello) {
         return {};
     }
-    std::string_view records = PacketReader::recordsOf(datagram);
-    const auto record = PacketReader::readRecord(records);
-
-    if (!record || !records.empty()) {
-        return {};
-    }
-    const auto message = MessageCodec::decodeBody(record->type, record->body);
-
-    if (!message || !std::holds_alternative<Hello>(*message)) {
-        return {};
-    }
-    return onHello(address, std::get<Hello>(*message), now, nowSeconds,
-                   slotAvailable);
+    return onHello(address, *hello, now, nowSeconds, slotAvailable);
 }
 
 } /* namespace rtype::protocol */

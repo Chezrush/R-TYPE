@@ -38,13 +38,18 @@ ReliableVerdict ReliableReceiver::accept(ReliableRecord record,
     }
     delivered.push_back(std::move(record));
     ++_next;
+    drain(delivered);
+    return ReliableVerdict::DELIVERED;
+}
+
+void ReliableReceiver::drain(std::vector<ReliableRecord> &delivered)
+{
     for (auto it = _buffer.find(_next); it != _buffer.end();
          it = _buffer.find(_next)) {
         delivered.push_back(std::move(it->second));
         _buffer.erase(it);
         ++_next;
     }
-    return ReliableVerdict::DELIVERED;
 }
 
 std::uint16_t ReliableReceiver::nextExpected() const noexcept

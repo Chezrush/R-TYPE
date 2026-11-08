@@ -156,6 +156,15 @@ void Server::runNetwork(const std::stop_token &stopToken)
     std::cout << "[server] Network thread stopped\n";
 }
 
+void Server::dispatch(const Udp::endpoint &sender, std::string_view datagram)
+{
+    const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+
+    _gateway.onDatagram(addressOf(sender), datagram, Clock::now(),
+                        static_cast<std::uint64_t>(seconds.count()));
+}
+
 void Server::receiveDatagrams()
 {
     std::array<char, protocol::MAX_PACKET_SIZE + 1> buffer{};
@@ -165,20 +174,13 @@ void Server::receiveDatagrams()
     for (std::size_t i = 0; i < MAX_DATAGRAMS_PER_PASS; ++i) {
         const std::size_t size =
             _socket.receive_from(asio::buffer(buffer), sender, 0, error);
-
         if (error == asio::error::would_block ||
             error == asio::error::try_again) {
             return;
         }
-        if (error) {
-            continue;
+        if (!error) {
+            dispatch(sender, std::string_view(buffer.data(), size));
         }
-        const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch());
-
-        _gateway.onDatagram(addressOf(sender),
-                            std::string_view(buffer.data(), size), Clock::now(),
-                            static_cast<std::uint64_t>(seconds.count()));
     }
 }
 

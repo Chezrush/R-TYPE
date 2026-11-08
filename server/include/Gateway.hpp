@@ -114,6 +114,10 @@ private:
                     TimePoint now, std::uint64_t nowSeconds);
     void onClient(Remote &remote, std::string_view datagram, TimePoint now,
                   std::uint64_t nowSeconds);
+    void onHandshakeRetry(Remote &remote, std::string_view datagram,
+                          TimePoint now, std::uint64_t nowSeconds);
+    [[nodiscard]] bool queueRecord(Remote &remote,
+                                   const protocol::Record &record);
     void onResult(Remote &remote, const protocol::ReceivedDatagram &result,
                   std::string_view datagram, TimePoint now);
     void accept(const std::string &address, const protocol::Hello &hello,

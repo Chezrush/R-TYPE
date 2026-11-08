@@ -126,27 +126,36 @@ void Gateway::onStranger(const std::string &address, std::string_view datagram,
     }
 }
 
+void Gateway::onHandshakeRetry(Remote &remote, std::string_view datagram,
+                               TimePoint now, std::uint64_t nowSeconds)
+{
+    const auto decision =
+        _handshake.handle(remote.address, datagram, now, nowSeconds, true);
+
+    if (decision.kind == ServerHandshake::Kind::REPLY) {
+        _send(remote.address, decision.reply);
+        return;
+    }
+    if (decision.kind != ServerHandshake::Kind::ACCEPT) {
+        return;
+    }
+    if (decision.hello.cookie == remote.cookie) {
+        sendWelcome(remote, now);
+        return;
+    }
+    const std::string address = remote.address;
+
+    close(remote, DisconnectReason::QUIT, now, true);
+    accept(address, decision.hello, now);
+}
+
 void Gateway::onClient(Remote &remote, std::string_view datagram, TimePoint now,
                        std::uint64_t nowSeconds)
 {
     const auto header = PacketReader::parseHeader(datagram);
 
     if (header && header->session == 0) {
-        const auto decision =
-            _handshake.handle(remote.address, datagram, now, nowSeconds, true);
-        if (decision.kind == ServerHandshake::Kind::REPLY) {
-            _send(remote.address, decision.reply);
-        } else if (decision.kind == ServerHandshake::Kind::ACCEPT) {
-            const std::string address = remote.address;
-            const bool again = decision.hello.cookie == remote.cookie;
-
-            if (again) {
-                sendWelcome(remote, now);
-                return;
-            }
-            close(remote, DisconnectReason::QUIT, now, true);
-            accept(address, decision.hello, now);
-        }
+        onHandshakeRetry(remote, datagram, now, nowSeconds);
         return;
     }
     onResult(remote, remote.connection.receive(datagram, now), datagram, now);
@@ -244,6 +253,27 @@ void Gateway::sendNow(Remote &remote, TimePoint now)
     remote.ackDue = false;
 }
 
+bool Gateway::queueRecord(Remote &remote, const protocol::Record &record)
+{
+    const bool reliable = protocol::isReliable(record.type);
+    const auto body =
+        reliable ? record.body.substr(protocol::REL_ID_SIZE) : record.body;
+    auto decoded = MessageCodec::decodeBody(record.type, body);
+
+    if (!decoded) {
+        return true;
+    }
+    if (!reliable) {
+        remote.unreliable.push_back(std::move(*decoded));
+        return true;
+    }
+    if (remote.connection.queueReliable(*decoded)) {
+        return true;
+    }
+    close(remote, DisconnectReason::QUEUE_OVERFLOW, Clock::now(), true);
+    return false;
+}
+
 void Gateway::queueFromSimulation(const OutgoingMessage &message)
 {
     const std::lock_guard lock(_mutex);
@@ -253,22 +283,7 @@ void Gateway::queueFromSimulation(const OutgoingMessage &message)
     while (remote != nullptr) {
         const auto record = PacketReader::readRecord(records);
 
-        if (!record) {
-            return;
-        }
-        const bool reliable = protocol::isReliable(record->type);
-        const auto body = reliable ? record->body.substr(protocol::REL_ID_SIZE)
-                                   : record->body;
-        auto decoded = MessageCodec::decodeBody(record->type, body);
-
-        if (!decoded) {
-            continue;
-        }
-        if (!reliable) {
-            remote->unreliable.push_back(std::move(*decoded));
-        } else if (!remote->connection.queueReliable(*decoded)) {
-            close(*remote, DisconnectReason::QUEUE_OVERFLOW, Clock::now(),
-                  true);
+        if (!record || !queueRecord(*remote, *record)) {
             return;
         }
     }

@@ -79,6 +79,9 @@ private:
     [[nodiscard]] static bool isDue(const Entry &entry, TimePoint now,
                                     Duration timeout) noexcept;
     [[nodiscard]] bool inSendWindow(const Entry &entry) const noexcept;
+    [[nodiscard]] std::vector<ReliableRecord>
+    gather(TimePoint now, Duration timeout, std::size_t maxBytes,
+           std::size_t maxRecords, SentDatagram &datagram);
     void acknowledge(std::uint16_t seq);
     void remove(std::uint16_t relId);
 

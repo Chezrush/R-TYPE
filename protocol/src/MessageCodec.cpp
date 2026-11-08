@@ -8,6 +8,7 @@
 #include "MessageCodec.hpp"
 
 #include <algorithm>
+#include <unordered_map>
 #include <utility>
 
 #include "ByteReader.hpp"
@@ -323,40 +324,39 @@ std::string MessageCodec::encodeBody(const Message &message)
     return body;
 }
 
+namespace {
+
+using Decoder = std::optional<Message> (*)(ByteReader &) noexcept;
+
+const std::unordered_map<MessageType, Decoder> DECODERS = {
+    {MessageType::HELLO, decodeHello},
+    {MessageType::CHALLENGE, decodeChallenge},
+    {MessageType::WELCOME, decodeWelcome},
+    {MessageType::REJECT, decodeReject},
+    {MessageType::GOODBYE, decodeGoodbye},
+    {MessageType::INPUT, decodeInput},
+    {MessageType::SNAPSHOT, decodeSnapshot},
+    {MessageType::SPAWN, decodeSpawn},
+    {MessageType::DESTROY, decodeDestroy},
+    {MessageType::PLAYERJOINED, decodePlayerJoined},
+    {MessageType::PLAYERLEFT, decodePlayerLeft},
+    {MessageType::SCORE, decodeScore},
+    {MessageType::GAMESTATE, decodeGameState},
+};
+
+} // namespace
+
 std::optional<Message> MessageCodec::decodeBody(std::uint8_t type,
                                                 std::string_view body) noexcept
 {
+    const auto decoder = DECODERS.find(static_cast<MessageType>(type));
+
+    if (decoder == DECODERS.end()) {
+        return std::nullopt;
+    }
     ByteReader reader(body);
 
-    switch (static_cast<MessageType>(type)) {
-        case MessageType::HELLO:
-            return decodeHello(reader);
-        case MessageType::CHALLENGE:
-            return decodeChallenge(reader);
-        case MessageType::WELCOME:
-            return decodeWelcome(reader);
-        case MessageType::REJECT:
-            return decodeReject(reader);
-        case MessageType::GOODBYE:
-            return decodeGoodbye(reader);
-        case MessageType::INPUT:
-            return decodeInput(reader);
-        case MessageType::SNAPSHOT:
-            return decodeSnapshot(reader);
-        case MessageType::SPAWN:
-            return decodeSpawn(reader);
-        case MessageType::DESTROY:
-            return decodeDestroy(reader);
-        case MessageType::PLAYERJOINED:
-            return decodePlayerJoined(reader);
-        case MessageType::PLAYERLEFT:
-            return decodePlayerLeft(reader);
-        case MessageType::SCORE:
-            return decodeScore(reader);
-        case MessageType::GAMESTATE:
-            return decodeGameState(reader);
-    }
-    return std::nullopt;
+    return decoder->second(reader);
 }
 
 void MessageCodec::appendMessage(std::string &packet, const Message &message)

@@ -26,29 +26,39 @@ void RateLimiter::evictIdle(TimePoint now)
     });
 }
 
+RateLimiter::Bucket *RateLimiter::bucketFor(std::string_view key, TimePoint now)
+{
+    const auto found = _buckets.find(std::string(key));
+
+    if (found != _buckets.end()) {
+        return &found->second;
+    }
+    if (_buckets.size() >= _maxKeys) {
+        evictIdle(now);
+    }
+    if (_buckets.size() >= _maxKeys) {
+        return nullptr;
+    }
+    return &_buckets.emplace(std::string(key), Bucket{_burst, now})
+                .first->second;
+}
+
 bool RateLimiter::allow(std::string_view key, TimePoint now)
 {
-    auto found = _buckets.find(std::string(key));
+    Bucket *bucket = bucketFor(key, now);
 
-    if (found == _buckets.end()) {
-        if (_buckets.size() >= _maxKeys) {
-            evictIdle(now);
-        }
-        if (_buckets.size() >= _maxKeys) {
-            return false;
-        }
-        found = _buckets.emplace(std::string(key), Bucket{_burst, now}).first;
-    }
-    Bucket &bucket = found->second;
-    const std::chrono::duration<double> elapsed = now - bucket.updated;
-
-    bucket.tokens =
-        std::min(_burst, bucket.tokens + elapsed.count() * _perSecond);
-    bucket.updated = now;
-    if (bucket.tokens < 1.0) {
+    if (bucket == nullptr) {
         return false;
     }
-    bucket.tokens -= 1.0;
+    const std::chrono::duration<double> elapsed = now - bucket->updated;
+
+    bucket->tokens =
+        std::min(_burst, bucket->tokens + elapsed.count() * _perSecond);
+    bucket->updated = now;
+    if (bucket->tokens < 1.0) {
+        return false;
+    }
+    bucket->tokens -= 1.0;
     return true;
 }
 

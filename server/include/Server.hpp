@@ -116,6 +116,7 @@ public:
 private:
     void runNetwork(const std::stop_token &stopToken);
     void receiveDatagrams();
+    void dispatch(const Udp::endpoint &sender, std::string_view datagram);
     void sendDatagram(const std::string &address, const std::string &datagram);
     void runSimulation(const std::stop_token &stopToken);
     void updateSimulationTick(std::chrono::nanoseconds timestep,

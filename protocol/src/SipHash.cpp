@@ -23,15 +23,27 @@ std::uint64_t rotl(std::uint64_t value, unsigned bits) noexcept
     return (value << bits) | (value >> (64U - bits));
 }
 
-std::uint64_t loadLittleEndian(const std::uint8_t *bytes,
+template <typename Bytes>
+std::uint64_t loadLittleEndian(const Bytes &bytes, std::size_t offset,
                                std::size_t count) noexcept
 {
     std::uint64_t value = 0;
 
     for (std::size_t i = 0; i < count; ++i) {
-        value |= static_cast<std::uint64_t>(bytes[i]) << (8U * i);
+        const auto byte = static_cast<std::uint8_t>(bytes[offset + i]);
+
+        value |= static_cast<std::uint64_t>(byte) << (8U * i);
     }
     return value;
+}
+
+SipState initialState(const SipKey &key) noexcept
+{
+    const std::uint64_t k0 = loadLittleEndian(key, 0, 8);
+    const std::uint64_t k1 = loadLittleEndian(key, 8, 8);
+
+    return {k0 ^ 0x736f6d6570736575ULL, k1 ^ 0x646f72616e646f6dULL,
+            k0 ^ 0x6c7967656e657261ULL, k1 ^ 0x7465646279746573ULL};
 }
 
 void sipRound(SipState &s) noexcept
@@ -64,18 +76,14 @@ void absorb(SipState &s, std::uint64_t word) noexcept
 
 std::uint64_t sipHash24(const SipKey &key, std::string_view data) noexcept
 {
-    const auto *bytes = reinterpret_cast<const std::uint8_t *>(data.data());
-    const std::uint64_t k0 = loadLittleEndian(key.data(), 8);
-    const std::uint64_t k1 = loadLittleEndian(key.data() + 8, 8);
-    SipState s{k0 ^ 0x736f6d6570736575ULL, k1 ^ 0x646f72616e646f6dULL,
-               k0 ^ 0x6c7967656e657261ULL, k1 ^ 0x7465646279746573ULL};
+    SipState s = initialState(key);
     const std::size_t whole = data.size() - data.size() % 8;
 
     for (std::size_t i = 0; i < whole; i += 8) {
-        absorb(s, loadLittleEndian(bytes + i, 8));
+        absorb(s, loadLittleEndian(data, i, 8));
     }
     const std::uint64_t last =
-        loadLittleEndian(bytes + whole, data.size() - whole) |
+        loadLittleEndian(data, whole, data.size() - whole) |
         (static_cast<std::uint64_t>(data.size()) << 56U);
 
     absorb(s, last);

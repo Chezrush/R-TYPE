@@ -35,29 +35,39 @@ bool Connection::queueReliable(const Message &message)
                            MessageCodec::encodeBody(message));
 }
 
-std::string Connection::buildDatagram(TimePoint now,
-                                      std::span<const Message> unreliable)
+MessageHeader Connection::nextHeader(std::uint16_t seq) const
 {
-    const std::uint16_t seq = _nextSeq++;
     const bool acking = _window.hasReceived();
     MessageHeader header;
-    std::string packet;
-    std::size_t records = 0;
 
     header.session = _session;
     header.seq = seq;
     header.flags = acking ? FLAG_ACK_VALID : 0;
     header.ack = acking ? _window.latest() : 0;
     header.ackBits = acking ? _window.seenMask() : 0;
-    PacketBuilder::writeHeader(packet, header);
-    for (const Message &message : unreliable) {
-        if (records < MAX_RECORDS &&
-            packet.size() + MessageCodec::recordSize(message) <=
-                MAX_PACKET_SIZE) {
+    return header;
+}
+
+std::size_t Connection::appendUnreliable(std::string &packet,
+                                         std::span<const Message> messages)
+{
+    std::size_t records = 0;
+
+    for (const Message &message : messages) {
+        const bool fits = packet.size() + MessageCodec::recordSize(message) <=
+                          MAX_PACKET_SIZE;
+
+        if (records < MAX_RECORDS && fits) {
             MessageCodec::appendMessage(packet, message);
             ++records;
         }
     }
+    return records;
+}
+
+void Connection::appendDue(std::string &packet, TimePoint now,
+                           std::uint16_t seq, std::size_t records)
+{
     const auto due =
         _sender.collect(now, _rtt.retransmissionTimeout(), seq,
                         MAX_PACKET_SIZE - packet.size(), MAX_RECORDS - records);
@@ -69,6 +79,18 @@ std::string Connection::buildDatagram(TimePoint now,
         PacketBuilder::appendRecord(
             packet, static_cast<MessageType>(record.type), body);
     }
+}
+
+std::string Connection::buildDatagram(TimePoint now,
+                                      std::span<const Message> unreliable)
+{
+    const std::uint16_t seq = _nextSeq++;
+    std::string packet;
+
+    PacketBuilder::writeHeader(packet, nextHeader(seq));
+    const std::size_t records = appendUnreliable(packet, unreliable);
+
+    appendDue(packet, now, seq, records);
     _sentTimes[seq % _sentTimes.size()] = SentTime{seq, now, true};
     return packet;
 }
@@ -115,29 +137,51 @@ void Connection::deliverReliable(std::vector<ReliableRecord> &released,
     released.clear();
 }
 
+void Connection::deliverRecord(const Record &record, ReceivedDatagram &result)
+{
+    result.hadRecords = true;
+    if (!isReliable(record.type)) {
+        auto message = MessageCodec::decodeBody(record.type, record.body);
+
+        if (message) {
+            result.unreliable.push_back(std::move(*message));
+        }
+        return;
+    }
+    std::vector<ReliableRecord> released;
+    ByteReader reader(record.body);
+    const std::uint16_t relId = reader.readU16();
+
+    _receiver.accept(
+        ReliableRecord{relId, record.type,
+                       std::string(reader.readBytes(reader.remaining()))},
+        released);
+    deliverReliable(released, result);
+}
+
 void Connection::deliver(std::string_view records, ReceivedDatagram &result)
 {
-    std::vector<ReliableRecord> released;
-
     while (const auto record = PacketReader::readRecord(records)) {
-        result.hadRecords = true;
-        if (!isReliable(record->type)) {
-            auto message = MessageCodec::decodeBody(record->type, record->body);
-
-            if (message) {
-                result.unreliable.push_back(std::move(*message));
-            }
-            continue;
-        }
-        ByteReader reader(record->body);
-        const std::uint16_t relId = reader.readU16();
-
-        _receiver.accept(
-            ReliableRecord{relId, record->type,
-                           std::string(reader.readBytes(reader.remaining()))},
-            released);
-        deliverReliable(released, result);
+        deliverRecord(*record, result);
     }
+}
+
+DatagramStatus Connection::screen(const MessageHeader &header,
+                                  std::string_view records) const
+{
+    if (header.session != _session) {
+        return DatagramStatus::WRONG_SESSION;
+    }
+    const SeqVerdict verdict = _window.check(header.seq);
+
+    if (verdict == SeqVerdict::DUPLICATE) {
+        return DatagramStatus::DUPLICATE;
+    }
+    if (verdict == SeqVerdict::TOO_OLD) {
+        return DatagramStatus::TOO_OLD;
+    }
+    return reliableInWindow(records) ? DatagramStatus::ACCEPTED
+                                     : DatagramStatus::RELIABLE_OUT_OF_WINDOW;
 }
 
 ReceivedDatagram Connection::receive(std::string_view datagram, TimePoint now)
@@ -148,29 +192,16 @@ ReceivedDatagram Connection::receive(std::string_view datagram, TimePoint now)
     if (!header || !PacketReader::isValid(datagram)) {
         return result;
     }
-    if (header->session != _session) {
-        result.status = DatagramStatus::WRONG_SESSION;
-        return result;
-    }
-    const SeqVerdict verdict = _window.check(header->seq);
-
-    if (verdict != SeqVerdict::ACCEPT) {
-        result.status = verdict == SeqVerdict::DUPLICATE
-                            ? DatagramStatus::DUPLICATE
-                            : DatagramStatus::TOO_OLD;
-        return result;
-    }
     const std::string_view records = PacketReader::recordsOf(datagram);
 
-    if (!reliableInWindow(records)) {
-        result.status = DatagramStatus::RELIABLE_OUT_OF_WINDOW;
+    result.status = screen(*header, records);
+    if (result.status != DatagramStatus::ACCEPTED) {
         return result;
     }
     _window.commit(header->seq);
     _lastReceived = now;
     applyAck(*header, now);
     deliver(records, result);
-    result.status = DatagramStatus::ACCEPTED;
     return result;
 }
 
