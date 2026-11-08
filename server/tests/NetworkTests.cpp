@@ -108,6 +108,18 @@ public:
         return _reliable;
     }
 
+    void sendInput(std::uint16_t id, std::uint8_t keys)
+    {
+        const std::vector<Message> input = {Input{id, {keys}}};
+
+        send(_connection->buildDatagram(Clock::now(), input));
+    }
+
+    [[nodiscard]] const std::vector<Snapshot> &snapshots() const
+    {
+        return _snapshots;
+    }
+
     [[nodiscard]] bool gotGoodbye() const
     {
         return _gotGoodbye;
@@ -157,6 +169,9 @@ private:
         for (const Message &message : result.unreliable) {
             _gotGoodbye =
                 _gotGoodbye || std::holds_alternative<Goodbye>(message);
+            if (const auto *snapshot = std::get_if<Snapshot>(&message)) {
+                _snapshots.push_back(*snapshot);
+            }
         }
         if (result.hadRecords) {
             send(_connection->buildDatagram(Clock::now()));
@@ -169,6 +184,7 @@ private:
     ClientHandshake _handshake;
     std::unique_ptr<Connection> _connection;
     std::vector<Message> _reliable;
+    std::vector<Snapshot> _snapshots;
     bool _gotGoodbye = false;
     Clock::time_point _lastSent{};
 };
@@ -177,6 +193,16 @@ bool receivedPlayerEvent(const TestPeer &peer, const Message &expected)
 {
     for (const Message &message : peer.reliable()) {
         if (message == expected) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool receivedSpawn(const TestPeer &peer)
+{
+    for (const Message &message : peer.reliable()) {
+        if (std::holds_alternative<Spawn>(message)) {
             return true;
         }
     }
@@ -238,6 +264,29 @@ void testSilentClientTimesOutAndOthersAreTold()
     server.shutdown();
 }
 
+void testShipMovesWithTheInputsOfTheClient()
+{
+    Server server(testConfig(5000ms));
+    CHECK(server.start());
+    TestPeer peer(server.port(), "Bob");
+
+    CHECK(peer.connect());
+    std::uint16_t id = 1;
+
+    CHECK(waitFor([&] {
+        peer.sendInput(id++, KEY_RIGHT);
+        std::this_thread::sleep_for(16ms);
+        peer.pump();
+        const auto &shots = peer.snapshots();
+
+        return shots.size() > 5 && !shots.back().entities.empty() &&
+               shots.back().entities[0].x > shots.front().entities[0].x &&
+               shots.back().inputAck > 0;
+    }));
+    CHECK(receivedSpawn(peer));
+    server.shutdown();
+}
+
 void testGarbageNeverStopsTheServer()
 {
     Server server(testConfig(5000ms));
@@ -278,6 +327,7 @@ int main()
     testHandshakeOverRealUdp();
     testPlayersSeeEachOtherAndLeave();
     testSilentClientTimesOutAndOthersAreTold();
+    testShipMovesWithTheInputsOfTheClient();
     testGarbageNeverStopsTheServer();
     testServerSaysGoodbyeOnShutdown();
     return TEST_RESULT();

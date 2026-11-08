@@ -51,6 +51,12 @@ public:
     leave(std::uint32_t clientId, protocol::DisconnectReason reason);
 
     [[nodiscard]] bool contains(std::uint32_t clientId) const noexcept;
+
+    /**
+     * @brief Returns the player slot of a client, if it plays.
+     */
+    [[nodiscard]] std::optional<std::uint8_t>
+    slotOf(std::uint32_t clientId) const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;
 
 private:

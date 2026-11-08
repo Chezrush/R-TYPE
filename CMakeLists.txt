@@ -18,6 +18,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# windows.h defines min, max and many short names; keep it light.
+if(WIN32)
+    add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00)
+endif()
+
 option(RTYPE_BUILD_SERVER "Build r-type_server" ON)
 option(RTYPE_BUILD_CLIENT "Build r-type_client (needs SFML)" ON)
 option(RTYPE_BUILD_TESTS "Build the unit tests" ON)

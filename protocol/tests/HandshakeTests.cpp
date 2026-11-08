@@ -166,7 +166,7 @@ void testVersionMismatchGetsOneReject()
     const auto later = ask(server, hello, start + 2s);
 
     CHECK(first.kind == ServerHandshake::Kind::REPLY);
-    CHECK(second.kind == ServerHandshake::Kind::IGNORE);
+    CHECK(second.kind == ServerHandshake::Kind::DROP);
     CHECK(later.kind == ServerHandshake::Kind::REPLY);
 }
 
@@ -198,7 +198,7 @@ void testHelloFloodIsRateLimited()
     MessageCodec::appendMessage(hello, Hello{0, "Bob"});
     for (int i = 0; i < 100; ++i) {
         answered +=
-            ask(server, hello, start).kind != ServerHandshake::Kind::IGNORE;
+            ask(server, hello, start).kind != ServerHandshake::Kind::DROP;
     }
     CHECK(answered == 5);
 }
@@ -217,10 +217,9 @@ void testOnlyASingleHelloWithNoSessionIsAccepted()
     header.session = 5;
     PacketBuilder::writeHeader(withSession, header);
     MessageCodec::appendMessage(withSession, Hello{0, "Bob"});
-    CHECK(ask(server, twoRecords, start).kind == ServerHandshake::Kind::IGNORE);
-    CHECK(ask(server, withSession, start).kind ==
-          ServerHandshake::Kind::IGNORE);
-    CHECK(ask(server, "junk", start).kind == ServerHandshake::Kind::IGNORE);
+    CHECK(ask(server, twoRecords, start).kind == ServerHandshake::Kind::DROP);
+    CHECK(ask(server, withSession, start).kind == ServerHandshake::Kind::DROP);
+    CHECK(ask(server, "junk", start).kind == ServerHandshake::Kind::DROP);
 }
 
 void testSessionsAreNeverZero()

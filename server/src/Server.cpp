@@ -10,11 +10,13 @@
 #include <array>
 #include <iostream>
 #include <optional>
+#include <random>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <utility>
 
+#include "MessageCodec.hpp"
 #include "PacketReader.hpp"
 
 namespace rtype::server {
@@ -49,6 +51,14 @@ std::optional<Udp::endpoint> endpointOf(const std::string &address)
                                  std::stoi(address.substr(separator + 1))));
 }
 
+game::GameRules rulesOf(const ServerConfig &config)
+{
+    game::GameRules rules;
+
+    rules.tickRate = std::clamp<std::uint32_t>(config.simulationHz, 1, 240);
+    return rules;
+}
+
 GatewayConfig gatewayConfigOf(const ServerConfig &config)
 {
     GatewayConfig gateway;
@@ -65,6 +75,7 @@ GatewayConfig gatewayConfigOf(const ServerConfig &config)
 
 Server::Server(ServerConfig config)
     : _config(config),
+      _bridge(rulesOf(config), std::random_device{}(), SNAPSHOT_RATE),
       _incomingMessages(config.maxQueueCapacity),
       _outgoingMessages(config.maxQueueCapacity),
       _socket(_context, Udp::endpoint(Udp::v4(), config.port)),
@@ -207,6 +218,9 @@ void Server::updateSimulationTick(Nanosecond timestep, Nanosecond &accumulator,
                                   const std::stop_token &stopToken)
 {
     while (accumulator >= timestep && !stopToken.stop_requested()) {
+        for (auto &message : _bridge.step()) {
+            _outgoingMessages.handleEnqueue(std::move(message));
+        }
         _tickCount.fetch_add(1);
         accumulator -= timestep;
     }
@@ -256,11 +270,10 @@ void Server::applyMessage(const IncomingMessage &message)
         return;
     }
     if (PacketReader::hasRecord(message.payload, MessageType::HELLO)) {
-        if (message.slot) {
-            _players.joinAt(message.clientId, *message.slot);
-        } else {
-            _players.join(message.clientId);
-        }
+        addPlayer(message);
+    }
+    if (PacketReader::hasRecord(message.payload, MessageType::INPUT)) {
+        applyInputs(message);
     }
     /*
      * to do:
@@ -268,8 +281,40 @@ void Server::applyMessage(const IncomingMessage &message)
      */
 }
 
+void Server::addPlayer(const IncomingMessage &message)
+{
+    const bool joined = message.slot
+                            ? _players.joinAt(message.clientId, *message.slot)
+                            : _players.join(message.clientId);
+    const auto slot = _players.slotOf(message.clientId);
+
+    if (!joined || !slot) {
+        return;
+    }
+    for (auto &world : _bridge.addClient(message.clientId, *slot)) {
+        _outgoingMessages.handleEnqueue(std::move(world));
+    }
+}
+
+void Server::applyInputs(const IncomingMessage &message)
+{
+    std::string_view records = PacketReader::recordsOf(message.payload);
+
+    while (const auto record = PacketReader::readRecord(records)) {
+        const auto decoded =
+            protocol::MessageCodec::decodeBody(record->type, record->body);
+        const auto *input =
+            decoded ? std::get_if<protocol::Input>(&*decoded) : nullptr;
+
+        if (input != nullptr) {
+            _bridge.onInput(message.clientId, *input);
+        }
+    }
+}
+
 void Server::removePlayer(std::uint32_t clientId, DisconnectReason reason)
 {
+    _bridge.removeClient(clientId);
     for (auto &notice : _players.leave(clientId, reason)) {
         _outgoingMessages.handleEnqueue(std::move(notice));
     }

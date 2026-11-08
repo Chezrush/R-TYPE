@@ -20,7 +20,8 @@ implemented yet and must be tracked as issues.
 | Measure | Status |
 | --- | --- |
 | Players differ by **colour** and the local player has an outline | done |
-| Players also differ by **number and shape**: circle, triangle, square, cross | done |
+| Players also differ by **sprite** (one ship row per player) and by a **number in the score list** | done |
+| Distinct marker **shapes** per player: circle, triangle, square, cross (slots 1 to 4) | done |
 | Protanopia, deuteranopia and tritanopia palettes for the UI | done |
 | HUD indicator for sounds: a label on the side they come from | indicator done, sound events to come |
 | Separate volumes for music and effects | settings done, audio to come |

@@ -82,6 +82,17 @@ bool PlayerSessions::contains(std::uint32_t clientId) const noexcept
     return _players.contains(clientId);
 }
 
+std::optional<std::uint8_t>
+PlayerSessions::slotOf(std::uint32_t clientId) const noexcept
+{
+    const auto player = _players.find(clientId);
+
+    if (player == _players.end()) {
+        return std::nullopt;
+    }
+    return player->second;
+}
+
 std::size_t PlayerSessions::size() const noexcept
 {
     return _players.size();

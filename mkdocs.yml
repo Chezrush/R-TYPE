@@ -26,6 +26,7 @@ nav:
       - ECS: architecture/ecs.md
       - Scenes and state machine: architecture/scenes.md
       - UI and layout system: architecture/ui.md
+      - Client: architecture/client.md
   - Protocol:
       - RFC: protocol/rtype-protocol.md
       - Implementation: protocol/implementation.md

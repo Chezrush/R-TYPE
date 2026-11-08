@@ -17,6 +17,7 @@
 #include <thread>
 
 #include "ClientActivity.hpp"
+#include "GameBridge.hpp"
 #include "Gateway.hpp"
 #include "PlayerSessions.hpp"
 #include "ServerMessage.hpp"
@@ -124,6 +125,8 @@ private:
                               const std::stop_token &stopToken);
     void readIncomingMessage();
     void applyMessage(const IncomingMessage &message);
+    void addPlayer(const IncomingMessage &message);
+    void applyInputs(const IncomingMessage &message);
     void removePlayer(std::uint32_t clientId,
                       protocol::DisconnectReason reason);
     void sendOutgoingMessages();
@@ -142,6 +145,7 @@ private:
 
     ClientActivity _activity;
     PlayerSessions _players;
+    GameBridge _bridge;
 
     std::jthread _networkThread;
     std::jthread _simulationThread;
