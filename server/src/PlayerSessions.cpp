@@ -8,7 +8,6 @@
 #include "PlayerSessions.hpp"
 
 #include <algorithm>
-#include <array>
 #include <string>
 
 #include "PacketBuilder.hpp"
@@ -33,28 +32,22 @@ std::string makePlayerLeftPacket(std::uint8_t index, DisconnectReason reason)
     return packet;
 }
 
-bool PlayerSessions::join(std::uint32_t clientId)
+PlayerSessions::PlayerSessions(std::uint8_t maxPlayers)
+    : _maxPlayers(std::min(maxPlayers, MAX_PLAYERS))
+{}
+
+std::optional<std::uint8_t>
+PlayerSessions::join(std::uint32_t clientId, std::optional<std::uint8_t> wanted)
 {
-    const auto index = freeIndex();
-
-    if (contains(clientId) || !index) {
-        return false;
+    if (contains(clientId)) {
+        return std::nullopt;
     }
-    _players.emplace(clientId, *index);
-    return true;
-}
+    const auto slot = wanted && isFree(*wanted) ? wanted : firstFreeSlot();
 
-bool PlayerSessions::joinAt(std::uint32_t clientId, std::uint8_t slot)
-{
-    const bool taken = std::any_of(
-        _players.begin(), _players.end(),
-        [slot](const auto &player) { return player.second == slot; });
-
-    if (contains(clientId) || slot >= MAX_PLAYERS || taken) {
-        return join(clientId);
+    if (slot) {
+        _players.emplace(clientId, *slot);
     }
-    _players.emplace(clientId, slot);
-    return true;
+    return slot;
 }
 
 std::vector<OutgoingMessage> PlayerSessions::leave(std::uint32_t clientId,
@@ -82,32 +75,25 @@ bool PlayerSessions::contains(std::uint32_t clientId) const noexcept
     return _players.contains(clientId);
 }
 
-std::optional<std::uint8_t>
-PlayerSessions::slotOf(std::uint32_t clientId) const noexcept
-{
-    const auto player = _players.find(clientId);
-
-    if (player == _players.end()) {
-        return std::nullopt;
-    }
-    return player->second;
-}
-
 std::size_t PlayerSessions::size() const noexcept
 {
     return _players.size();
 }
 
-std::optional<std::uint8_t> PlayerSessions::freeIndex() const noexcept
+bool PlayerSessions::isFree(std::uint8_t slot) const noexcept
 {
-    std::array<bool, MAX_PLAYERS> taken{};
+    const auto usesSlot = [slot](const auto &player) {
+        return player.second == slot;
+    };
 
-    for (const auto &[clientId, index] : _players) {
-        taken[index] = true;
-    }
-    for (std::uint8_t index = 0; index < MAX_PLAYERS; ++index) {
-        if (!taken[index]) {
-            return index;
+    return slot < _maxPlayers && std::ranges::none_of(_players, usesSlot);
+}
+
+std::optional<std::uint8_t> PlayerSessions::firstFreeSlot() const noexcept
+{
+    for (std::uint8_t slot = 0; slot < _maxPlayers; ++slot) {
+        if (isFree(slot)) {
+            return slot;
         }
     }
     return std::nullopt;

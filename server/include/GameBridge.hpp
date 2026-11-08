@@ -53,6 +53,8 @@ public:
     [[nodiscard]] std::vector<OutgoingMessage> step();
 
     [[nodiscard]] std::size_t clientCount() const noexcept;
+    [[nodiscard]] const game::GameRules &rules() const noexcept;
+    [[nodiscard]] std::uint64_t tick() const noexcept;
 
 private:
     struct Client {
