@@ -26,6 +26,7 @@ target_link_libraries(rtype_server_core
         rtype_warnings
     PUBLIC
         rtype_protocol
+        rtype::game
         Threads::Threads
         asio::asio
 )
