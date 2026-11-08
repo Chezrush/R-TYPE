@@ -43,19 +43,49 @@ decoupling the subject asks for. The details are in the [ECS architecture](ecs.m
 
 ```mermaid
 flowchart LR
-    net["network thread (udp_worker)"] -- inbox --> game["game thread, 60 Hz"]
-    game -- outbox --> net
+    net["network thread (Gateway, UDP socket)"] -- "IncomingQueue" --> sim["simulation thread, 60 Hz"]
+    sim -- "OutgoingQueue" --> net
 ```
 
-- The **network thread** owns the socket. It only moves datagrams between the socket and two
-  bounded queues. A flood of packets fills the queue and gets dropped, it cannot grow memory.
-- The **game thread** runs at a fixed 60 Hz (`fixed_timestep_loop`, clock-driven):
-  1. decode inbound datagrams (anything malformed is dropped and counted),
-  2. drop clients silent for 5 s (crash detection) and tell the others (`player_left`),
-  3. fire missiles, spawn Bydos, run systems (control, movement, clamp),
-  4. collisions and off-screen cleanup, broadcast `entity_destroy` for the dead,
-  5. broadcast `entity_state` snapshots.
+`Server` (`server/src/Server.cpp`) starts two `std::jthread`s that only share two bounded
+`MessageQueue`s (`IncomingQueue`, `OutgoingQueue`, see `ServerMessage.hpp`). A full queue
+refuses the message, so a flood of packets cannot grow memory.
+
+- The **network thread** owns the non-blocking UDP socket and the `Gateway`, which runs the
+  [protocol](../protocol/implementation.md) (handshake, one `Connection` per client, rate
+  limit). Every 2 ms it:
+    1. reads up to 256 datagrams and hands each one to `Gateway::onDatagram`. A payload that
+       fails `PacketReader::isValid` is dropped and counted. A `GOODBYE` becomes a disconnect
+       request, anything else marks the client active in `ClientActivity` and goes to the
+       incoming queue,
+    2. disconnects the clients silent for longer than `inactivityTimeout` (5 s) and queues a
+       disconnect request for each,
+    3. moves the outgoing queue into the `Gateway`, then calls `Gateway::flush` (pending
+       messages, retransmissions, acknowledgements, keepalives).
+- The **simulation thread** owns the `game::Simulation` and `PlayerSessions` (4 player slots).
+  It runs a fixed timestep loop written in `Server::runSimulationLoop` (it does not use the
+  engine `GameLoop` or `FixedTimestep`). One iteration:
+    1. adds the elapsed time to an accumulator, capped at `maxFrameTime` (250 ms),
+    2. drains the incoming queue: a `HELLO` gives the client a slot (`PlayerSessions::join`),
+       a disconnect request frees it and queues a `player_left` for the other players,
+    3. calls `Simulation::step()` once per full timestep in the accumulator,
+    4. sleeps until the next timestep.
 - The server is **authoritative**: clients only send their pressed keys.
+- `SIGINT` / `SIGTERM` stop the server: `Server::shutdown` stops the network thread, then the
+  simulation thread, and the `Gateway` sends a `GOODBYE` (`SHUTDOWN`) to every client.
+
+Main `ServerConfig` options:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `port` | 4242 | UDP port, 0 picks a free one |
+| `simulationHz` | 60 | Ticks per second, clamped to 1..240 |
+| `seed` | 0 | Seed of the enemy waves |
+| `maxFrameTime` | 250 ms | Longest time simulated in one iteration |
+| `maxQueueCapacity` | 1024 | Messages kept by each queue |
+| `inactivityTimeout` | 5000 ms | Silence before a client is disconnected |
+
+`main.cpp` uses the defaults: there are no command-line options yet.
 
 ## Client
 
@@ -69,8 +99,8 @@ flowchart LR
 
 ## Known limits of Part 1 (candidates for Part 2)
 
-- Snapshots are sent at the full tick rate with no delta compression or interpolation.
-- Spawn / destroy messages are not acknowledged (UDP): the client self-heals by creating
-  unknown entities lazily and pruning silent ones, but there is no real reliability layer.
+- Inputs are not applied to the simulation and players get no ship yet (#141).
+- Game events and snapshots are not encoded nor sent yet (#142).
+- No command-line options: the server always listens on UDP port 4242.
 - One game per server, IPv4 only, no authentication.
-- No enemy missiles, power-ups or sound yet.
+- No power-ups or sound yet.

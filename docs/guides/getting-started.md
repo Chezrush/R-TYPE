@@ -32,9 +32,12 @@ On a machine without a display, `--preset server-only` builds everything except 
 ## 3. Run
 
 ```sh
-build/debug/bin/r-type_server 4242
-build/debug/bin/r-type_client 127.0.0.1 4242   # repeat in other terminals, up to 4 players
+build/debug/bin/r-type_server   # listens on UDP port 4242, Ctrl+C to stop
+build/debug/bin/r-type_client   # repeat in other terminals, up to 4 players
 ```
+
+Neither binary takes arguments. The client asks for the server address in its connect screen
+(default `127.0.0.1:4242`). With `--preset server-only` the server is in `build/server-only/bin/`.
 
 ## 4. Test under bad network conditions
 
@@ -42,10 +45,13 @@ Linux (needs root, acts on the loopback interface):
 
 ```sh
 sudo tools/netem.sh loss    # 2% packet loss
-sudo tools/netem.sh lag     # 150 ms latency
+sudo tools/netem.sh dup     # 2% duplicated packets
+sudo tools/netem.sh lag     # 150 ms latency (+/- 20 ms jitter)
 sudo tools/netem.sh slow    # ~5 KB/s
-sudo tools/netem.sh reset
+sudo tools/netem.sh reset   # back to normal
 ```
+
+Set `IFACE` to use another interface: `sudo IFACE=eth0 tools/netem.sh lag`.
 
 On Windows use [clumsy](https://jagt.github.io/clumsy/).
 
