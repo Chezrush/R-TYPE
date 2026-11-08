@@ -54,7 +54,12 @@ public:
     [[nodiscard]] std::vector<OutgoingMessage>
     leave(std::uint32_t clientId, protocol::DisconnectReason reason);
 
-    [[nodiscard]] bool contains(std::uint32_t clientId) const noexcept;
+    /**
+     * @brief Returns the slot of the client, or nothing if it does not play.
+     */
+    [[nodiscard]] std::optional<std::uint8_t>
+    slotOf(std::uint32_t clientId) const noexcept;
+
     [[nodiscard]] std::size_t size() const noexcept;
 
 private:

@@ -14,12 +14,18 @@
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <variant>
+#include <vector>
 
+#include "FixedPoint.hpp"
+#include "MessageCodec.hpp"
+#include "PacketBuilder.hpp"
 #include "PacketReader.hpp"
 
 namespace rtype::server {
 
 using protocol::DisconnectReason;
+using protocol::MessageCodec;
 using protocol::MessageType;
 using protocol::PacketReader;
 
@@ -74,6 +80,37 @@ GatewayConfig gatewayConfigOf(const game::GameRules &rules)
     gateway.worldHeight = static_cast<std::uint16_t>(rules.worldHeight);
     gateway.shipSpeed = static_cast<std::uint16_t>(rules.shipSpeed);
     return gateway;
+}
+
+protocol::Spawn spawnOf(const game::SpawnEvent &event)
+{
+    protocol::Spawn spawn;
+
+    spawn.netId = event.netId;
+    spawn.kind = static_cast<std::uint8_t>(event.kind);
+    spawn.variant = event.variant;
+    spawn.owner = event.owner;
+    spawn.x = protocol::toFixed(event.position.x);
+    spawn.y = protocol::toFixed(event.position.y);
+    spawn.vx = protocol::toFixed(event.velocity.x);
+    spawn.vy = protocol::toFixed(event.velocity.y);
+    return spawn;
+}
+
+/**
+ * @brief Builds a packet holding a spawn record for every entity.
+ *
+ * rel_id stays at 0 until the reliable channel fills it.
+ */
+std::string makeSpawnsPacket(const std::vector<game::SpawnEvent> &world)
+{
+    std::string packet;
+
+    protocol::PacketBuilder::writeHeader(packet, protocol::MessageHeader{});
+    for (const auto &event : world) {
+        MessageCodec::appendReliable(packet, spawnOf(event), 0);
+    }
+    return packet;
 }
 
 } // namespace
@@ -220,6 +257,7 @@ void Server::updateSimulationTick(Nanosecond timestep, Nanosecond &accumulator,
                                   const std::stop_token &stopToken)
 {
     while (accumulator >= timestep && !stopToken.stop_requested()) {
+        applyInputs();
         _simulation.step();
         accumulator -= timestep;
     }
@@ -270,16 +308,64 @@ void Server::applyMessage(const IncomingMessage &message)
         return;
     }
     if (PacketReader::hasRecord(message.payload, MessageType::HELLO)) {
-        _players.join(message.clientId, message.slot);
+        joinPlayer(message);
+        return;
     }
-    /*
-     * to do:
-     * apply the other records of message.payload to the simulation state.
-     */
+    bufferInputs(message);
+}
+
+/**
+ * The world is read before the new ship exists: its spawn reaches every
+ * client, this one included, with the events of the next step.
+ */
+void Server::joinPlayer(const IncomingMessage &message)
+{
+    const auto slot = _players.join(message.clientId, message.slot);
+
+    if (!slot) {
+        return;
+    }
+    _outgoingMessages.handleEnqueue(
+        {message.clientId, makeSpawnsPacket(_simulation.currentWorld())});
+    _inputs.at(*slot) = InputBuffer{};
+    _simulation.addPlayer(*slot);
+}
+
+void Server::bufferInputs(const IncomingMessage &message)
+{
+    const auto slot = _players.slotOf(message.clientId);
+    std::string_view records = PacketReader::recordsOf(message.payload);
+
+    if (!slot) {
+        return;
+    }
+    while (const auto record = PacketReader::readRecord(records)) {
+        if (record->type != static_cast<std::uint8_t>(MessageType::INPUT)) {
+            continue;
+        }
+        const auto decoded =
+            MessageCodec::decodeBody(record->type, record->body);
+
+        if (decoded) {
+            _inputs.at(*slot).push(std::get<protocol::Input>(*decoded));
+        }
+    }
+}
+
+void Server::applyInputs()
+{
+    for (std::uint8_t slot = 0; slot < protocol::MAX_PLAYERS; ++slot) {
+        if (const auto keys = _inputs.at(slot).pop()) {
+            _simulation.setInput(slot, *keys);
+        }
+    }
 }
 
 void Server::removePlayer(std::uint32_t clientId, DisconnectReason reason)
 {
+    if (const auto slot = _players.slotOf(clientId)) {
+        _simulation.removePlayer(*slot);
+    }
     for (auto &notice : _players.leave(clientId, reason)) {
         _outgoingMessages.handleEnqueue(std::move(notice));
     }
@@ -312,6 +398,11 @@ std::uint16_t Server::port() const
 std::size_t Server::playerCount() const noexcept
 {
     return _playerCount.load();
+}
+
+const game::Simulation &Server::simulation() const noexcept
+{
+    return _simulation;
 }
 
 void Server::runSimulationLoop(const std::stop_token &stopToken,

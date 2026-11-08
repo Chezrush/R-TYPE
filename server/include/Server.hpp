@@ -9,6 +9,7 @@
 #define SERVER_HPP_
 
 #include <algorithm>
+#include <array>
 #include <asio.hpp>
 #include <atomic>
 #include <chrono>
@@ -18,6 +19,7 @@
 
 #include "ClientActivity.hpp"
 #include "Gateway.hpp"
+#include "InputBuffer.hpp"
 #include "PlayerSessions.hpp"
 #include "Rtype/Simulation.hpp"
 #include "ServerMessage.hpp"
@@ -119,6 +121,12 @@ public:
      */
     [[nodiscard]] std::size_t playerCount() const noexcept;
 
+    /**
+     * @brief Returns the game world, only safe to read while the server is
+     * stopped.
+     */
+    [[nodiscard]] const game::Simulation &simulation() const noexcept;
+
 private:
     void runNetwork(const std::stop_token &stopToken);
     void receiveDatagrams();
@@ -130,6 +138,9 @@ private:
                               const std::stop_token &stopToken);
     void readIncomingMessage();
     void applyMessage(const IncomingMessage &message);
+    void joinPlayer(const IncomingMessage &message);
+    void bufferInputs(const IncomingMessage &message);
+    void applyInputs();
     void removePlayer(std::uint32_t clientId,
                       protocol::DisconnectReason reason);
     void sendOutgoingMessages();
@@ -151,6 +162,7 @@ private:
 
     ClientActivity _activity;
     PlayerSessions _players;
+    std::array<InputBuffer, protocol::MAX_PLAYERS> _inputs;
 
     std::jthread _networkThread;
     std::jthread _simulationThread;

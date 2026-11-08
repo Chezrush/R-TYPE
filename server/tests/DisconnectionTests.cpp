@@ -7,15 +7,14 @@
 
 #include <chrono>
 #include <cstdint>
-#include <functional>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "ClientActivity.hpp"
 #include "PacketReader.hpp"
 #include "PlayerSessions.hpp"
 #include "Server.hpp"
+#include "ServerTestSupport.hpp"
 #include "TestSupport.hpp"
 
 using namespace rtype::server;
@@ -40,31 +39,6 @@ std::string packet(const Bytes &records)
 const std::string HELLO =
     packet({0x01, 0x00, 0x0C, 0, 0, 0, 0, 0, 0, 0, 0, 0x03, 0x42, 0x6F, 0x62});
 const std::string GOODBYE = packet({0x05, 0x00, 0x01, 0x00});
-
-ServerConfig testConfig(std::chrono::milliseconds timeout)
-{
-    ServerConfig config;
-
-    config.port = 0;
-    config.inactivityTimeout = timeout;
-    return config;
-}
-
-/**
- * @brief Polls the condition until it holds or one second elapsed.
- */
-bool waitFor(const std::function<bool()> &condition)
-{
-    const auto deadline = std::chrono::steady_clock::now() + 1s;
-
-    while (!condition()) {
-        if (std::chrono::steady_clock::now() > deadline) {
-            return false;
-        }
-        std::this_thread::sleep_for(5ms);
-    }
-    return true;
-}
 
 void testActivityExpiresAfterTimeout()
 {

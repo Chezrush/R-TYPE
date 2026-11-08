@@ -7,17 +7,16 @@
 
 #include <asio.hpp>
 #include <chrono>
-#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "ClientHandshake.hpp"
 #include "Connection.hpp"
 #include "PacketReader.hpp"
 #include "Server.hpp"
+#include "ServerTestSupport.hpp"
 #include "TestSupport.hpp"
 
 using namespace rtype::server;
@@ -27,28 +26,6 @@ using namespace std::chrono_literals;
 namespace {
 
 using Udp = asio::ip::udp;
-
-ServerConfig testConfig(std::chrono::milliseconds timeout)
-{
-    ServerConfig config;
-
-    config.port = 0;
-    config.inactivityTimeout = timeout;
-    return config;
-}
-
-bool waitFor(const std::function<bool()> &condition)
-{
-    const auto deadline = std::chrono::steady_clock::now() + 3s;
-
-    while (!condition()) {
-        if (std::chrono::steady_clock::now() > deadline) {
-            return false;
-        }
-        std::this_thread::sleep_for(5ms);
-    }
-    return true;
-}
 
 /**
  * @brief A real UDP client built on the protocol library only.

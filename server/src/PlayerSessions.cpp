@@ -39,7 +39,7 @@ PlayerSessions::PlayerSessions(std::uint8_t maxPlayers)
 std::optional<std::uint8_t>
 PlayerSessions::join(std::uint32_t clientId, std::optional<std::uint8_t> wanted)
 {
-    if (contains(clientId)) {
+    if (slotOf(clientId)) {
         return std::nullopt;
     }
     const auto slot = wanted && isFree(*wanted) ? wanted : firstFreeSlot();
@@ -70,9 +70,15 @@ std::vector<OutgoingMessage> PlayerSessions::leave(std::uint32_t clientId,
     return notices;
 }
 
-bool PlayerSessions::contains(std::uint32_t clientId) const noexcept
+std::optional<std::uint8_t>
+PlayerSessions::slotOf(std::uint32_t clientId) const noexcept
 {
-    return _players.contains(clientId);
+    const auto player = _players.find(clientId);
+
+    if (player == _players.end()) {
+        return std::nullopt;
+    }
+    return player->second;
 }
 
 std::size_t PlayerSessions::size() const noexcept

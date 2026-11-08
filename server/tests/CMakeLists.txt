@@ -59,3 +59,25 @@ target_link_libraries(network_tests
 )
 
 set_tests_properties(network_tests PROPERTIES TIMEOUT 30)
+
+rtype_add_test(input_buffer_tests
+    InputBufferTests.cpp
+)
+
+target_link_libraries(input_buffer_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(input_buffer_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(game_tests
+    GameTests.cpp
+)
+
+target_link_libraries(game_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(game_tests PROPERTIES TIMEOUT 10)
