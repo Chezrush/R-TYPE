@@ -48,6 +48,16 @@ bodies must be visible wherever it is used; a body that stays in a `.cpp` produc
   the compilers and the CI on Windows is still uneven, and it would add a risk to a project
   with a hard deadline. Revisit if the toolchain matures.
 
+## Game
+
+| Topic | Chosen | Alternatives | Why | Status |
+|---|---|---|---|---|
+| Server and game split | The game is a library with no network type: players are slots, inputs the protocol `keys` byte, outputs plain structs | Game logic inside the server | The game can be tested without a network, and the network code can change without touching the rules | decided |
+| Start of a game | `PLAYING` on the first tick after the first player joins | A countdown, or a start request from a player | An arcade game needs no lobby, and a lobby belongs to the server | decided |
+| After a game over | The final state stays `gameOverDelay` seconds, then a new game starts with the players still there | Wait for a restart request; go back to `WAITING` at once | Clients have time to show the results, and nobody has to reconnect. A delay of 0 keeps the state until everybody leaves | decided |
+| Everybody leaves | Back to `WAITING`, the world is cleared | Keep the world frozen | The next player does not find a half-played level | decided |
+| Randomness | Own SplitMix64 generator seeded by the game | `std::mt19937` with `std::uniform_*_distribution`; `rand()` | The distributions give different numbers on different standard libraries, and the same seed must give the same game everywhere | decided |
+
 ## CI
 
 | Topic | Chosen | Alternatives | Why | Status |

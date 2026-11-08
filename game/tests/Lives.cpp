@@ -36,6 +36,7 @@ GameRules underFire()
 
     rules.enemySpawnInterval = 0.2F;
     rules.enemyFireInterval = 0.3F;
+    rules.gameOverDelay = 0.0F;
     return rules;
 }
 
@@ -172,7 +173,8 @@ TEST_CASE("a ship killed by the enemies is reported as KILLED", "[game][lives]")
     REQUIRE(found);
 }
 
-TEST_CASE("nothing happens after the game is over", "[game][lives]")
+TEST_CASE("nothing happens after the game is over when it never restarts",
+          "[game][lives]")
 {
     Simulation simulation(underFire(), SEED);
 
@@ -181,8 +183,8 @@ TEST_CASE("nothing happens after the game is over", "[game][lives]")
     static_cast<void>(run(simulation, 120 * 60));
     REQUIRE(simulation.phase() == GamePhase::GAME_OVER);
 
-    REQUIRE(run(simulation, 10 * 60).empty());
-    REQUIRE(simulation.states().size() <= 20);
+    REQUIRE(run(simulation, 30 * 60).empty());
+    REQUIRE(simulation.phase() == GamePhase::GAME_OVER);
 }
 
 TEST_CASE("a player who leaves while waiting to respawn does not come back",

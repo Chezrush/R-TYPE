@@ -7,6 +7,8 @@
 
 #include "Rtype/Players.hpp"
 
+#include "Rtype/Phases.hpp"
+
 namespace rtype::game {
 
 namespace {
@@ -28,20 +30,20 @@ bool hasActivePlayers(const GameContext &context)
     return false;
 }
 
+bool anyPlayerPresent(const GameContext &context)
+{
+    for (const PlayerState &player : context.players) {
+        if (player.present) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void checkGameOver(GameContext &context)
 {
-    bool anyone = false;
-
-    if (context.phase == GamePhase::GAME_OVER) {
-        return;
-    }
-    for (const PlayerState &player : context.players) {
-        anyone = anyone || player.present;
-    }
-    if (anyone && !hasActivePlayers(context)) {
-        context.phase = GamePhase::GAME_OVER;
-        context.events.emplace_back(
-            GameStateEvent{GamePhase::GAME_OVER, context.level});
+    if (anyPlayerPresent(context) && !hasActivePlayers(context)) {
+        setPhase(context, GamePhase::GAME_OVER);
     }
 }
 

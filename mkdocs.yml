@@ -24,6 +24,7 @@ nav:
   - Architecture:
       - Overview: architecture/overview.md
       - ECS: architecture/ecs.md
+      - Game simulation: architecture/game.md
       - Scenes and state machine: architecture/scenes.md
       - UI and layout system: architecture/ui.md
       - Client: architecture/client.md

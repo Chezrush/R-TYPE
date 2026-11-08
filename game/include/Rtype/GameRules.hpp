@@ -73,6 +73,13 @@ struct GameRules {
     /** @brief Points a player earns for destroying an enemy. */
     std::uint32_t enemyScore = 100;
 
+    /**
+     * @brief Seconds the final state stays up after a game over, before a new
+     * game starts with the players still there. 0 means no new game: the
+     * state stays until every player has left.
+     */
+    float gameOverDelay = 5.0F;
+
     /** @brief Number of player slots, from 0 to maxPlayers - 1. */
     std::uint8_t maxPlayers = 4;
 

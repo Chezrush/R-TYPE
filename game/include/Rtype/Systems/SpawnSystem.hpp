@@ -16,7 +16,7 @@ namespace rtype::game {
 /**
  * @brief Adds the system that creates the enemies, before the other systems.
  *
- * While at least one player is in the game, an enemy appears every
+ * While the game is in the PLAYING phase, an enemy appears every
  * rules.enemySpawnInterval seconds on the right of the screen (never if it is
  * 0). Each new level
  * is announced by a GameStateEvent. The height and the pattern of the enemies

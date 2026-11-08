@@ -43,6 +43,7 @@ struct GameContext {
     WaveState wave{};
     GamePhase phase = GamePhase::WAITING;
     std::uint8_t level = 1;
+    float gameOverTimer = 0.0F;
     std::vector<PlayerState> players{};
     std::vector<Hit> hits{};
 };
