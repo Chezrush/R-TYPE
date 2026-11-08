@@ -57,9 +57,10 @@ struct ClientStats {
 struct GatewayStats {
     NetCounters totals;
     std::vector<ClientStats> clients;
-
-    [[nodiscard]] std::chrono::milliseconds averageRtt() const;
 };
+
+/// @brief Mean smoothed round trip time of the clients, 0 without client.
+[[nodiscard]] std::chrono::milliseconds averageRtt(const GatewayStats &stats);
 
 /**
  * @brief The protocol seen from the server network thread.

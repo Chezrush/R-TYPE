@@ -24,11 +24,14 @@ struct NetCounters {
     std::uint64_t datagramsOut = 0;
     std::uint64_t bytesOut = 0;
     std::uint64_t dropped = 0;
-
-    void recordIn(std::size_t bytes) noexcept;
-    void recordOut(std::size_t bytes) noexcept;
-    void recordDropped() noexcept;
 };
+
+/// @brief Counts one datagram received, of the given size.
+void recordIn(NetCounters &counters, std::size_t bytes) noexcept;
+/// @brief Counts one datagram sent, of the given size.
+void recordOut(NetCounters &counters, std::size_t bytes) noexcept;
+/// @brief Counts one datagram dropped.
+void recordDropped(NetCounters &counters) noexcept;
 
 /**
  * @brief Bytes per second over the last sampled window.

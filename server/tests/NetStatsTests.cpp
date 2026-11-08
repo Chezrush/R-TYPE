@@ -124,8 +124,8 @@ void testRatesUseTheGivenClock()
     const NetRateMeter::TimePoint start = std::chrono::steady_clock::now();
 
     CHECK(meter.sample(totals, start).bytesInPerSecond == 0.0);
-    totals.recordIn(1000);
-    totals.recordOut(4000);
+    recordIn(totals, 1000);
+    recordOut(totals, 4000);
     const NetRates rates = meter.sample(totals, start + 2s);
 
     CHECK(rates.bytesInPerSecond == 500.0);
