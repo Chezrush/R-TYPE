@@ -53,6 +53,11 @@ public:
      */
     void onAck(std::uint16_t ack, std::uint32_t ackBits);
 
+    /**
+     * @brief Returns true if collect() would take at least one record now.
+     */
+    [[nodiscard]] bool hasDue(TimePoint now, Duration timeout) const noexcept;
+
     [[nodiscard]] std::size_t pending() const noexcept;
     [[nodiscard]] std::size_t outstanding() const noexcept;
     [[nodiscard]] bool hasRoomToQueue() const noexcept;

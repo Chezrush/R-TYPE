@@ -203,6 +203,19 @@ void testFullDatagramStaysUnderTheLimit()
     CHECK(PacketReader::isValid(packet));
 }
 
+void testDueReliableFollowsTheTimeout()
+{
+    Connection connection(SESSION);
+    const TimePoint now = Clock::now();
+
+    CHECK(!connection.hasDueReliable(now));
+    connection.queueReliable(Score{0, 1});
+    CHECK(connection.hasDueReliable(now));
+    static_cast<void>(connection.buildDatagram(now));
+    CHECK(!connection.hasDueReliable(now + 50ms));
+    CHECK(connection.hasDueReliable(now + 250ms));
+}
+
 struct Link {
     std::mt19937 random{7};
     int lossPercent = 30;
@@ -292,6 +305,7 @@ int main()
     testReliableOutOfWindowDropsTheWholeDatagram();
     testUnknownReliableTypeKeepsTheOrder();
     testFullDatagramStaysUnderTheLimit();
+    testDueReliableFollowsTheTimeout();
     testBothDirectionsSurviveALossyReorderingLink();
     return TEST_RESULT();
 }

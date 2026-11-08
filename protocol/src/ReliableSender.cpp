@@ -119,6 +119,15 @@ void ReliableSender::onAck(std::uint16_t ack, std::uint32_t ackBits)
     }
 }
 
+bool ReliableSender::hasDue(TimePoint now, Duration timeout) const noexcept
+{
+    return std::any_of(_entries.begin(), _entries.end(),
+                       [this, now, timeout](const Entry &entry) {
+                           return inSendWindow(entry) &&
+                                  isDue(entry, now, timeout);
+                       });
+}
+
 std::size_t ReliableSender::pending() const noexcept
 {
     return _entries.size();

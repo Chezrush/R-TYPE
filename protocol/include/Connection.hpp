@@ -84,6 +84,12 @@ public:
     [[nodiscard]] ReceivedDatagram receive(std::string_view datagram,
                                            TimePoint now);
 
+    /**
+     * @brief Returns true if a reliable record must be sent now, for the
+     * first time or again.
+     */
+    [[nodiscard]] bool hasDueReliable(TimePoint now) const noexcept;
+
     [[nodiscard]] const RttEstimator &rtt() const noexcept;
     [[nodiscard]] TimePoint lastReceived() const noexcept;
     [[nodiscard]] std::size_t pendingReliable() const noexcept;

@@ -174,6 +174,11 @@ ReceivedDatagram Connection::receive(std::string_view datagram, TimePoint now)
     return result;
 }
 
+bool Connection::hasDueReliable(TimePoint now) const noexcept
+{
+    return _sender.hasDue(now, _rtt.retransmissionTimeout());
+}
+
 const RttEstimator &Connection::rtt() const noexcept
 {
     return _rtt;
