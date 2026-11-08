@@ -37,3 +37,14 @@ target_link_libraries(disconnection_tests
 )
 
 set_tests_properties(disconnection_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(gateway_tests
+    GatewayTests.cpp
+)
+
+target_link_libraries(gateway_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(gateway_tests PROPERTIES TIMEOUT 10)

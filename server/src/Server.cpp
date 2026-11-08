@@ -130,8 +130,8 @@ void Server::disconnectInactiveClients()
 
 void Server::requestDisconnect(std::uint32_t clientId, DisconnectReason reason)
 {
-    const bool queued =
-        _incomingMessages.handleEnqueue(IncomingMessage{clientId, {}, reason});
+    const bool queued = _incomingMessages.handleEnqueue(
+        IncomingMessage{clientId, {}, reason, {}});
 
     if (!queued) {
         /* Tracked again, so the timeout retries once the queue drains. */
