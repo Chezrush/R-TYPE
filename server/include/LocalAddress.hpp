@@ -17,8 +17,10 @@ namespace rtype::server {
  * @brief Lists the IPv4 addresses other computers can reach this one on.
  *
  * The first entry is the address of the interface used to leave the machine,
- * found without sending any packet. Loopback addresses are never listed and
- * the list is empty when the machine has no network.
+ * found without sending any packet. On Linux and macOS every active
+ * non-loopback IPv4 interface follows, so a machine with several networks
+ * (Wi-Fi, Ethernet, virtual) lists all of them. Loopback addresses are never
+ * listed and the list is empty when the machine has no network.
  */
 [[nodiscard]] std::vector<std::string> localAddresses();
 

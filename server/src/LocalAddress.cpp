@@ -8,8 +8,19 @@
 #include "LocalAddress.hpp"
 
 #include <algorithm>
+#include <array>
 #include <asio.hpp>
+#include <cstring>
+#include <memory>
 #include <system_error>
+
+#ifndef _WIN32
+#    include <arpa/inet.h>
+#    include <ifaddrs.h>
+#    include <net/if.h>
+#    include <netinet/in.h>
+#    include <sys/socket.h>
+#endif
 
 namespace rtype::server {
 
@@ -58,6 +69,49 @@ void addHostAddresses(std::vector<std::string> &out)
     }
 }
 
+#ifndef _WIN32
+bool isUsableInterface(const ifaddrs &item)
+{
+    const unsigned flags = item.ifa_flags;
+
+    return item.ifa_addr != nullptr && item.ifa_addr->sa_family == AF_INET &&
+           (flags & static_cast<unsigned>(IFF_UP)) != 0U &&
+           (flags & static_cast<unsigned>(IFF_LOOPBACK)) == 0U;
+}
+
+std::string textOf(const ifaddrs &item)
+{
+    sockaddr_in address{};
+    std::array<char, INET_ADDRSTRLEN> text{};
+
+    std::memcpy(&address, item.ifa_addr, sizeof(address));
+    if (inet_ntop(AF_INET, &address.sin_addr, text.data(), text.size()) ==
+        nullptr) {
+        return {};
+    }
+    return text.data();
+}
+
+void addInterfaceAddresses(std::vector<std::string> &out)
+{
+    ifaddrs *list = nullptr;
+
+    if (getifaddrs(&list) != 0) {
+        return;
+    }
+    const std::unique_ptr<ifaddrs, decltype(&freeifaddrs)> guard(list,
+                                                                 freeifaddrs);
+
+    for (const ifaddrs *item = list; item != nullptr; item = item->ifa_next) {
+        if (isUsableInterface(*item)) {
+            addAddress(out, textOf(*item));
+        }
+    }
+}
+#else
+void addInterfaceAddresses(std::vector<std::string> &) {}
+#endif
+
 } // namespace
 
 bool isReachableAddress(const std::string &text)
@@ -74,6 +128,7 @@ std::vector<std::string> localAddresses()
     std::vector<std::string> out;
 
     addAddress(out, outgoingAddress());
+    addInterfaceAddresses(out);
     addHostAddresses(out);
     return out;
 }
