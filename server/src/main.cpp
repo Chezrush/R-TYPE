@@ -88,14 +88,31 @@ int run(const rtype::server::ServerConfig &config)
     return 0;
 }
 
+bool parseArguments(int argc, char *const *argv,
+                    rtype::server::ServerConfig &config)
+{
+    bool portSeen = false;
+
+    for (int i = 1; i < argc; ++i) {
+        if (std::string_view(argv[i]) == "--stats") {
+            config.showStats = true;
+        } else if (portSeen || !parsePort(argv[i], config.port)) {
+            return false;
+        } else {
+            portSeen = true;
+        }
+    }
+    return true;
+}
+
 int main(int argc, char *const *argv)
 {
     rtype::server::ServerConfig config;
 
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
-    if (argc > 1 && !parsePort(argv[1], config.port)) {
-        std::cerr << "Usage: r-type_server [PORT]\n";
+    if (!parseArguments(argc, argv, config)) {
+        std::cerr << "Usage: r-type_server [PORT] [--stats]\n";
         return 1;
     }
     return run(config);

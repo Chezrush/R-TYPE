@@ -81,3 +81,14 @@ target_link_libraries(local_address_tests
 )
 
 set_tests_properties(local_address_tests PROPERTIES TIMEOUT 10)
+
+rtype_add_test(net_stats_tests
+    NetStatsTests.cpp
+)
+
+target_link_libraries(net_stats_tests
+    PRIVATE
+        rtype_server_core
+)
+
+set_tests_properties(net_stats_tests PROPERTIES TIMEOUT 10)

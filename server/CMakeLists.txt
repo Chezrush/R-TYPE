@@ -13,6 +13,7 @@ add_library(rtype_server_core STATIC
     src/Gateway.cpp
     src/InputQueue.cpp
     src/LocalAddress.cpp
+    src/NetStats.cpp
     src/PlayerSessions.cpp
     src/Server.cpp
 )
