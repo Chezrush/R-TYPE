@@ -184,7 +184,7 @@ void Server::printStats()
     const NetRates rates = _rateMeter.sample(stats.totals, now);
 
     std::cout << formatNetLine(stats.clients.size(), rates,
-                               stats.totals.dropped, stats.averageRtt())
+                               stats.totals.dropped, averageRtt(stats))
               << "\n"
               << std::flush;
 }

@@ -12,21 +12,21 @@
 
 namespace rtype::server {
 
-void NetCounters::recordIn(std::size_t bytes) noexcept
+void recordIn(NetCounters &counters, std::size_t bytes) noexcept
 {
-    ++datagramsIn;
-    bytesIn += bytes;
+    ++counters.datagramsIn;
+    counters.bytesIn += bytes;
 }
 
-void NetCounters::recordOut(std::size_t bytes) noexcept
+void recordOut(NetCounters &counters, std::size_t bytes) noexcept
 {
-    ++datagramsOut;
-    bytesOut += bytes;
+    ++counters.datagramsOut;
+    counters.bytesOut += bytes;
 }
 
-void NetCounters::recordDropped() noexcept
+void recordDropped(NetCounters &counters) noexcept
 {
-    ++dropped;
+    ++counters.dropped;
 }
 
 NetRates NetRateMeter::sample(const NetCounters &totals, TimePoint now)

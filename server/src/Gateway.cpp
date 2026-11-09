@@ -85,14 +85,16 @@ GatewayStats Gateway::stats() const
     return snapshot;
 }
 
-std::chrono::milliseconds GatewayStats::averageRtt() const
+std::chrono::milliseconds averageRtt(const GatewayStats &stats)
 {
     std::chrono::milliseconds sum{0};
 
-    for (const ClientStats &client : clients) {
+    for (const ClientStats &client : stats.clients) {
         sum += client.rtt;
     }
-    return clients.empty() ? sum : sum / static_cast<long>(clients.size());
+    return stats.clients.empty()
+               ? sum
+               : sum / static_cast<long>(stats.clients.size());
 }
 
 Gateway::Remote *Gateway::find(std::uint32_t clientId)
@@ -128,18 +130,18 @@ void Gateway::onDatagram(const std::string &address, std::string_view datagram,
     const std::lock_guard lock(_mutex);
     const auto known = _byAddress.find(address);
 
-    _totals.recordIn(datagram.size());
+    recordIn(_totals, datagram.size());
     if (known == _byAddress.end()) {
         onStranger(address, datagram, now, nowSeconds);
         return;
     }
-    known->second->traffic.recordIn(datagram.size());
+    recordIn(known->second->traffic, datagram.size());
     if (_datagramLimiter.allow(address, now)) {
         onClient(*known->second, datagram, now, nowSeconds);
         return;
     }
-    _totals.recordDropped();
-    known->second->traffic.recordDropped();
+    recordDropped(_totals);
+    recordDropped(known->second->traffic);
 }
 
 void Gateway::onStranger(const std::string &address, std::string_view datagram,
@@ -154,7 +156,7 @@ void Gateway::onStranger(const std::string &address, std::string_view datagram,
     } else if (decision.kind == ServerHandshake::Kind::ACCEPT) {
         accept(address, decision.hello, now);
     } else {
-        _totals.recordDropped();
+        recordDropped(_totals);
     }
 }
 
@@ -198,8 +200,8 @@ void Gateway::onResult(Remote &remote, const protocol::ReceivedDatagram &result,
 {
     if (result.status == DatagramStatus::INVALID ||
         result.status == DatagramStatus::RELIABLE_OUT_OF_WINDOW) {
-        _totals.recordDropped();
-        remote.traffic.recordDropped();
+        recordDropped(_totals);
+        recordDropped(remote.traffic);
         countInvalid(remote, now);
         return;
     }
@@ -281,9 +283,9 @@ void Gateway::sendWelcome(Remote &remote, TimePoint now)
 void Gateway::transmit(const std::string &address, const std::string &datagram,
                        Remote *remote)
 {
-    _totals.recordOut(datagram.size());
+    recordOut(_totals, datagram.size());
     if (remote != nullptr) {
-        remote->traffic.recordOut(datagram.size());
+        recordOut(remote->traffic, datagram.size());
     }
     _send(address, datagram);
 }
